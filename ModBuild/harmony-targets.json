@@ -1,0 +1,26 @@
+{
+  "targets": [
+    {
+      "mod": "DreamLover",
+      "patterns": [
+        "PeriAdvanceMonth_RelationsUpdate",
+        "ComplementPeriAdvanceMonth_RelationsUpdate"
+      ]
+    },
+    {
+      "mod": "AntiNTR",
+      "patterns": [
+        "OfflineMakeLove",
+        "ComplementPeriAdvanceMonth_ExecuteFixedActions"
+      ]
+    },
+    {
+      "mod": "FertilityControl",
+      "patterns": [
+        "CheckPregnant",
+        "IsInsect",
+        "CreatePregnantState"
+      ]
+    }
+  ]
+}

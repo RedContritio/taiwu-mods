@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <TaiwuGameDir Condition="'$(TaiwuGameDir)' == '' and '$(TAIWU_GAME_DIR)' != ''">$(TAIWU_GAME_DIR)</TaiwuGameDir>
+    <TaiwuGameDir Condition="'$(TaiwuGameDir)' == ''">D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu</TaiwuGameDir>
+    <TaiwuManagedDir>$(TaiwuGameDir)\The Scroll of Taiwu_Data\Managed</TaiwuManagedDir>
+    <TaiwuBackendDir>$(TaiwuGameDir)\Backend</TaiwuBackendDir>
+    <TaiwuModDir>$(TaiwuGameDir)\Mod</TaiwuModDir>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <EnableDefaultItems>true</EnableDefaultItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,42 @@
+{
+  "mods": [
+    {
+      "name": "DreamLover",
+      "status": "release",
+      "projects": [
+        "DreamLover/DreamLover.Backend/DreamLover.Backend.csproj"
+      ]
+    },
+    {
+      "name": "AntiNTR",
+      "status": "release",
+      "projects": [
+        "AntiNTR/AntiNTR.Backend/AntiNTR.Backend.csproj"
+      ]
+    },
+    {
+      "name": "FertilityControl",
+      "status": "release",
+      "projects": [
+        "FertilityControl/FertilityControl.Backend/FertilityControl.Backend.csproj"
+      ]
+    },
+    {
+      "name": "ForceEncounter",
+      "status": "release",
+      "projects": [
+        "ForceEncounter/ForceEncounter.Backend/ForceEncounter.Backend.csproj",
+        "ForceEncounter/ForceEncounter.Events/ForceEncounter.Events.csproj"
+      ]
+    },
+    {
+      "name": "ExampleMod",
+      "status": "sample",
+      "projects": [
+        "ExampleMod/ExampleMod.Backend/ExampleMod.Backend.csproj",
+        "ExampleMod/ExampleMod.Frontend/ExampleMod.Frontend.csproj"
+      ],
+      "note": "Development environment sample; not a Workshop release target."
+    }
+  ]
+}
