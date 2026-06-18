@@ -9,6 +9,8 @@ $ErrorActionPreference = "Stop"
 & "$PSScriptRoot\Build-All.ps1" -Configuration $Configuration -IncludeDrafts:$IncludeDrafts
 & "$PSScriptRoot\Validate-HarmonyTargets.ps1" -IncludeDrafts:$IncludeDrafts
 
+dotnet run --project (Join-Path $Script:ModBuildRoot "tests\TaiwuMods.Tests\TaiwuMods.Tests.csproj") -c $Configuration
+
 $testPackageRoot = Join-Path $Script:ModBuildRoot "artifacts\test-package"
 New-Item -ItemType Directory -Force -Path $testPackageRoot | Out-Null
 

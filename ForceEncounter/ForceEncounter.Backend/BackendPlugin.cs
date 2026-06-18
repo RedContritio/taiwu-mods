@@ -110,7 +110,10 @@ namespace ForceEncounter.Backend
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             int currDate = DomainManager.World.GetCurrDate();
             Location location = actor.GetLocation();
-            bool success = targetId != taiwuId && battleSucceeded && actor.GetFertility() > 50;
+            bool success = ForceEncounterRules.IsResolvedSuccess(
+                battleSucceeded,
+                targetId == taiwuId,
+                actor.GetFertility());
 
             if (success)
             {

@@ -16,6 +16,11 @@ This performs:
 - Mod layout and `config.lua` validation.
 - `[PluginConfig]` identity and version validation.
 - Harmony target existence validation against `_decompiled`.
+- Contract tests for manifest/project/config wiring.
+- Contract tests for settings key coverage.
+- Contract tests for Harmony source patch coverage.
+- Contract tests for ForceEncounter's interaction-event path and combat-result event.
+- Pure helper tests for key mod rules that do not need a running game.
 - Temporary package layout validation under `artifacts/test-package`.
 
 Acceptance:
@@ -106,11 +111,13 @@ ForceEncounter:
 
 ## Integration Automation Roadmap
 
+Current automated contract tests live in `tests/TaiwuMods.Tests` and run as part of `ModBuild\Test-All.ps1`.
+
 Short term:
 
+- Extend `tests/TaiwuMods.Tests` with more pure helper tests for setting-driven logic.
 - Keep using `_decompiled` name checks for Harmony target drift.
-- Add a small C# static test project for config key vs `Settings.cs` field consistency.
-- Add package content assertions for "no `.cs`/`.csproj` in release package".
+- Keep package content assertions for "no `.cs`/`.csproj` in release package".
 
 Medium term:
 

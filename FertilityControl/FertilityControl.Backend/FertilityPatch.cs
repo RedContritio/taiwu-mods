@@ -43,9 +43,9 @@ namespace FertilityControl.Backend
                     return false;
 
                 int val = GetSlider("AllFertilityValue");
-                int roll = isRape ? 20 : 60;
-                __result = random.CheckPercentProb(roll * val / 10000);
-                Log($"CheckPregnant override (total): fertility={val}, base={roll}%, result={__result}");
+                int chance = FertilityRules.CalculateTotalFertilityChance(isRape, val);
+                __result = random.CheckPercentProb(chance);
+                Log($"CheckPregnant override (total): fertility={val}, chance={chance}%, result={__result}");
                 return false;
             }
 
@@ -69,16 +69,12 @@ namespace FertilityControl.Backend
                 return false;
             }
 
-            int prob;
-            if (rateOverridden)
-            {
-                prob = GetSlider("PregnancyRate");
-            }
-            else
-            {
-                int baseChance = isRape ? 20 : 60;
-                prob = (int)((long)baseChance * fatherFertility * motherFertility / 10000);
-            }
+            int prob = FertilityRules.CalculatePregnancyChance(
+                isRape,
+                fatherFertility,
+                motherFertility,
+                rateOverridden,
+                GetSlider("PregnancyRate"));
 
             __result = random.CheckPercentProb(prob);
             Log($"CheckPregnant override: fFert={fatherFertility}, mFert={motherFertility}, prob={prob}%, result={__result}");
@@ -88,14 +84,8 @@ namespace FertilityControl.Backend
         private static bool PassChildLimit(Character father, Character mother, short fatherFertility, short motherFertility, ref bool result)
         {
             int fatherChildren = DomainManager.Character.GetRelatedCharIds(father.GetId(), 2).Count;
-            if (fatherFertility / 20 < fatherChildren)
-            {
-                result = false;
-                return false;
-            }
-
             int motherChildren = DomainManager.Character.GetRelatedCharIds(mother.GetId(), 2).Count;
-            if (motherFertility / 20 < motherChildren)
+            if (!FertilityRules.PassChildLimit(fatherChildren, motherChildren, fatherFertility, motherFertility))
             {
                 result = false;
                 return false;
@@ -133,11 +123,8 @@ namespace FertilityControl.Backend
         {
             bool disable = false;
             DomainManager.Mod.GetSetting(BackendPlugin.ModId, "DisableInbreeding", ref disable);
-            if (!disable)
-                return true;
-
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
-            if (charId != taiwuId && relatedCharId != taiwuId)
+            if (!FertilityRules.ShouldOverrideInbreeding(disable, charId == taiwuId || relatedCharId == taiwuId))
                 return true;
 
             __result = false;
@@ -177,13 +164,11 @@ namespace FertilityControl.Backend
         {
             bool setCricket = false;
             DomainManager.Mod.GetSetting(BackendPlugin.ModId, "SetCricketRate", ref setCricket);
-            if (!setCricket)
-                return;
-            if (__state.HadPregnantState)
-                return;
-
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
-            if (father.GetId() != taiwuId && mother.GetId() != taiwuId)
+            if (!FertilityRules.ShouldOverrideCricketRate(
+                setCricket,
+                __state.HadPregnantState,
+                father.GetId() == taiwuId || mother.GetId() == taiwuId))
                 return;
 
             if (!__instance.TryGetPregnantState(mother.GetId(), out PregnantState state))

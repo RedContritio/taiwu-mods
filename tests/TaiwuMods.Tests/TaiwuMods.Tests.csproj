@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\AntiNTR\AntiNTR.Backend\AntiNtrRules.cs" Link="Rules\AntiNtrRules.cs" />
+    <Compile Include="..\..\DreamLover\DreamLover.Backend\DreamLoverRules.cs" Link="Rules\DreamLoverRules.cs" />
+    <Compile Include="..\..\FertilityControl\FertilityControl.Backend\FertilityRules.cs" Link="Rules\FertilityRules.cs" />
+    <Compile Include="..\..\ForceEncounter\ForceEncounter.Backend\ForceEncounterRules.cs" Link="Rules\ForceEncounterRules.cs" />
+  </ItemGroup>
+</Project>

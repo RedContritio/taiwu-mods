@@ -65,11 +65,13 @@ namespace DreamLover.Backend
 
         private static void TryForgetMe(DataContext context, Character npc, int charId, int taiwuId)
         {
-            if (!DomainManager.Character.HasRelation(charId, taiwuId, Adored))
-                return;
-            if (DomainManager.Character.HasRelation(charId, taiwuId, Spouse))
-                return;
-            if (DomainManager.Character.HasRelation(taiwuId, charId, Adored))
+            if (!DreamLoverRules.ShouldForgetUnreciprocatedAdoration(
+                    Settings.ForgetMe,
+                    Settings.EnableEnamor,
+                    Settings.EnablePursued,
+                    DomainManager.Character.HasRelation(charId, taiwuId, Adored),
+                    DomainManager.Character.HasRelation(charId, taiwuId, Spouse),
+                    DomainManager.Character.HasRelation(taiwuId, charId, Adored)))
                 return;
 
             Log(charId + " queued to forget adoration for Taiwu");
@@ -79,58 +81,39 @@ namespace DreamLover.Backend
 
         private static bool PassFilters(Character npc, int charId, int taiwuId, Character taiwu)
         {
-            if (!Settings.AcceptSameGender && npc.GetGender() == taiwu.GetGender())
-                return false;
-
-            if (!Settings.IgnoreDistance && !CharacterUtils.IsAtSameLocation(npc, taiwu))
-                return false;
-
             int ageYears = npc.GetCurrAge();
-            if (ageYears < Settings.MinAge || ageYears > Settings.MaxAge)
-            {
-                Log(charId + " filtered: age " + ageYears);
-                return false;
-            }
-
             sbyte favorType = CharacterUtils.GetFavorabilityType(charId, taiwuId);
-            int favorIdx = favorType + 6;
-            if (favorIdx < 0 || favorIdx >= Settings.Favor.Length || !Settings.Favor[favorIdx])
-            {
-                Log(charId + " filtered: favorability type " + favorType);
-                return false;
-            }
-
             int goodnessLevel = CharacterUtils.GetGoodnessLevel(npc);
-            if (goodnessLevel < 0 || goodnessLevel >= Settings.Good.Length || !Settings.Good[goodnessLevel])
-            {
-                Log(charId + " filtered: goodness level " + goodnessLevel);
-                return false;
-            }
-
             sbyte charmLevel = CharacterUtils.GetCharmLevel(npc);
-            if (charmLevel < 0 || charmLevel >= Settings.Charm.Length || !Settings.Charm[charmLevel])
-            {
-                Log(charId + " filtered: charm level " + charmLevel);
-                return false;
-            }
-
             sbyte rankLevel = CharacterUtils.GetRankLevel(npc);
-            if (rankLevel >= 0 && rankLevel < Settings.Rank.Length && !Settings.Rank[rankLevel])
-            {
-                Log(charId + " filtered: rank level " + rankLevel);
-                return false;
-            }
-
             int infectState = CharacterUtils.GetInfectionState(npc);
-            if (infectState >= 0 && infectState < Settings.Infect.Length && !Settings.Infect[infectState])
+
+            if (!DreamLoverRules.PassBasicFilters(
+                    Settings.AcceptSameGender,
+                    npc.GetGender() == taiwu.GetGender(),
+                    Settings.IgnoreDistance,
+                    CharacterUtils.IsAtSameLocation(npc, taiwu),
+                    ageYears,
+                    Settings.MinAge,
+                    Settings.MaxAge,
+                    favorType,
+                    Settings.Favor,
+                    goodnessLevel,
+                    Settings.Good,
+                    charmLevel,
+                    Settings.Charm,
+                    rankLevel,
+                    Settings.Rank,
+                    infectState,
+                    Settings.Infect))
             {
-                Log(charId + " filtered: infection state " + infectState);
+                Log(charId + " filtered: basic filter");
                 return false;
             }
 
             if (!PassRelationFilter(charId, taiwuId))
             {
-                Log(charId + " filtered: blocked relation type");
+                Log(charId + " filtered: relation filter");
                 return false;
             }
 
@@ -143,11 +126,9 @@ namespace DreamLover.Backend
                 return true;
 
             for (int i = 0; i < Settings.RelFilterDefs.Length; i++)
-            {
-                ushort relType = Settings.RelFilterDefs[i].Type;
-                if (RelationType.HasRelation(rel.RelationType, relType) && !Settings.RelFilter[i])
-                    return false;
-            }
+                if (RelationType.HasRelation(rel.RelationType, Settings.RelFilterDefs[i].Type))
+                    return DreamLoverRules.PassRelationFilter(rel.RelationType, Settings.RelFilterDefs, Settings.RelFilter);
+
             return true;
         }
 

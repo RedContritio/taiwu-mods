@@ -65,14 +65,11 @@ namespace AntiNTR.Backend
 
         internal static bool ShouldBlockPair(BackendPlugin plugin, int taiwuId, int charAId, int charBId)
         {
-            if (plugin == null || !plugin.GetBoolSetting("Enabled"))
-                return false;
-            if (taiwuId < 0)
-                return false;
-            if (charAId == taiwuId || charBId == taiwuId)
+            if (plugin == null ||
+                !AntiNtrRules.CanEvaluatePair(plugin.GetBoolSetting("Enabled"), taiwuId, charAId, charBId))
                 return false;
 
-            if (plugin.GetBoolSetting("Rel_PreventAll"))
+            if (AntiNtrRules.ShouldPreventAll(plugin.GetBoolSetting("Rel_PreventAll")))
             {
                 Log(plugin, charAId, charBId, "PreventAll");
                 return true;
@@ -93,7 +90,7 @@ namespace AntiNTR.Backend
                 if (!IsProtected(plugin, taiwuId, spouseId))
                     continue;
 
-                if (allowCouple && partnerId == spouseId)
+                if (!AntiNtrRules.ShouldBlockProtectedSpouse(allowCouple, partnerId, spouseId))
                     continue;
 
                 Log(plugin, charId, partnerId, $"spouse {spouseId} is protected");
