@@ -1,0 +1,259 @@
+using System;
+using System.Collections.Generic;
+using Config;
+using Config.EventConfig;
+using GameData.Domains;
+using GameData.Domains.Mod;
+using GameData.Domains.TaiwuEvent;
+using GameData.Domains.TaiwuEvent.Enum;
+using GameData.Domains.TaiwuEvent.EventHelper;
+using GameData.Domains.TaiwuEvent.EventOption;
+
+namespace ForceEncounter.Events
+{
+    internal sealed class ForceEncounterEvent : TaiwuEventItem
+    {
+        private static readonly HashSet<string> LoggedDebugStates = new HashSet<string>();
+
+        public ForceEncounterEvent()
+        {
+            Guid = Guid.Parse(ForceEncounterEventIds.事件.外层入口);
+            EventType = EEventType.ModEvent;
+            IsHeadEvent = false;
+            TriggerType = -1;
+            MainRoleKey = "RoleTaiwu";
+            TargetRoleKey = EventTriggerParameter.DefValue.CharacterId.ArgBoxKey;
+            EscOptionKey = string.Empty;
+            EventOptions = new[]
+            {
+                new TaiwuEventOption
+                {
+                    OptionKey = ForceEncounterEventIds.选项.打开入口.Key,
+                    OptionGuid = ForceEncounterEventIds.选项.打开入口.Guid,
+                    Behavior = EventOptionBehavior.None,
+                    DefaultState = EventOptionState.Normal,
+                    Important = false,
+                    OnOptionVisibleCheck = IsEnabled,
+                    OnOptionAvailableCheck = CanExecute,
+                    OnOptionSelect = StayOnEntryEvent
+                },
+                new TaiwuEventOption
+                {
+                    OptionKey = ForceEncounterEventIds.选项.情难自已.Key,
+                    OptionGuid = ForceEncounterEventIds.选项.情难自已.Guid,
+                    Behavior = EventOptionBehavior.BehaviorEgoistic,
+                    DefaultState = EventOptionState.Normal,
+                    Important = false,
+                    OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(),
+                    OnOptionVisibleCheck = IsEnabled,
+                    OnOptionAvailableCheck = CanExecute,
+                    OnOptionSelect = Execute
+                }
+            };
+            EventOptions[0].SetContent(string.Empty);
+            EventOptions[1].SetContent("（情难自已……）");
+        }
+
+        public override bool OnCheckEventCondition()
+        {
+            return true;
+        }
+
+        public override void OnEventEnter()
+        {
+        }
+
+        public override void OnEventExit()
+        {
+        }
+
+        public override string GetReplacedContentString()
+        {
+            return string.Empty;
+        }
+
+        private bool IsEnabled()
+        {
+            string modId = GetRuntimeModId();
+            bool enabled = true;
+            bool settingFound = !string.IsNullOrEmpty(modId) &&
+                                DomainManager.Mod.GetSetting(modId, "Enabled", ref enabled);
+            DebugLogOnce(
+                "enabled:" + modId + ":" + settingFound + ":" + enabled,
+                "IsEnabled packageSet=" + (Package != null) +
+                ", modId='" + modId +
+                "', settingFound=" + settingFound +
+                ", enabled=" + enabled);
+            return enabled;
+        }
+
+        private bool CanExecute()
+        {
+            string reason = GetCanExecuteFailureReason(out int actorId, out int targetId);
+            bool canExecute = reason == "Ok";
+            DebugLogOnce(
+                "can:" + actorId + ":" + targetId + ":" + reason,
+                "CanExecute actor=" + actorId +
+                ", target=" + targetId +
+                ", result=" + canExecute +
+                ", reason=" + reason);
+            return canExecute;
+        }
+
+        private string GetCanExecuteFailureReason(out int actorId, out int targetId)
+        {
+            actorId = -1;
+            targetId = -1;
+
+            if (!IsEnabled())
+            {
+                return "Disabled";
+            }
+
+            if (ArgBox == null)
+            {
+                return "NoArgBox";
+            }
+
+            if (!ArgBox.Get(EventTriggerParameter.DefValue.CharacterId, ref targetId))
+            {
+                return "MissingCharacterId";
+            }
+
+            actorId = ForceEncounterEventRuntime.GetActorId();
+            if (actorId == targetId)
+            {
+                return "SameActorAndTarget";
+            }
+
+            if (!DomainManager.Character.TryGetElement_Objects(actorId, out var actor))
+            {
+                return "ActorNotFound";
+            }
+
+            if (!DomainManager.Character.TryGetElement_Objects(targetId, out var target))
+            {
+                return "TargetNotFound";
+            }
+
+            if (!DomainManager.Character.IsCharacterAlive(actorId))
+            {
+                return "ActorNotAlive";
+            }
+
+            if (!DomainManager.Character.IsCharacterAlive(targetId))
+            {
+                return "TargetNotAlive";
+            }
+
+            if (actor.GetAgeGroup() == 0)
+            {
+                return "ActorBaby";
+            }
+
+            if (target.GetAgeGroup() == 0)
+            {
+                return "TargetBaby";
+            }
+
+            return "Ok";
+        }
+
+        private string Execute()
+        {
+            int targetId = -1;
+            if (ArgBox == null || !ArgBox.Get(EventTriggerParameter.DefValue.CharacterId, ref targetId))
+            {
+                return string.Empty;
+            }
+
+            int actorId = ForceEncounterEventRuntime.GetActorId();
+            ForceEncounterEventRuntime.StoreInteractionArgs(ArgBox, actorId, targetId);
+            ArgBox.Set(EventArgBox.OptionWaitConfirmKey, ForceEncounterEventIds.等待确认.外层预览);
+
+            return ProbeAndRouteToChoice(actorId, targetId);
+        }
+
+        private string ProbeAndRouteToChoice(int actorId, int targetId)
+        {
+            SerializableModData result = ForceEncounterEventRuntime.CallBackend(
+                GetRuntimeModId(),
+                actorId,
+                targetId,
+                ForceEncounterEventIds.结算模式.探测);
+
+            if (result != null &&
+                result.Get(ForceEncounterEventIds.后端.结算结果, out int resolution) &&
+                (resolution == ForceEncounterEventIds.探测结果.亲密通过 ||
+                 resolution == ForceEncounterEventIds.探测结果.需要战斗选择))
+            {
+                ArgBox.Set(ForceEncounterEventIds.后端.结算结果, resolution);
+                return ForceEncounterEventIds.事件.内层选择;
+            }
+
+            LogProbeFailure(result);
+            return string.Empty;
+        }
+
+        private string StayOnEntryEvent()
+        {
+            return ForceEncounterEventIds.事件.外层入口;
+        }
+
+        private void LogProbeFailure(SerializableModData result)
+        {
+            bool ok = false;
+            if (result != null && result.Get("Ok", out ok) && ok)
+            {
+                return;
+            }
+
+            bool debugMode = true;
+            DomainManager.Mod.GetSetting(GetRuntimeModId(), "DebugMode", ref debugMode);
+            if (!debugMode)
+            {
+                return;
+            }
+
+            string reason = "NoResult";
+            if (result != null)
+            {
+                result.Get("Reason", out reason);
+            }
+
+            EventHelper.Log("[ForceEncounter] Probe did not start a follow-up event: " + reason);
+        }
+
+        private string GetRuntimeModId()
+        {
+            return ForceEncounterEventRuntime.GetRuntimeModId(this);
+        }
+
+        private void DebugLogOnce(string key, string message)
+        {
+            if (!IsDebugModeEnabled())
+            {
+                return;
+            }
+
+            lock (LoggedDebugStates)
+            {
+                if (!LoggedDebugStates.Add(key))
+                {
+                    return;
+                }
+            }
+
+            EventHelper.Log("[ForceEncounter] " + message);
+        }
+
+        private bool IsDebugModeEnabled()
+        {
+            string modId = GetRuntimeModId();
+            bool debugMode = true;
+            return string.IsNullOrEmpty(modId) ||
+                   !DomainManager.Mod.GetSetting(modId, "DebugMode", ref debugMode) ||
+                   debugMode;
+        }
+    }
+}

@@ -17,6 +17,7 @@ This performs:
 - `[PluginConfig]` identity and version validation.
 - Harmony target existence validation against `_decompiled`.
 - Contract tests for manifest/project/config wiring.
+- Contract tests for mod config patch `SrcConfigRefName` and `TemplateId` against formal-version ref mappings.
 - Contract tests for settings key coverage.
 - Contract tests for Harmony source patch coverage.
 - Contract tests for ForceEncounter's interaction-event path and combat-result event.
@@ -69,6 +70,10 @@ Deploy one mod at a time into a real formal-version game install:
 .\deploy.ps1 ForceEncounter -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
 ```
 
+For auto-increment mods such as ForceEncounter, local deploy is treated as a runnable build:
+the script bumps the fourth version component before compiling and copying files. Use `-NoBuild`
+only when intentionally redeploying already-built files.
+
 Acceptance:
 
 - The game lists the mod with its configured title.
@@ -104,10 +109,11 @@ FertilityControl:
 ForceEncounter:
 
 - Enable `ForceEncounter`, load the main map, choose an adult living NPC, open the character interaction event window, and confirm the `敌对` tab includes `情难自已`.
-- Select `情难自已` and confirm the backend log reports `Taiwu->target`.
-- With `ForceSuccess` off, confirm success/failure follows formal combat and fertility checks.
-- With `ForceSuccess` on, confirm the success branch executes and optional record/hatred/favorability settings only affect this forced branch.
-- Confirm default settings reject attempts where the target is Taiwu, the actor equals the target, or either character is not adult/alive.
+- Select `情难自已` on a non-intimate adult NPC and confirm the backend log reports `Probe needs combat choice`.
+- Choose `就此作罢` and confirm the event exits without formal combat, failure records, hatred, or favorability loss.
+- Select `情难自已` again, choose `强行开战`, and confirm success/failure follows formal combat results rather than combat power or fertility.
+- Use DreamLover or a prepared save to create a spouse or mutual-lover target with high mutual favorability; select `情难自已` and confirm the backend log reports `Probe accepted`, writes `RapeSucceed`, and does not force hatred/favorability loss.
+- Confirm the backend rejects attempts where the target is Taiwu, the actor equals the target, or either character is not adult/alive.
 
 ## Integration Automation Roadmap
 

@@ -1,6 +1,6 @@
 return {
     ConfigName = "InteractionEventOption",
-    SrcConfigRefName = "ArrestPrison",
+    SrcConfigRefName = "敌对-出手袭击",
     DestConfigRefName = "ForceEncounter.Execute",
     TemplateId = 1099,
     Data = {
@@ -8,10 +8,10 @@ return {
         Name = "情难自已",
         InteractionType = 4,
         OncePerMonth = false,
-        ActionPointCost = 0,
+        ActionPointCost = 50,
         SpiritualDebtCost = 0,
         ExpCost = 0,
         MapBlockCharCustomButtonEventPath = { "dd8e7372-30c6-47e9-9e1a-0f6dd7f08919" },
-        MapBlockCharCustomButtonEventOptionPath = { "8267b6bc-3a92-4b3f-a013-a3446272866f" },
+        MapBlockCharCustomButtonEventOptionPath = { "ee1110a7-f974-4bc4-bf84-1ddcfcc04ae1" },
     },
 }

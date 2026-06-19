@@ -15,12 +15,21 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
 }
 
 $entry = Get-ModEntry -ModName $ModName -IncludeDrafts:$IncludeDrafts
+if (Test-ModAutoIncrementBuildVersion -Entry $entry) {
+    $nextVersion = Update-ModBuildVersion -Entry $entry
+    Write-Host "Bumped $($entry.name) Version -> $nextVersion"
+}
+
 foreach ($project in @($entry.projects)) {
     dotnet build (Resolve-RepoPath $project) -c $Configuration -v:minimal
 }
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $packageDir = Join-Path $OutputDir $entry.name
+$validation = Test-ModStructure -Entry $entry -RequireBuiltPlugins
+foreach ($warningItem in $validation.Warnings) {
+    Write-Warning "[$($validation.Name)] $warningItem"
+}
 Copy-ModFiles -Entry $entry -Destination $packageDir -Clean -IncludeSymbols:$IncludeSymbols | Out-Null
 
 $zipPath = Join-Path $OutputDir "$($entry.name).zip"

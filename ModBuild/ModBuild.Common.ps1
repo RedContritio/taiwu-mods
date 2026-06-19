@@ -86,6 +86,61 @@ function Get-LuaBoolValue {
     return $null
 }
 
+function Get-LuaNumberValue {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Text,
+        [Parameter(Mandatory)]
+        [string]$Key
+    )
+
+    $match = [regex]::Match($Text, "(?m)^\s*$([regex]::Escape($Key))\s*=\s*(-?\d+)")
+    if ($match.Success) {
+        return [int]$match.Groups[1].Value
+    }
+
+    return $null
+}
+
+function Get-TaiwuGameDir {
+    if (-not [string]::IsNullOrWhiteSpace($env:TAIWU_GAME_DIR)) {
+        return $env:TAIWU_GAME_DIR
+    }
+
+    return "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu"
+}
+
+function Get-ConfigRefMap {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ConfigName
+    )
+
+    $mappingPath = Join-Path (Get-TaiwuGameDir) "The Scroll of Taiwu_Data\StreamingAssets\ConfigRefNameMapping\$ConfigName.ref.txt"
+    if (-not (Test-Path $mappingPath)) {
+        return $null
+    }
+
+    $lines = @(Get-Content $mappingPath -Encoding UTF8 | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $byName = New-Object "System.Collections.Generic.Dictionary[string,int]" -ArgumentList ([System.StringComparer]::Ordinal)
+    $byId = New-Object "System.Collections.Generic.Dictionary[int,string]"
+    for ($i = 0; $i + 1 -lt $lines.Count; $i += 2) {
+        $name = $lines[$i]
+        $id = 0
+        if (-not [int]::TryParse($lines[$i + 1], [ref]$id)) {
+            throw "Malformed ref mapping pair in $mappingPath near '$name' / '$($lines[$i + 1])'"
+        }
+        $byName[$name] = $id
+        $byId[$id] = $name
+    }
+
+    return [PSCustomObject]@{
+        Path = $mappingPath
+        ByName = $byName
+        ById = $byId
+    }
+}
+
 function Get-DeclaredPluginNames {
     param(
         [Parameter(Mandatory)]
@@ -160,6 +215,67 @@ function Test-VersionCompatible {
     return $true
 }
 
+function Test-ModAutoIncrementBuildVersion {
+    param(
+        [Parameter(Mandatory)]
+        $Entry
+    )
+
+    $property = $Entry.PSObject.Properties["autoIncrementBuildVersion"]
+    return $null -ne $property -and [bool]$property.Value
+}
+
+function Update-ModBuildVersion {
+    param(
+        [Parameter(Mandatory)]
+        $Entry
+    )
+
+    $modDir = Join-Path $Script:ModBuildRoot $Entry.name
+    $configPath = Join-Path $modDir "config.lua"
+    if (-not (Test-Path $configPath)) {
+        throw "Missing config.lua: $configPath"
+    }
+
+    $configText = Get-Content $configPath -Raw -Encoding UTF8
+    $currentVersion = Get-LuaQuotedValue -Text $configText -Key "Version"
+    if ([string]::IsNullOrWhiteSpace($currentVersion)) {
+        throw "$($Entry.name) config.lua is missing Version"
+    }
+
+    $parts = @($currentVersion.Split('.') | ForEach-Object { [int]$_ })
+    if ($parts.Count -ne 4) {
+        throw "$($Entry.name) Version must use four numeric parts for build auto-increment: $currentVersion"
+    }
+
+    $parts[3] += 1
+    $nextVersion = $parts -join "."
+    $updatedConfigText = [regex]::Replace(
+        $configText,
+        '(?m)(^\s*Version\s*=\s*")([^"]+)(")',
+        "`${1}$nextVersion`${3}",
+        1)
+    Set-Content -LiteralPath $configPath -Value $updatedConfigText -Encoding UTF8 -NoNewline
+
+    $pluginPattern = "(?<prefix>PluginConfig\(\s*`"$([regex]::Escape($Entry.name))`"\s*,\s*`"[^`"]+`"\s*,\s*`")(?<version>[^`"]+)(?<suffix>`"\s*\))"
+    foreach ($project in @($Entry.projects)) {
+        foreach ($sourceFile in (Get-ProjectSourceFiles -ProjectPath (Resolve-RepoPath $project))) {
+            $sourceText = Get-Content $sourceFile.FullName -Raw -Encoding UTF8
+            if (-not [regex]::IsMatch($sourceText, $pluginPattern)) {
+                continue
+            }
+
+            $updatedSourceText = [regex]::Replace(
+                $sourceText,
+                $pluginPattern,
+                "`${prefix}$nextVersion`${suffix}")
+            Set-Content -LiteralPath $sourceFile.FullName -Value $updatedSourceText -Encoding UTF8 -NoNewline
+        }
+    }
+
+    return $nextVersion
+}
+
 function Get-ProjectSourceFiles {
     param(
         [Parameter(Mandatory)]
@@ -230,7 +346,7 @@ function Test-ModStructure {
     $declaredEventPackages = @()
     $configVersion = $null
     if (Test-Path $configPath) {
-        $configText = Get-Content $configPath -Raw
+        $configText = Get-Content $configPath -Raw -Encoding UTF8
         foreach ($requiredString in @("Title", "Description", "Version", "Author")) {
             $value = Get-LuaQuotedValue -Text $configText -Key $requiredString
             if ([string]::IsNullOrWhiteSpace($value)) {
@@ -241,11 +357,18 @@ function Test-ModStructure {
             }
         }
 
-        foreach ($recommendedString in @("Cover", "GameVersion")) {
+        foreach ($recommendedString in @("Cover")) {
             $value = Get-LuaQuotedValue -Text $configText -Key $recommendedString
             if ([string]::IsNullOrWhiteSpace($value)) {
                 $warnings.Add("config.lua has empty Workshop/display field: $recommendedString")
             }
+        }
+
+        $gameVersion = Get-LuaQuotedValue -Text $configText -Key "GameVersion"
+        if ($Entry.status -eq "release" -and [string]::IsNullOrWhiteSpace($gameVersion)) {
+            $errors.Add("release config.lua must set GameVersion to the supported game version")
+        } elseif ([string]::IsNullOrWhiteSpace($gameVersion)) {
+            $warnings.Add("config.lua has empty Workshop/display field: GameVersion")
         }
 
         foreach ($requiredNumberOrBool in @("Source", "Visibility")) {
@@ -272,6 +395,42 @@ function Test-ModStructure {
         $declaredEventPackages = Get-DeclaredEventPackageNames -ConfigText $configText
         if ($declaredPlugins.Count -eq 0) {
             $errors.Add("config.lua declares no plugin dlls")
+        }
+    }
+
+    $configPatchDir = Join-Path $modDir "Config"
+    if (Test-Path $configPatchDir) {
+        foreach ($configPatch in @(Get-ChildItem $configPatchDir -Filter "*.lua" -File -Recurse)) {
+            $patchText = Get-Content $configPatch.FullName -Raw -Encoding UTF8
+            $patchConfigName = Get-LuaQuotedValue -Text $patchText -Key "ConfigName"
+            $srcConfigRefName = Get-LuaQuotedValue -Text $patchText -Key "SrcConfigRefName"
+            $destConfigRefName = Get-LuaQuotedValue -Text $patchText -Key "DestConfigRefName"
+            $templateId = Get-LuaNumberValue -Text $patchText -Key "TemplateId"
+
+            if ([string]::IsNullOrWhiteSpace($patchConfigName)) {
+                $errors.Add("Config patch missing ConfigName: $($configPatch.FullName)")
+                continue
+            }
+
+            $refMap = Get-ConfigRefMap -ConfigName $patchConfigName
+            if ($null -eq $refMap) {
+                $errors.Add("Config patch references unknown config table '$patchConfigName': $($configPatch.FullName)")
+                continue
+            }
+
+            if ([string]::IsNullOrWhiteSpace($srcConfigRefName)) {
+                $errors.Add("Config patch missing SrcConfigRefName; formal mod loading only supports cloning or replacing an existing config row: $($configPatch.FullName)")
+            } elseif (-not $refMap.ByName.ContainsKey($srcConfigRefName)) {
+                $errors.Add("Config patch SrcConfigRefName '$srcConfigRefName' does not exist in $($refMap.Path): $($configPatch.FullName)")
+            }
+
+            if ($null -ne $templateId -and $refMap.ById.ContainsKey($templateId)) {
+                $errors.Add("Config patch TemplateId '$templateId' collides with vanilla '$($refMap.ById[$templateId])' in $($refMap.Path): $($configPatch.FullName)")
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($destConfigRefName) -and $refMap.ByName.ContainsKey($destConfigRefName)) {
+                $errors.Add("Config patch DestConfigRefName '$destConfigRefName' collides with vanilla mapping in $($refMap.Path): $($configPatch.FullName)")
+            }
         }
     }
 

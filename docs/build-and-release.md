@@ -22,6 +22,11 @@ Each packaged release mod is staged as:
   Settings.Lua
   README.md
   cover.png              # optional until real assets exist
+  Config/                # optional formal config patches
+    <ConfigPatch>.lua
+  Events/                # optional event packages
+    EventLib/
+      <DeclaredEventPackage>.dll
   Plugins/
     <DeclaredPlugin>.dll
     <DeclaredPlugin>.deps.json
@@ -61,11 +66,16 @@ Package one mod:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\ModBuild\Package-Mod.ps1 -ModName DreamLover
 ```
 
-Deploy one built mod to a local game install:
+Deploy one mod to a local game install. This produces a local game build: for mods marked
+`autoIncrementBuildVersion`, it bumps the fourth version component, builds the projects, then
+copies the runnable layout into the game `Mod` directory.
 
 ```powershell
 .\deploy.ps1 DreamLover -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
 ```
+
+Use `-NoBuild` only when deliberately copying an already-built layout without consuming a new
+build number.
 
 ## Validation Rules
 
@@ -74,8 +84,12 @@ Blocking checks:
 - `config.lua`, `Settings.Lua`, and project files exist.
 - `config.lua` has non-empty `Title`, `Description`, `Version`, and `Author`.
 - `config.lua` has `Source`, `Visibility`, `TagList`, `HasArchive`, `ChangeConfig`, and `NeedRestartWhenSettingChanged`.
+- Release `config.lua` declares a non-empty supported `GameVersion`; an empty value is treated by the formal Mod manager as outdated.
 - `config.lua` declares at least one frontend or backend plugin DLL.
 - Declared plugin DLLs exist after build.
+- Declared event package DLLs exist after build.
+- Formal config patches reference existing official `SrcConfigRefName` values.
+- Formal config patch `TemplateId` and `DestConfigRefName` values do not collide with official mappings.
 - Each release project has source files and at least one `[PluginConfig]`.
 - `[PluginConfig]` ModId matches the folder and manifest name.
 - `[PluginConfig]` version is compatible with `config.lua Version`; `2.0.0` and `2.0.0.0` are considered compatible.
@@ -84,11 +98,10 @@ Blocking checks:
 Warnings:
 
 - `Cover` is empty.
-- `GameVersion` is empty.
 - A plugin `.deps.json` is missing.
 - `Plugins` contains DLLs not declared in `config.lua`.
 
-Warnings are visible but do not block release yet because the project does not currently contain real Workshop cover assets or an agreed target game version string.
+Warnings are visible but do not block release yet because the project does not currently contain real Workshop cover assets.
 
 ## Future Sub-Repository Boundary
 
