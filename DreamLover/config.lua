@@ -5,7 +5,7 @@ return {
     Author = "RedContritio",
     Source = 0,
     Cover = "",
-    GameVersion = "",
+    GameVersion = "1.0.7",
     BackendPlugins = {
         "DreamLover.Backend.dll",
     },
