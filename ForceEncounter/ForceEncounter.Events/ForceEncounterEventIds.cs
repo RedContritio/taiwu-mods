@@ -49,6 +49,7 @@ namespace ForceEncounter.Events
             public const string 战斗结算成功 = ForceEncounterConstants.ArgBox.CombatSettleOk;
             public const string 战斗分支成功 = ForceEncounterConstants.ArgBox.CombatBranchSucceeded;
             public const string 战斗目标是太吾村民 = ForceEncounterConstants.ArgBox.CombatTargetIsTaiwuVillager;
+            public const string 战斗应用结仇后果 = ForceEncounterConstants.ArgBox.CombatAppliedEnmity;
             public const string 战斗结算原因 = ForceEncounterConstants.ArgBox.CombatSettleReason;
             public const string 特殊年龄 = ForceEncounterConstants.ArgBox.SpecialAge;
         }

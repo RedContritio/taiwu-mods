@@ -8,7 +8,7 @@ return {
         Name = "情难自已",
         InteractionType = 4,
         OncePerMonth = false,
-        ActionPointCost = 50,
+        ActionPointCost = 0,
         SpiritualDebtCost = 0,
         ExpCost = 0,
         MapBlockCharCustomButtonEventPath = { "dd8e7372-30c6-47e9-9e1a-0f6dd7f08919" },

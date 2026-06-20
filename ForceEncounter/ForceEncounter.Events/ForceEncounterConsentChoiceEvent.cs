@@ -2,6 +2,7 @@ using System;
 using Config;
 using Config.EventConfig;
 using ForceEncounter.Shared;
+using GameData.Domains.Mod;
 using GameData.Domains.TaiwuEvent.Enum;
 using GameData.Domains.TaiwuEvent.EventHelper;
 using GameData.Domains.TaiwuEvent.EventOption;
@@ -28,20 +29,21 @@ namespace ForceEncounter.Events
                     Behavior = EventOptionBehavior.None,
                     DefaultState = EventOptionState.Normal,
                     Important = false,
-                    OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(),
-                    OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(),
+                    OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(string.Empty),
+                    OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(string.Empty),
                     OnOptionVisibleCheck = IsAcceptedResolution,
+                    OnOptionAvailableCheck = CanCommitAcceptedResolution,
                     OnOptionSelect = NormalEncounter
                 },
                 new TaiwuEventOption
                 {
                     OptionKey = ForceEncounterEventIds.选项.强制关系.Key,
                     OptionGuid = ForceEncounterEventIds.选项.强制关系.Guid,
-                    Behavior = EventOptionBehavior.BehaviorEgoistic,
+                    Behavior = EventOptionBehavior.None,
                     DefaultState = EventOptionState.Normal,
                     Important = true,
-                    OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(),
-                    OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(),
+                    OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(string.Empty),
+                    OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(string.Empty),
                     OnOptionVisibleCheck = IsForcedResolution,
                     OnOptionSelect = ForceCombat
                 },
@@ -67,6 +69,11 @@ namespace ForceEncounter.Events
 
         public override void OnEventEnter()
         {
+            string modId = GetRuntimeModId();
+            EventOptions[0].OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(modId);
+            EventOptions[0].OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(modId);
+            EventOptions[1].OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(modId);
+            EventOptions[1].OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(modId);
         }
 
         public override void OnEventExit()
@@ -78,7 +85,7 @@ namespace ForceEncounter.Events
             string content = ForceEncounterEventText.BuildConsentContent(
                 IsAcceptedResolution(),
                 ForceEncounterEventRuntime.IsSpecialAge(ArgBox),
-                IsForcedResolution() && ForceEncounterEventRuntime.TargetHasGuard(ArgBox));
+                IsForcedResolution() && ForceEncounterEventRuntime.TargetHasGuard(ArgBox, GetRuntimeModId()));
             return EventHelper.HandleStringTag(content, ArgBox, TaiwuEvent);
         }
 
@@ -98,6 +105,29 @@ namespace ForceEncounter.Events
                    resolution == ForceEncounterEventIds.探测结果.需要战斗选择;
         }
 
+        private bool CanCommitAcceptedResolution()
+        {
+            if (!ForceEncounterEventRuntime.TryGetActorAndTarget(ArgBox, out int actorId, out int targetId))
+            {
+                return false;
+            }
+
+            SerializableModData result = ForceEncounterEventRuntime.CallBackend(
+                GetRuntimeModId(),
+                actorId,
+                targetId,
+                ForceEncounterEventIds.结算模式.探测);
+            if (result != null &&
+                result.Get(ForceEncounterEventIds.后端.结算结果, out int resolution) &&
+                resolution == ForceEncounterEventIds.探测结果.亲密通过)
+            {
+                return true;
+            }
+
+            ArgBox.Set(ForceEncounterEventIds.后端.结算结果, ForceEncounterEventIds.探测结果.需要战斗选择);
+            return false;
+        }
+
         private string NormalEncounter()
         {
             if (!ForceEncounterEventRuntime.TryGetActorAndTarget(ArgBox, out int actorId, out int targetId))
@@ -106,17 +136,30 @@ namespace ForceEncounter.Events
                 return string.Empty;
             }
 
-            ForceEncounterEventRuntime.CallBackend(
+            SerializableModData result = ForceEncounterEventRuntime.CallBackend(
                 GetRuntimeModId(),
                 actorId,
                 targetId,
                 ForceEncounterEventIds.结算模式.亲密提交);
+            string reason = ForceEncounterConstants.Reasons.NoResult;
+            if (result != null)
+            {
+                result.Get(ForceEncounterConstants.Response.Reason, out reason);
+            }
 
+            if (reason == ForceEncounterConstants.Reasons.NeedCombatChoice)
+            {
+                ArgBox.Set(ForceEncounterEventIds.后端.结算结果, ForceEncounterEventIds.探测结果.需要战斗选择);
+                return ForceEncounterEventIds.事件.内层选择;
+            }
+
+            ForceEncounterEventRuntime.ConfirmOuterWaitOption(ArgBox);
             return string.Empty;
         }
 
         private string ForceCombat()
         {
+            ForceEncounterEventRuntime.ConfirmOuterWaitOption(ArgBox);
             return ForceEncounterCombatStarter.StartForcedCombat(ArgBox, GetRuntimeModId());
         }
 

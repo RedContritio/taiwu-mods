@@ -34,7 +34,7 @@ namespace ForceEncounter.Events
                     Behavior = EventOptionBehavior.None,
                     DefaultState = EventOptionState.Normal,
                     Important = false,
-                    OnOptionVisibleCheck = IsEnabled,
+                    OnOptionVisibleCheck = IsVisible,
                     OnOptionAvailableCheck = CanExecute,
                     OnOptionSelect = StayOnEntryEvent
                 },
@@ -45,8 +45,8 @@ namespace ForceEncounter.Events
                     Behavior = EventOptionBehavior.BehaviorEgoistic,
                     DefaultState = EventOptionState.Normal,
                     Important = false,
-                    OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(),
-                    OnOptionVisibleCheck = IsEnabled,
+                    OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(string.Empty),
+                    OnOptionVisibleCheck = IsVisible,
                     OnOptionAvailableCheck = CanExecute,
                     OnOptionSelect = Execute
                 }
@@ -62,6 +62,7 @@ namespace ForceEncounter.Events
 
         public override void OnEventEnter()
         {
+            EventOptions[1].OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(GetRuntimeModId());
         }
 
         public override void OnEventExit()
@@ -76,14 +77,11 @@ namespace ForceEncounter.Events
         private bool IsEnabled()
         {
             string modId = GetRuntimeModId();
-            bool enabled = true;
-            bool settingFound = !string.IsNullOrEmpty(modId) &&
-                                DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.Enabled, ref enabled);
+            bool enabled = ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.Enabled, true);
             DebugLogOnce(
-                "enabled:" + modId + ":" + settingFound + ":" + enabled,
+                "enabled:" + modId + ":" + enabled,
                 "IsEnabled packageSet=" + (Package != null) +
                 ", modId='" + modId +
-                "', settingFound=" + settingFound +
                 ", enabled=" + enabled);
             return enabled;
         }
@@ -99,6 +97,31 @@ namespace ForceEncounter.Events
                 ", result=" + canExecute +
                 ", reason=" + reason);
             return canExecute;
+        }
+
+        private bool IsVisible()
+        {
+            return IsEnabled() && IsSpecialAgeVisible();
+        }
+
+        private bool IsSpecialAgeVisible()
+        {
+            string modId = GetRuntimeModId();
+            bool allowSpecialAge = ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.AllowSpecialAge, true);
+
+            if (allowSpecialAge)
+            {
+                return true;
+            }
+
+            int targetId = -1;
+            if (ArgBox == null || !ArgBox.Get(EventTriggerParameter.DefValue.CharacterId, ref targetId))
+            {
+                return true;
+            }
+
+            int actorId = ForceEncounterEventRuntime.GetActorId();
+            return !ForceEncounterEventRuntime.RequiresSpecialAgeNotice(actorId, targetId);
         }
 
         private string GetCanExecuteFailureReason(out int actorId, out int targetId)
@@ -157,6 +180,16 @@ namespace ForceEncounter.Events
                 return ForceEncounterConstants.Reasons.TargetBaby;
             }
 
+            string modId = GetRuntimeModId();
+            bool allowSpecialAge = ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.AllowSpecialAge, true);
+
+            if (!allowSpecialAge &&
+                (actor.GetAgeGroup() != ForceEncounterConstants.Gameplay.AdultAgeGroup ||
+                 target.GetAgeGroup() != ForceEncounterConstants.Gameplay.AdultAgeGroup))
+            {
+                return ForceEncounterConstants.Reasons.SpecialAgeNotAllowed;
+            }
+
             return ForceEncounterConstants.Reasons.Ok;
         }
 
@@ -209,9 +242,7 @@ namespace ForceEncounter.Events
                 return;
             }
 
-            bool debugMode = true;
-            DomainManager.Mod.GetSetting(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, ref debugMode);
-            if (!debugMode)
+            if (!ForceEncounterSettings.GetBool(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, true))
             {
                 return;
             }
@@ -250,11 +281,7 @@ namespace ForceEncounter.Events
 
         private bool IsDebugModeEnabled()
         {
-            string modId = GetRuntimeModId();
-            bool debugMode = true;
-            return string.IsNullOrEmpty(modId) ||
-                   !DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.DebugMode, ref debugMode) ||
-                   debugMode;
+            return ForceEncounterSettings.GetBool(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, true);
         }
     }
 }

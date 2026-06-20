@@ -1,8 +1,6 @@
-﻿using GameData.Common;
+using GameData.Common;
 using GameData.Domains;
 using GameData.Domains.Character;
-using GameData.Domains.Character.Relation;
-using GameData.Domains.Map;
 using GameData.Domains.Mod;
 using GameData.Domains.TaiwuEvent.EventHelper;
 using GameData.Utilities;
@@ -115,14 +113,14 @@ namespace ForceEncounter.Backend
                 return ProbeEncounter(result, actor, target);
             }
 
-            bool success = ExecuteResolvedAction(context, actor, target, battleSucceeded);
-            bool targetIsTaiwuVillager = IsTaiwuVillager(target);
+            bool success = ExecuteResolvedAction(context, actor, target, battleSucceeded, out bool targetIsTaiwuVillager, out bool appliedEnmity);
 
             result.Set(ForceEncounterConstants.Response.Ok, true);
             result.Set(ForceEncounterConstants.Response.Succeeded, success);
             result.Set(ForceEncounterConstants.Response.ActorId, actorId);
             result.Set(ForceEncounterConstants.Response.TargetId, targetId);
             result.Set(ForceEncounterConstants.Response.TargetIsTaiwuVillager, targetIsTaiwuVillager);
+            result.Set(ForceEncounterConstants.Response.AppliedEnmity, appliedEnmity);
             result.Set(ForceEncounterConstants.Response.Reason, success ? ForceEncounterConstants.Reasons.Succeed : ForceEncounterConstants.Reasons.Failed);
             DebugLog($"Execute {actorId}->{targetId}, battleSucceeded={battleSucceeded}, success={success}, targetIsTaiwuVillager={targetIsTaiwuVillager}");
             return result;
@@ -162,12 +160,18 @@ namespace ForceEncounter.Backend
             Character actor,
             Character target)
         {
-            ApplyRapeSuccess(
+            if (!CanResolveAsIntimateAcceptance(actor, target))
+            {
+                return Fail(result, ForceEncounterConstants.Reasons.NeedCombatChoice);
+            }
+
+            ForceEncounterEffectApplier.ApplySuccess(
                 context,
                 actor,
                 target,
                 addHatredRelation: false,
-                favorabilityDelta: GetAcceptedFavorabilityDelta(actor, target));
+                favorabilityDelta: GetAcceptedFavorabilityDelta(actor, target),
+                createSecret: ShouldCreateAcceptedSecret());
 
             result.Set(ForceEncounterConstants.Response.Ok, true);
             result.Set(ForceEncounterConstants.Response.Succeeded, true);
@@ -183,123 +187,74 @@ namespace ForceEncounter.Backend
             DataContext context,
             Character actor,
             Character target,
-            bool battleSucceeded)
+            bool battleSucceeded,
+            out bool targetIsTaiwuVillager,
+            out bool appliedEnmity)
         {
-            int actorId = actor.GetId();
             int targetId = target.GetId();
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
+            targetIsTaiwuVillager = ForceEncounterRelationReader.IsTaiwuVillager(target);
+            appliedEnmity = false;
             bool success = ForceEncounterRules.IsResolvedSuccess(
                 battleSucceeded,
                 targetId == taiwuId);
 
             if (success)
             {
-                bool targetIsTaiwuVillager = IsTaiwuVillager(target);
-                ApplyRapeSuccess(
+                appliedEnmity = ShouldBecomeEnemyOnForcedRoute(targetIsTaiwuVillager);
+                ForceEncounterEffectApplier.ApplySuccess(
                     context,
                     actor,
                     target,
-                    addHatredRelation: !targetIsTaiwuVillager,
-                    favorabilityDelta: GetForcedFavorabilityDelta(targetIsTaiwuVillager));
+                    addHatredRelation: appliedEnmity,
+                    favorabilityDelta: GetForcedFavorabilityDelta(targetIsTaiwuVillager),
+                    createSecret: ShouldCreateForcedSecret());
             }
             else
             {
-                int currDate = DomainManager.World.GetCurrDate();
-                Location location = actor.GetLocation();
-                if (targetId == taiwuId)
-                {
-                    DomainManager.World.GetMonthlyNotificationCollection().AddRapeFailure(actorId, location, targetId);
-                }
-
-                DomainManager.LifeRecord.GetLifeRecordCollection().AddRapeFail(actorId, currDate, targetId, location);
-                bool targetIsTaiwuVillager = IsTaiwuVillager(target);
-                if (!targetIsTaiwuVillager)
-                {
-                    ApplyNativeBecomeEnemy(target, actor);
-                }
-
-                ApplyForcedFavorabilityDelta(context, target, actor, GetForcedFavorabilityDelta(targetIsTaiwuVillager));
+                appliedEnmity = ShouldBecomeEnemyOnForcedRoute(targetIsTaiwuVillager);
+                ForceEncounterEffectApplier.ApplyFailure(
+                    context,
+                    actor,
+                    target,
+                    addHatredRelation: appliedEnmity,
+                    favorabilityDelta: GetForcedFavorabilityDelta(targetIsTaiwuVillager));
             }
 
             return success;
         }
 
-        private static void ApplyRapeSuccess(
-            DataContext context,
-            Character actor,
-            Character target,
-            bool addHatredRelation,
-            int favorabilityDelta)
-        {
-            int actorId = actor.GetId();
-            int targetId = target.GetId();
-            int currDate = DomainManager.World.GetCurrDate();
-            Location location = actor.GetLocation();
-
-            actor.MakeLove(context, target, isRape: true);
-            DomainManager.LifeRecord.GetLifeRecordCollection().AddRapeSucceed(actorId, currDate, targetId, location);
-
-            if (addHatredRelation)
-            {
-                ApplyNativeBecomeEnemy(target, actor);
-            }
-
-            ApplyForcedFavorabilityDelta(context, target, actor, favorabilityDelta);
-
-            int dataOffset = DomainManager.Information.GetSecretInformationCollection().AddRape(actorId, targetId);
-            DomainManager.Information.AddSecretInformation(context, dataOffset);
-        }
-
-        private static void ApplyNativeBecomeEnemy(Character target, Character actor)
-        {
-            EventHelper.ApplyRelationBecomeEnemy(target, actor);
-        }
-
         private static bool CanResolveAsIntimateAcceptance(Character actor, Character target)
         {
-            int actorId = actor.GetId();
-            int targetId = target.GetId();
-            if (!DomainManager.Character.TryGetRelation(actorId, targetId, out RelatedCharacter actorToTarget) ||
-                !DomainManager.Character.TryGetRelation(targetId, actorId, out RelatedCharacter targetToActor))
+            if (!ForceEncounterRelationReader.TryCreateSnapshot(actor, target, out ForceEncounterRelationSnapshot snapshot))
             {
                 return false;
             }
 
-            bool actorAdoresTarget = RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Adored);
-            bool targetAdoresActor = RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Adored);
-            bool isSpouse = RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Spouse) &&
-                            RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Spouse);
-            bool isMutualLover = actorAdoresTarget && targetAdoresActor;
-            bool targetHasExclusiveAttachmentToOther = HasExclusiveLivingAttachmentToOther(target, actorId);
-            bool targetIsDeepValleyCloseFriend = IsDeepValleyCloseFriendToActor(actor, target);
             return ForceEncounterRules.CanAcceptIntimateEncounter(
-                isSpouse,
-                isMutualLover,
-                targetAdoresActor,
-                targetIsDeepValleyCloseFriend,
-                IsTaiwuVillager(target),
-                targetHasExclusiveAttachmentToOther,
-                actorToTarget.GetFavorabilityType(),
-                targetToActor.GetFavorabilityType(),
-                actor.GetBehaviorType());
+                snapshot.IsSpouse,
+                snapshot.IsMutualLover,
+                snapshot.TargetAdoresActor,
+                snapshot.TargetIsDeepValleyCloseFriend,
+                snapshot.TargetIsTaiwuVillager,
+                snapshot.TargetHasExclusiveAttachmentToOther,
+                snapshot.ActorFavorabilityType,
+                snapshot.TargetFavorabilityType,
+                snapshot.ActorBehaviorType);
         }
 
         private static int GetAcceptedFavorabilityDelta(Character actor, Character target)
         {
-            int actorId = actor.GetId();
-            int targetId = target.GetId();
-            if (!DomainManager.Character.TryGetRelation(actorId, targetId, out RelatedCharacter actorToTarget) ||
-                !DomainManager.Character.TryGetRelation(targetId, actorId, out RelatedCharacter targetToActor))
+            if (!ForceEncounterRelationReader.TryCreateSnapshot(actor, target, out ForceEncounterRelationSnapshot snapshot))
             {
                 return 0;
             }
 
-            bool actorAdoresTarget = RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Adored);
-            bool targetAdoresActor = RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Adored);
-            bool targetUnilaterallyAdoresActor = targetAdoresActor && !actorAdoresTarget;
-            bool deepValleyCloseFriendHasOtherAttachment = IsDeepValleyCloseFriendToActor(actor, target) &&
-                                                           HasExclusiveLivingAttachmentToOther(target, actorId);
-            if (targetUnilaterallyAdoresActor || deepValleyCloseFriendHasOtherAttachment)
+            if (ForceEncounterRules.ShouldApplyReducedAcceptedFavorabilityPenalty(
+                    snapshot.IsSpouse,
+                    snapshot.IsMutualLover,
+                    snapshot.TargetUnilaterallyAdoresActor,
+                    snapshot.DeepValleyCloseFriendHasOtherAttachment))
             {
                 return GetReducedAcceptedFavorabilityDelta();
             }
@@ -307,74 +262,20 @@ namespace ForceEncounter.Backend
             return 0;
         }
 
-        private static bool IsDeepValleyCloseFriendToActor(
-            Character actor,
-            Character target)
-        {
-            return target.GetFeatureIds().Contains(ForceEncounterConstants.Features.DeepValleyCloseFriend) &&
-                   actor.GetId() == DomainManager.Taiwu.GetTaiwuCharIdForCloseFriend();
-        }
-
-        private static bool HasExclusiveLivingAttachmentToOther(Character target, int actorId)
-        {
-            int targetId = target.GetId();
-            int spouseId = DomainManager.Character.GetAliveSpouse(targetId);
-            if (spouseId >= 0 && spouseId != actorId)
-            {
-                return true;
-            }
-
-            int livingAdoredCount = 0;
-            bool onlyLivingAdoredIsActor = false;
-            foreach (int adoredCharId in DomainManager.Character.GetRelatedCharIds(targetId, ForceEncounterConstants.Relations.Adored))
-            {
-                if (!DomainManager.Character.IsCharacterAlive(adoredCharId))
-                {
-                    continue;
-                }
-
-                livingAdoredCount++;
-                onlyLivingAdoredIsActor = adoredCharId == actorId;
-                if (livingAdoredCount > 1)
-                {
-                    return false;
-                }
-            }
-
-            return livingAdoredCount == 1 && !onlyLivingAdoredIsActor;
-        }
-
-        private static bool IsTaiwuVillager(Character character)
-        {
-            return character.GetOrganizationInfo().OrgTemplateId == ForceEncounterConstants.Gameplay.TaiwuVillageOrgTemplateId;
-        }
-
         private static int GetForcedFavorabilityDelta(bool targetIsTaiwuVillager)
         {
             return ForceEncounterRules.CalculateForcedFavorabilityDelta(
                 GetIntSetting(ForceEncounterConstants.Settings.ForcedFavorabilityPenalty, ForceEncounterRules.DefaultForcedFavorabilityPenalty),
-                targetIsTaiwuVillager);
+                targetIsTaiwuVillager,
+                GetIntSetting(ForceEncounterConstants.Settings.TaiwuVillagerPenaltyPercent, ForceEncounterRules.DefaultTaiwuVillagerPenaltyPercent));
         }
 
         private static int GetReducedAcceptedFavorabilityDelta()
         {
             return ForceEncounterRules.CalculateForcedFavorabilityDelta(
                 GetIntSetting(ForceEncounterConstants.Settings.ForcedFavorabilityPenalty, ForceEncounterRules.DefaultForcedFavorabilityPenalty),
-                targetIsTaiwuVillager: true);
-        }
-
-        private static void ApplyForcedFavorabilityDelta(
-            DataContext context,
-            Character target,
-            Character actor,
-            int favorabilityDelta)
-        {
-            if (favorabilityDelta == 0)
-            {
-                return;
-            }
-
-            DomainManager.Character.ChangeFavorabilityOptionalMonthlyEvolution(context, target, actor, favorabilityDelta);
+                targetIsTaiwuVillager: true,
+                GetIntSetting(ForceEncounterConstants.Settings.TaiwuVillagerPenaltyPercent, ForceEncounterRules.DefaultTaiwuVillagerPenaltyPercent));
         }
 
         private static SerializableModData Fail(SerializableModData result, string reason)
@@ -410,16 +311,28 @@ namespace ForceEncounter.Backend
 
         private static bool GetBoolSetting(string key, bool fallback)
         {
-            bool value = fallback;
-            DomainManager.Mod.GetSetting(ModId, key, ref value);
-            return value;
+            return ForceEncounterSettings.GetBool(ModId, key, fallback);
         }
 
         private static int GetIntSetting(string key, int fallback)
         {
-            int value = fallback;
-            DomainManager.Mod.GetSetting(ModId, key, ref value);
-            return value;
+            return ForceEncounterSettings.GetInt(ModId, key, fallback);
+        }
+
+        private static bool ShouldBecomeEnemyOnForcedRoute(bool targetIsTaiwuVillager)
+        {
+            return !targetIsTaiwuVillager &&
+                   GetBoolSetting(ForceEncounterConstants.Settings.BecomeEnemyOnForcedRoute, true);
+        }
+
+        private static bool ShouldCreateForcedSecret()
+        {
+            return GetBoolSetting(ForceEncounterConstants.Settings.CreateSecretOnForcedSuccess, true);
+        }
+
+        private static bool ShouldCreateAcceptedSecret()
+        {
+            return GetBoolSetting(ForceEncounterConstants.Settings.CreateSecretOnAcceptedSuccess, true);
         }
 
         private static void AddExecuteMethod(string modId)

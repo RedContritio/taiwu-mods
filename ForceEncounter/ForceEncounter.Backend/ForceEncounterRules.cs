@@ -8,14 +8,19 @@ namespace ForceEncounter.Backend
         public const int DefaultForcedFavorabilityPenalty = ForceEncounterConstants.Gameplay.DefaultForcedFavorabilityPenalty;
         public const int MinForcedFavorabilityPenalty = ForceEncounterConstants.Gameplay.MinForcedFavorabilityPenalty;
         public const int MaxForcedFavorabilityPenalty = ForceEncounterConstants.Gameplay.MaxForcedFavorabilityPenalty;
-        public const int TaiwuVillagerForcedFavorabilityPenaltyPercent = ForceEncounterConstants.Gameplay.TaiwuVillagerForcedFavorabilityPenaltyPercent;
+        public const int DefaultTaiwuVillagerPenaltyPercent = ForceEncounterConstants.Gameplay.DefaultTaiwuVillagerPenaltyPercent;
+        public const int MinTaiwuVillagerPenaltyPercent = ForceEncounterConstants.Gameplay.MinTaiwuVillagerPenaltyPercent;
+        public const int MaxTaiwuVillagerPenaltyPercent = ForceEncounterConstants.Gameplay.MaxTaiwuVillagerPenaltyPercent;
 
         public static bool IsResolvedSuccess(bool battleSucceeded, bool targetIsTaiwu)
         {
             return !targetIsTaiwu && battleSucceeded;
         }
 
-        public static int CalculateForcedFavorabilityDelta(int configuredPenalty, bool targetIsTaiwuVillager)
+        public static int CalculateForcedFavorabilityDelta(
+            int configuredPenalty,
+            bool targetIsTaiwuVillager,
+            int taiwuVillagerPenaltyPercent)
         {
             int penalty = Math.Clamp(
                 configuredPenalty,
@@ -23,7 +28,11 @@ namespace ForceEncounter.Backend
                 MaxForcedFavorabilityPenalty);
             if (targetIsTaiwuVillager)
             {
-                penalty = penalty * TaiwuVillagerForcedFavorabilityPenaltyPercent / 100;
+                int percent = Math.Clamp(
+                    taiwuVillagerPenaltyPercent,
+                    MinTaiwuVillagerPenaltyPercent,
+                    MaxTaiwuVillagerPenaltyPercent);
+                penalty = penalty * percent / 100;
             }
 
             return -penalty;
@@ -70,6 +79,20 @@ namespace ForceEncounter.Backend
 
             return actorFavorabilityType >= requiredFavorabilityType &&
                    targetFavorabilityType >= requiredFavorabilityType;
+        }
+
+        public static bool ShouldApplyReducedAcceptedFavorabilityPenalty(
+            bool isSpouse,
+            bool isMutualLover,
+            bool targetUnilaterallyAdoresActor,
+            bool deepValleyCloseFriendHasOtherAttachment)
+        {
+            if (isSpouse || isMutualLover)
+            {
+                return false;
+            }
+
+            return targetUnilaterallyAdoresActor || deepValleyCloseFriendHasOtherAttachment;
         }
 
         private static int GetIntimateAcceptanceFavorabilityType(int actorBehaviorType)

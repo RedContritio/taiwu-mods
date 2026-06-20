@@ -19,22 +19,31 @@ namespace ForceEncounter.Events
                 return string.Empty;
             }
 
-            if (ShouldApplyAlertnessOnCombatStart(modId))
-            {
-                EventHelper.ChangeAlertnessOnAttack(targetId);
-            }
-
-            if (!ForceEncounterEventRuntime.IsTaiwuVillager(targetId) &&
+            if (ForceEncounterEventRuntime.ShouldUseGuardInterceptionForTarget(targetId, modId) &&
                 DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
                 EventHelper.HasGuard(target))
             {
                 List<int> enemyTeam = EventHelper.PrepareCombatEnemy(targetId, CombatConfig.DefKey.DieNormal, false);
-                if (enemyTeam.Count > 0 && enemyTeam[0] != targetId)
+                if (enemyTeam.Count == 0)
+                {
+                    StoreCombatFailure(argBox, modId, ForceEncounterConstants.Reasons.GuardIntercepted);
+                    return ForceEncounterEventIds.事件.战斗反馈;
+                }
+
+                if (enemyTeam[0] != targetId)
                 {
                     argBox.Set(ForceEncounterConstants.ArgBox.NativePartner, enemyTeam[0]);
+                    argBox.Set(ForceEncounterConstants.ArgBox.GuardInterceptActive, true);
                     return ForceEncounterEventIds.事件.护卫出面;
                 }
 
+                if (EventHelper.IsCharacterDirectFallenInCombat(targetId, (CombatType)CombatConfig.DefKey.DieNormal))
+                {
+                    StoreDirectFallenFailure(argBox, modId);
+                    return ForceEncounterEventIds.事件.战斗反馈;
+                }
+
+                ApplyAlertnessOnTargetCombatStart(targetId, modId);
                 EventHelper.StartCombat(enemyTeam, CombatConfig.DefKey.DieNormal, ForceEncounterEventIds.事件.战斗反馈, argBox);
             }
             else
@@ -45,6 +54,7 @@ namespace ForceEncounter.Events
                     return ForceEncounterEventIds.事件.战斗反馈;
                 }
 
+                ApplyAlertnessOnTargetCombatStart(targetId, modId);
                 EventHelper.StartCombat(
                     targetId,
                     CombatConfig.DefKey.DieNormal,
@@ -56,7 +66,20 @@ namespace ForceEncounter.Events
             return string.Empty;
         }
 
+        private static void ApplyAlertnessOnTargetCombatStart(int targetId, string modId)
+        {
+            if (ShouldApplyAlertnessOnCombatStart(modId))
+            {
+                EventHelper.ChangeAlertnessOnAttack(targetId);
+            }
+        }
+
         private static void StoreDirectFallenFailure(EventArgBox argBox, string modId)
+        {
+            StoreCombatFailure(argBox, modId, ForceEncounterConstants.Reasons.TargetDirectFallen);
+        }
+
+        private static void StoreCombatFailure(EventArgBox argBox, string modId, string reason)
         {
             if (!ForceEncounterEventRuntime.TryGetActorAndTarget(argBox, out int actorId, out int targetId))
             {
@@ -78,11 +101,13 @@ namespace ForceEncounter.Events
             bool ok = false;
             bool succeeded = false;
             bool targetIsTaiwuVillager = false;
+            bool appliedEnmity = false;
             if (result != null)
             {
                 result.Get(ForceEncounterConstants.Response.Ok, out ok);
                 result.Get(ForceEncounterConstants.Response.Succeeded, out succeeded);
                 result.Get(ForceEncounterConstants.Response.TargetIsTaiwuVillager, out targetIsTaiwuVillager);
+                result.Get(ForceEncounterConstants.Response.AppliedEnmity, out appliedEnmity);
             }
 
             ForceEncounterEventRuntime.StoreCombatSettlement(
@@ -90,15 +115,13 @@ namespace ForceEncounter.Events
                 ok,
                 succeeded,
                 targetIsTaiwuVillager,
-                ForceEncounterConstants.Reasons.TargetDirectFallen);
+                reason,
+                appliedEnmity);
         }
 
         private static bool ShouldApplyAlertnessOnCombatStart(string modId)
         {
-            bool applyAlertness = true;
-            return string.IsNullOrEmpty(modId) ||
-                   !DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, ref applyAlertness) ||
-                   applyAlertness;
+            return ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, true);
         }
 
         public static string StartGuardCombat(EventArgBox argBox)
@@ -106,15 +129,22 @@ namespace ForceEncounter.Events
             int partnerId = -1;
             if (argBox != null && argBox.Get(ForceEncounterConstants.ArgBox.NativePartner, ref partnerId))
             {
+                argBox.Set(ForceEncounterConstants.ArgBox.GuardInterceptActive, true);
                 EventHelper.StartCombat(
                     partnerId,
                     CombatConfig.DefKey.DieNormal,
                     ForceEncounterEventIds.事件.战斗反馈,
                     argBox,
                     true);
+
+                return string.Empty;
             }
 
-            return string.Empty;
+            StoreCombatFailure(
+                argBox,
+                ForceEncounterEventRuntime.GetRuntimeModId(ForceEncounterEventIds.事件.战斗反馈),
+                ForceEncounterConstants.Reasons.GuardIntercepted);
+            return ForceEncounterEventIds.事件.战斗反馈;
         }
     }
 }

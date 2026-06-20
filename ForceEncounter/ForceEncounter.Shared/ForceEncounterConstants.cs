@@ -12,8 +12,16 @@ namespace ForceEncounter.Shared
         {
             public const string Enabled = "Enabled";
             public const string DebugMode = "DebugMode";
+            public const string ActionTimeCostDays = "ActionTimeCostDays";
             public const string ForcedFavorabilityPenalty = "ForcedFavorabilityPenalty";
+            public const string TaiwuVillagerPenaltyPercent = "TaiwuVillagerPenaltyPercent";
             public const string ApplyAlertnessOnCombatStart = "ApplyAlertnessOnCombatStart";
+            public const string EnableGuardInterception = "EnableGuardInterception";
+            public const string EnableTaiwuVillagerGuardInterception = "EnableTaiwuVillagerGuardInterception";
+            public const string BecomeEnemyOnForcedRoute = "BecomeEnemyOnForcedRoute";
+            public const string CreateSecretOnForcedSuccess = "CreateSecretOnForcedSuccess";
+            public const string CreateSecretOnAcceptedSuccess = "CreateSecretOnAcceptedSuccess";
+            public const string AllowSpecialAge = "AllowSpecialAge";
         }
 
         public static class Gameplay
@@ -23,7 +31,9 @@ namespace ForceEncounter.Shared
             public const int DefaultForcedFavorabilityPenalty = 30000;
             public const int MinForcedFavorabilityPenalty = 0;
             public const int MaxForcedFavorabilityPenalty = 30000;
-            public const int TaiwuVillagerForcedFavorabilityPenaltyPercent = 30;
+            public const int DefaultTaiwuVillagerPenaltyPercent = 30;
+            public const int MinTaiwuVillagerPenaltyPercent = 0;
+            public const int MaxTaiwuVillagerPenaltyPercent = 100;
             public const int BabyAgeGroup = 0;
             public const int AdultAgeGroup = 2;
         }
@@ -47,9 +57,10 @@ namespace ForceEncounter.Shared
         public static class Costs
         {
             public const sbyte ActionTimeConsumeType = 8;
-            public const int ActionTimeDays = 5;
+            public const int DefaultActionTimeDays = 5;
+            public const int MinActionTimeDays = 0;
+            public const int MaxActionTimeDays = 5;
             public const short ActionPointConditionType = 2;
-            public const sbyte ActionPointConditionValue = 5;
         }
 
         public static class EventGuids
@@ -82,6 +93,7 @@ namespace ForceEncounter.Shared
         public static class WaitConfirm
         {
             public const string OuterPreview = "ForceEncounter.OuterPreview";
+            public const string ConfirmSignal = "ConchShip_PresetKey_ConfirmWaitOptionSignal";
         }
 
         public static class ArgBox
@@ -93,7 +105,9 @@ namespace ForceEncounter.Shared
             public const string CombatSettleOk = "ForceEncounter.CombatResultOk";
             public const string CombatBranchSucceeded = "ForceEncounter.CombatResultSucceeded";
             public const string CombatTargetIsTaiwuVillager = "ForceEncounter.CombatResultTargetTaiwuVillager";
+            public const string CombatAppliedEnmity = "ForceEncounter.CombatResultAppliedEnmity";
             public const string CombatSettleReason = "ForceEncounter.CombatResultReason";
+            public const string GuardInterceptActive = "ForceEncounter.GuardInterceptActive";
             public const string NativeCombatResult = "CombatResult";
             public const string NativeMainEnemyId = "MainEnemyId";
             public const string NativeMainInteractionHeadEvent = "MainInteractionHeadEvent";
@@ -122,6 +136,7 @@ namespace ForceEncounter.Shared
             public const string ActorId = Backend.ActorId;
             public const string TargetId = Backend.TargetId;
             public const string TargetIsTaiwuVillager = "TargetIsTaiwuVillager";
+            public const string AppliedEnmity = "AppliedEnmity";
             public const string Reason = "Reason";
         }
 
@@ -163,6 +178,7 @@ namespace ForceEncounter.Shared
             public const string ActorBaby = "ActorBaby";
             public const string TargetBaby = "TargetBaby";
             public const string BabyNotAllowed = "BabyNotAllowed";
+            public const string SpecialAgeNotAllowed = "SpecialAgeNotAllowed";
             public const string TargetDirectFallen = "TargetDirectFallen";
             public const string GuardIntercepted = "GuardIntercepted";
         }

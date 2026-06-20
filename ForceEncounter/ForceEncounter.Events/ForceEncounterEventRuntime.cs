@@ -52,6 +52,11 @@ namespace ForceEncounter.Events
             argBox.Set(ForceEncounterEventIds.参数.特殊年龄, RequiresSpecialAgeNotice(actorId, targetId));
         }
 
+        public static void ConfirmOuterWaitOption(EventArgBox argBox)
+        {
+            argBox?.Set(ForceEncounterConstants.WaitConfirm.ConfirmSignal, ForceEncounterConstants.WaitConfirm.OuterPreview);
+        }
+
         public static bool RequiresSpecialAgeNotice(int actorId, int targetId)
         {
             if (!DomainManager.Character.TryGetElement_Objects(actorId, out var actor) ||
@@ -72,12 +77,28 @@ namespace ForceEncounter.Events
                    specialAge;
         }
 
-        public static bool TargetHasGuard(EventArgBox argBox)
+        public static bool TargetHasGuard(EventArgBox argBox, string modId)
         {
             return TryGetTargetId(argBox, out int targetId) &&
-                   !IsTaiwuVillager(targetId) &&
+                   ShouldUseGuardInterceptionForTarget(targetId, modId) &&
                    DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
                    EventHelper.HasGuard(target);
+        }
+
+        public static bool ShouldUseGuardInterceptionForTarget(int targetId, string modId)
+        {
+            return IsGuardInterceptionEnabled(modId) &&
+                   (!IsTaiwuVillager(targetId) || IsTaiwuVillagerGuardInterceptionEnabled(modId));
+        }
+
+        public static bool IsGuardInterceptionEnabled(string modId)
+        {
+            return ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.EnableGuardInterception, true);
+        }
+
+        public static bool IsTaiwuVillagerGuardInterceptionEnabled(string modId)
+        {
+            return ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.EnableTaiwuVillagerGuardInterception, false);
         }
 
         public static bool IsTaiwuVillager(int characterId)
@@ -120,7 +141,8 @@ namespace ForceEncounter.Events
             bool ok,
             bool succeeded,
             bool targetIsTaiwuVillager,
-            string reason)
+            string reason,
+            bool appliedEnmity = false)
         {
             if (argBox == null)
             {
@@ -131,6 +153,7 @@ namespace ForceEncounter.Events
             argBox.Set(ForceEncounterEventIds.参数.战斗结算成功, ok);
             argBox.Set(ForceEncounterEventIds.参数.战斗分支成功, succeeded);
             argBox.Set(ForceEncounterEventIds.参数.战斗目标是太吾村民, targetIsTaiwuVillager);
+            argBox.Set(ForceEncounterEventIds.参数.战斗应用结仇后果, appliedEnmity);
             argBox.Set(ForceEncounterEventIds.参数.战斗结算原因, reason ?? string.Empty);
         }
     }

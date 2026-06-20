@@ -14,10 +14,13 @@ namespace ForceEncounter.Events
         public const string CombatSuccessContent = "战斗已经结束。你压服了对方，情难自已的结果已经生效。";
         public const string CombatSuccessTaiwuVillagerContent = "战斗已经结束。你压服了对方，情难自已的结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
         public const string CombatFailureContent = "战斗已经结束。你未能压服对方，情难自已未能达成，但此事已经使双方结怨。";
+        public const string CombatFailureNoEnemyContent = "战斗已经结束。你未能压服对方，情难自已未能达成。";
         public const string CombatFailureTaiwuVillagerContent = "战斗已经结束。你未能压服对方，情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
         public const string CombatDirectFallenFailureContent = "对方已无力应战，无法再以此战斗压服对方；情难自已未能达成，但此事已经使双方结怨。";
+        public const string CombatDirectFallenFailureNoEnemyContent = "对方已无力应战，无法再以此战斗压服对方；情难自已未能达成。";
         public const string CombatDirectFallenFailureTaiwuVillagerContent = "对方已无力应战，无法再以此战斗压服对方；情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
         public const string CombatGuardInterceptedContent = "战斗已经结束。护卫阻拦在前，你未能压服对方，情难自已未能达成，但此事已经使双方结怨。";
+        public const string CombatGuardInterceptedNoEnemyContent = "战斗已经结束。护卫阻拦在前，你未能压服对方，情难自已未能达成。";
 
         public static string BuildConsentContent(bool accepted, bool specialAge, bool guarded)
         {
@@ -35,7 +38,7 @@ namespace ForceEncounter.Events
             };
         }
 
-        public static string BuildCombatResultContent(bool ok, bool succeeded, bool targetIsTaiwuVillager, string reason)
+        public static string BuildCombatResultContent(bool ok, bool succeeded, bool targetIsTaiwuVillager, bool appliedEnmity, string reason)
         {
             if (!ok)
             {
@@ -49,17 +52,40 @@ namespace ForceEncounter.Events
 
             if (reason == ForceEncounter.Shared.ForceEncounterConstants.Reasons.TargetDirectFallen)
             {
-                return targetIsTaiwuVillager
-                    ? CombatDirectFallenFailureTaiwuVillagerContent
-                    : CombatDirectFallenFailureContent;
+                return SelectFailureContent(
+                    targetIsTaiwuVillager,
+                    appliedEnmity,
+                    CombatDirectFallenFailureTaiwuVillagerContent,
+                    CombatDirectFallenFailureContent,
+                    CombatDirectFallenFailureNoEnemyContent);
             }
 
             if (reason == ForceEncounter.Shared.ForceEncounterConstants.Reasons.GuardIntercepted)
             {
-                return CombatGuardInterceptedContent;
+                return appliedEnmity ? CombatGuardInterceptedContent : CombatGuardInterceptedNoEnemyContent;
             }
 
-            return targetIsTaiwuVillager ? CombatFailureTaiwuVillagerContent : CombatFailureContent;
+            return SelectFailureContent(
+                targetIsTaiwuVillager,
+                appliedEnmity,
+                CombatFailureTaiwuVillagerContent,
+                CombatFailureContent,
+                CombatFailureNoEnemyContent);
+        }
+
+        private static string SelectFailureContent(
+            bool targetIsTaiwuVillager,
+            bool appliedEnmity,
+            string taiwuVillagerContent,
+            string enemyContent,
+            string noEnemyContent)
+        {
+            if (targetIsTaiwuVillager)
+            {
+                return taiwuVillagerContent;
+            }
+
+            return appliedEnmity ? enemyContent : noEnemyContent;
         }
     }
 }

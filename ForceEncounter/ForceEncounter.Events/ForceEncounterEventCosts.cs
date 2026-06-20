@@ -6,28 +6,56 @@ namespace ForceEncounter.Events
 {
     internal static class ForceEncounterEventCosts
     {
-        public static List<OptionConsumeInfo> BuildPreviewCosts()
+        public static List<OptionConsumeInfo> BuildPreviewCosts(string modId)
         {
+            int days = GetActionTimeCostDays(modId);
+            if (days == 0)
+            {
+                return new List<OptionConsumeInfo>();
+            }
+
             return new List<OptionConsumeInfo>
             {
-                new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, ForceEncounterConstants.Costs.ActionTimeDays, false)
+                new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, days, false)
             };
         }
 
-        public static List<TaiwuEventOptionConditionBase> BuildCommitConditions()
+        public static List<TaiwuEventOptionConditionBase> BuildCommitConditions(string modId)
         {
+            int days = GetActionTimeCostDays(modId);
+            if (days == 0)
+            {
+                return new List<TaiwuEventOptionConditionBase>();
+            }
+
             return new List<TaiwuEventOptionConditionBase>
             {
-                new OptionConditionSbyte(ForceEncounterConstants.Costs.ActionPointConditionType, ForceEncounterConstants.Costs.ActionPointConditionValue, OptionConditionMatcher.MovePointMore)
+                new OptionConditionSbyte(ForceEncounterConstants.Costs.ActionPointConditionType, (sbyte)days, OptionConditionMatcher.MovePointMore)
             };
         }
 
-        public static List<OptionConsumeInfo> BuildCommitCosts()
+        public static List<OptionConsumeInfo> BuildCommitCosts(string modId)
         {
+            int days = GetActionTimeCostDays(modId);
+            if (days == 0)
+            {
+                return new List<OptionConsumeInfo>();
+            }
+
             return new List<OptionConsumeInfo>
             {
-                new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, ForceEncounterConstants.Costs.ActionTimeDays, true)
+                new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, days, true)
             };
+        }
+
+        public static int GetActionTimeCostDays(string modId)
+        {
+            return ForceEncounterSettings.GetClampedInt(
+                modId,
+                ForceEncounterConstants.Settings.ActionTimeCostDays,
+                ForceEncounterConstants.Costs.DefaultActionTimeDays,
+                ForceEncounterConstants.Costs.MinActionTimeDays,
+                ForceEncounterConstants.Costs.MaxActionTimeDays);
         }
     }
 }
