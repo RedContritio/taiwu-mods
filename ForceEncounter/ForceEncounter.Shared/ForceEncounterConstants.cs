@@ -21,7 +21,7 @@ namespace ForceEncounter.Shared
             public const string BecomeEnemyOnForcedRoute = "BecomeEnemyOnForcedRoute";
             public const string CreateSecretOnForcedSuccess = "CreateSecretOnForcedSuccess";
             public const string CreateSecretOnAcceptedSuccess = "CreateSecretOnAcceptedSuccess";
-            public const string AllowSpecialAge = "AllowSpecialAge";
+            public const string 允许未成年 = "允许未成年";
         }
 
         public static class Gameplay
@@ -34,8 +34,8 @@ namespace ForceEncounter.Shared
             public const int DefaultTaiwuVillagerPenaltyPercent = 30;
             public const int MinTaiwuVillagerPenaltyPercent = 0;
             public const int MaxTaiwuVillagerPenaltyPercent = 100;
-            public const int BabyAgeGroup = 0;
-            public const int AdultAgeGroup = 2;
+            public const int 婴儿年龄组 = 0;
+            public const int 成年年龄组 = 2;
         }
 
         public static class Relations
@@ -70,6 +70,7 @@ namespace ForceEncounter.Shared
             public const string ConsentChoice = "a5ef5a51-2c64-40d2-a936-7c9d8ff7c6c6";
             public const string GuardIntercept = "27f95f25-e7bb-470a-970e-3fb4cf12f63b";
             public const string CombatResult = "ea75dd81-9054-4e54-9e6e-799669e2fb41";
+            public const string AcceptedResult = "5af48fa3-2fa8-44c5-8a04-8ad9805d3f47";
         }
 
         public static class Options
@@ -86,6 +87,8 @@ namespace ForceEncounter.Shared
             public const string AbandonGuid = "8904aa49-9a92-4b82-9045-dad4f125ff8b";
             public const string CombatResultContinueKey = "ForceEncounter.CombatResultContinue";
             public const string CombatResultContinueGuid = "2bf7c96a-d482-45ce-96d8-47dd4ecb795c";
+            public const string AcceptedResultContinueKey = "ForceEncounter.AcceptedResultContinue";
+            public const string AcceptedResultContinueGuid = "8d6c8b16-2eb7-46f4-b3f5-e7e9b7d5bf46";
             public const string GuardContinueKey = "ForceEncounter.GuardInterceptContinue";
             public const string GuardContinueGuid = "24d8d555-70c2-4c47-8518-1e74cfdbf2e9";
         }
@@ -100,18 +103,28 @@ namespace ForceEncounter.Shared
         {
             public const string ActorId = "ForceEncounter.ActorId";
             public const string TargetId = "ForceEncounter.TargetId";
-            public const string SpecialAge = "ForceEncounter.SpecialAge";
+            public const string 未成年 = "ForceEncounter.未成年";
             public const string CombatResultHandled = "ForceEncounter.CombatResultHandled";
             public const string CombatSettleOk = "ForceEncounter.CombatResultOk";
             public const string CombatBranchSucceeded = "ForceEncounter.CombatResultSucceeded";
             public const string CombatTargetIsTaiwuVillager = "ForceEncounter.CombatResultTargetTaiwuVillager";
             public const string CombatAppliedEnmity = "ForceEncounter.CombatResultAppliedEnmity";
             public const string CombatSettleReason = "ForceEncounter.CombatResultReason";
+            public const string AcceptedResultHandled = "ForceEncounter.AcceptedResultHandled";
+            public const string AcceptedSettleOk = "ForceEncounter.AcceptedResultOk";
+            public const string AcceptedBranchSucceeded = "ForceEncounter.AcceptedResultSucceeded";
+            public const string AcceptedSettleReason = "ForceEncounter.AcceptedResultReason";
             public const string GuardInterceptActive = "ForceEncounter.GuardInterceptActive";
+            public const string GuardTeamPrepared = "ForceEncounter.GuardTeamPrepared";
+            public const string KillTargetAfterCombatResult = "ForceEncounter.KillTargetAfterCombatResult";
             public const string NativeCombatResult = "CombatResult";
+            public const string NativeCombatType = "CombatType";
+            public const string NativeSeizedCharacterId = "CharIdSeizedInCombat";
+            public const string NativeSeizeItemKey = "ItemKeySeizeCharacterInCombat";
             public const string NativeMainEnemyId = "MainEnemyId";
             public const string NativeMainInteractionHeadEvent = "MainInteractionHeadEvent";
             public const string NativePartner = "Partner";
+            public const string NativePrisoner = "Prisoner";
         }
 
         public static class RoleKeys
@@ -178,9 +191,12 @@ namespace ForceEncounter.Shared
             public const string ActorBaby = "ActorBaby";
             public const string TargetBaby = "TargetBaby";
             public const string BabyNotAllowed = "BabyNotAllowed";
-            public const string SpecialAgeNotAllowed = "SpecialAgeNotAllowed";
+            public const string 未成年不允许 = "未成年不允许";
             public const string TargetDirectFallen = "TargetDirectFallen";
             public const string GuardIntercepted = "GuardIntercepted";
+            public const string TargetEscaped = "TargetEscaped";
+            public const string ActorEscaped = "ActorEscaped";
+            public const string TargetDiedInCombat = "TargetDiedInCombat";
         }
     }
 }

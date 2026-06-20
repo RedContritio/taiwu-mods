@@ -27,6 +27,7 @@ namespace ForceEncounter.Backend
                 isSpouse: RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Spouse) &&
                           RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Spouse),
                 isMutualLover: actorAdoresTarget && targetAdoresActor,
+                actorAdoresTarget: actorAdoresTarget,
                 targetAdoresActor: targetAdoresActor,
                 targetIsDeepValleyCloseFriend: IsDeepValleyCloseFriendToActor(actor, target),
                 targetIsTaiwuVillager: IsTaiwuVillager(target),

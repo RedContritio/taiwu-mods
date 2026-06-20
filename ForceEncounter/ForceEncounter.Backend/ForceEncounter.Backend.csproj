@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <Compile Include="..\ForceEncounter.Shared\ForceEncounterConstants.cs" Link="ForceEncounterConstants.cs" />
-    <Compile Include="..\ForceEncounter.Shared\ForceEncounterSettings.cs" Link="ForceEncounterSettings.cs" />
+    <Compile Include="..\..\TaiwuMod.Common\TaiwuModSettings.cs" Link="TaiwuModSettings.cs" />
   </ItemGroup>
 
   <ItemGroup>

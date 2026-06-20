@@ -9,6 +9,7 @@ using GameData.Domains.TaiwuEvent;
 using GameData.Domains.TaiwuEvent.Enum;
 using GameData.Domains.TaiwuEvent.EventHelper;
 using GameData.Domains.TaiwuEvent.EventOption;
+using TaiwuMod.Common;
 
 namespace ForceEncounter.Events
 {
@@ -45,7 +46,7 @@ namespace ForceEncounter.Events
                     Behavior = EventOptionBehavior.BehaviorEgoistic,
                     DefaultState = EventOptionState.Normal,
                     Important = false,
-                    OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(string.Empty),
+                    OptionConsumeInfos = new List<OptionConsumeInfo>(),
                     OnOptionVisibleCheck = IsVisible,
                     OnOptionAvailableCheck = CanExecute,
                     OnOptionSelect = Execute
@@ -62,11 +63,20 @@ namespace ForceEncounter.Events
 
         public override void OnEventEnter()
         {
-            EventOptions[1].OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(GetRuntimeModId());
+            int previewCostDays = RefreshPreviewCosts();
+            ForceEncounterEventRuntime.TryGetTargetId(ArgBox, out int targetId);
+            DebugLog(
+                "EntryEvent enter actor=" + ForceEncounterEventRuntime.GetActorId() +
+                ", target=" + targetId +
+                ", previewCostDays=" + previewCostDays);
         }
 
         public override void OnEventExit()
         {
+            ForceEncounterEventRuntime.TryGetTargetId(ArgBox, out int targetId);
+            DebugLog(
+                "EntryEvent exit actor=" + ForceEncounterEventRuntime.GetActorId() +
+                ", target=" + targetId);
         }
 
         public override string GetReplacedContentString()
@@ -77,7 +87,7 @@ namespace ForceEncounter.Events
         private bool IsEnabled()
         {
             string modId = GetRuntimeModId();
-            bool enabled = ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.Enabled, true);
+            bool enabled = TaiwuModSettings.GetBool(modId, ForceEncounterConstants.Settings.Enabled, true);
             DebugLogOnce(
                 "enabled:" + modId + ":" + enabled,
                 "IsEnabled packageSet=" + (Package != null) +
@@ -88,40 +98,66 @@ namespace ForceEncounter.Events
 
         private bool CanExecute()
         {
+            int previewCostDays = RefreshPreviewCosts();
             string reason = GetCanExecuteFailureReason(out int actorId, out int targetId);
             bool canExecute = reason == ForceEncounterConstants.Reasons.Ok;
-            DebugLogOnce(
-                "can:" + actorId + ":" + targetId + ":" + reason,
+            DebugLog(
                 "CanExecute actor=" + actorId +
                 ", target=" + targetId +
                 ", result=" + canExecute +
-                ", reason=" + reason);
+                ", reason=" + reason +
+                ", previewCostDays=" + previewCostDays);
             return canExecute;
         }
 
         private bool IsVisible()
         {
-            return IsEnabled() && IsSpecialAgeVisible();
+            int previewCostDays = RefreshPreviewCosts();
+            bool enabled = IsEnabled();
+            bool 未成年可见 = 未成年选项可见(out string 未成年原因, out int actorId, out int targetId);
+            bool visible = enabled && 未成年可见;
+            DebugLogOnce(
+                "visible:" + actorId + ":" + targetId + ":" + enabled + ":" + 未成年原因,
+                "IsVisible actor=" + actorId +
+                ", target=" + targetId +
+                ", result=" + visible +
+                ", enabled=" + enabled +
+                ", minorVisible=" + 未成年可见 +
+                ", minorReason=" + 未成年原因 +
+                ", previewCostDays=" + previewCostDays);
+            return visible;
         }
 
-        private bool IsSpecialAgeVisible()
+        private int RefreshPreviewCosts()
         {
             string modId = GetRuntimeModId();
-            bool allowSpecialAge = ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.AllowSpecialAge, true);
+            int days = ForceEncounterEventCosts.GetActionTimeCostDays(modId);
+            EventOptions[1].OptionConsumeInfos = ForceEncounterEventCosts.BuildPreviewCosts(modId);
+            return days;
+        }
 
-            if (allowSpecialAge)
+        private bool 未成年选项可见(out string reason, out int actorId, out int targetId)
+        {
+            actorId = ForceEncounterEventRuntime.GetActorId();
+            targetId = -1;
+            string modId = GetRuntimeModId();
+            bool 允许未成年 = TaiwuModSettings.GetBool(modId, ForceEncounterConstants.Settings.允许未成年, true);
+
+            if (允许未成年)
             {
+                reason = "AllowedBySetting";
                 return true;
             }
 
-            int targetId = -1;
             if (ArgBox == null || !ArgBox.Get(EventTriggerParameter.DefValue.CharacterId, ref targetId))
             {
+                reason = "MissingTargetForVisibleCheck";
                 return true;
             }
 
-            int actorId = ForceEncounterEventRuntime.GetActorId();
-            return !ForceEncounterEventRuntime.RequiresSpecialAgeNotice(actorId, targetId);
+            bool 需要未成年提示 = ForceEncounterEventRuntime.需要未成年提示(actorId, targetId);
+            reason = 需要未成年提示 ? ForceEncounterConstants.Reasons.未成年不允许 : ForceEncounterConstants.Reasons.Ok;
+            return !需要未成年提示;
         }
 
         private string GetCanExecuteFailureReason(out int actorId, out int targetId)
@@ -170,24 +206,24 @@ namespace ForceEncounter.Events
                 return ForceEncounterConstants.Reasons.TargetNotAlive;
             }
 
-            if (actor.GetAgeGroup() == ForceEncounterConstants.Gameplay.BabyAgeGroup)
+            if (actor.GetAgeGroup() == ForceEncounterConstants.Gameplay.婴儿年龄组)
             {
                 return ForceEncounterConstants.Reasons.ActorBaby;
             }
 
-            if (target.GetAgeGroup() == ForceEncounterConstants.Gameplay.BabyAgeGroup)
+            if (target.GetAgeGroup() == ForceEncounterConstants.Gameplay.婴儿年龄组)
             {
                 return ForceEncounterConstants.Reasons.TargetBaby;
             }
 
             string modId = GetRuntimeModId();
-            bool allowSpecialAge = ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.AllowSpecialAge, true);
+            bool 允许未成年 = TaiwuModSettings.GetBool(modId, ForceEncounterConstants.Settings.允许未成年, true);
 
-            if (!allowSpecialAge &&
-                (actor.GetAgeGroup() != ForceEncounterConstants.Gameplay.AdultAgeGroup ||
-                 target.GetAgeGroup() != ForceEncounterConstants.Gameplay.AdultAgeGroup))
+            if (!允许未成年 &&
+                (actor.GetAgeGroup() < ForceEncounterConstants.Gameplay.成年年龄组 ||
+                 target.GetAgeGroup() < ForceEncounterConstants.Gameplay.成年年龄组))
             {
-                return ForceEncounterConstants.Reasons.SpecialAgeNotAllowed;
+                return ForceEncounterConstants.Reasons.未成年不允许;
             }
 
             return ForceEncounterConstants.Reasons.Ok;
@@ -204,6 +240,11 @@ namespace ForceEncounter.Events
             int actorId = ForceEncounterEventRuntime.GetActorId();
             ForceEncounterEventRuntime.StoreInteractionArgs(ArgBox, actorId, targetId);
             ArgBox.Set(EventArgBox.OptionWaitConfirmKey, ForceEncounterEventIds.等待确认.外层预览);
+            DebugLog(
+                "Entry option selected actor=" + actorId +
+                ", target=" + targetId +
+                ", waitConfirm=" + ForceEncounterEventIds.等待确认.外层预览 +
+                ", minor=" + ForceEncounterEventRuntime.需要未成年提示(actorId, targetId));
 
             return ProbeAndRouteToChoice(actorId, targetId);
         }
@@ -222,6 +263,11 @@ namespace ForceEncounter.Events
                  resolution == ForceEncounterEventIds.探测结果.需要战斗选择))
             {
                 ArgBox.Set(ForceEncounterEventIds.后端.结算结果, resolution);
+                DebugLog(
+                    "Probe routed actor=" + actorId +
+                    ", target=" + targetId +
+                    ", resolution=" + resolution +
+                    ", nextEvent=" + ForceEncounterEventIds.事件.内层选择);
                 return ForceEncounterEventIds.事件.内层选择;
             }
 
@@ -231,6 +277,7 @@ namespace ForceEncounter.Events
 
         private string StayOnEntryEvent()
         {
+            DebugLog("Entry navigation selected; stay on entry event");
             return ForceEncounterEventIds.事件.外层入口;
         }
 
@@ -242,7 +289,7 @@ namespace ForceEncounter.Events
                 return;
             }
 
-            if (!ForceEncounterSettings.GetBool(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, true))
+            if (!TaiwuModSettings.GetBool(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, true))
             {
                 return;
             }
@@ -279,9 +326,14 @@ namespace ForceEncounter.Events
             EventHelper.Log("[ForceEncounter] " + message);
         }
 
+        private void DebugLog(string message)
+        {
+            ForceEncounterEventRuntime.DebugLog(GetRuntimeModId(), message);
+        }
+
         private bool IsDebugModeEnabled()
         {
-            return ForceEncounterSettings.GetBool(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, true);
+            return TaiwuModSettings.GetBool(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, true);
         }
     }
 }

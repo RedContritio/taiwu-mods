@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ForceEncounter.Shared;
 using GameData.Domains.TaiwuEvent.EventOption;
+using TaiwuMod.Common;
 
 namespace ForceEncounter.Events
 {
@@ -50,7 +51,7 @@ namespace ForceEncounter.Events
 
         public static int GetActionTimeCostDays(string modId)
         {
-            return ForceEncounterSettings.GetClampedInt(
+            return TaiwuModSettings.GetClampedInt(
                 modId,
                 ForceEncounterConstants.Settings.ActionTimeCostDays,
                 ForceEncounterConstants.Costs.DefaultActionTimeDays,

@@ -16,7 +16,8 @@ namespace ForceEncounter.Events
                 new ForceEncounterEvent(),
                 new ForceEncounterConsentChoiceEvent(),
                 new ForceEncounterGuardInterceptEvent(),
-                new ForceEncounterCombatResultEvent()
+                new ForceEncounterCombatResultEvent(),
+                new ForceEncounterAcceptedResultEvent()
             };
 
             foreach (TaiwuEventItem item in EventList)

@@ -41,10 +41,26 @@ namespace ForceEncounter.Events
 
         public override void OnEventEnter()
         {
+            ForceEncounterEventRuntime.TryGetActorAndTarget(ArgBox, out int actorId, out int targetId);
+            int partnerId = -1;
+            ArgBox?.Get(ForceEncounterConstants.ArgBox.NativePartner, ref partnerId);
+            ForceEncounterEventRuntime.DebugLog(
+                GetRuntimeModId(),
+                "GuardIntercept enter actor=" + actorId +
+                ", target=" + targetId +
+                ", guard=" + partnerId);
         }
 
         public override void OnEventExit()
         {
+            ForceEncounterEventRuntime.TryGetActorAndTarget(ArgBox, out int actorId, out int targetId);
+            int partnerId = -1;
+            ArgBox?.Get(ForceEncounterConstants.ArgBox.NativePartner, ref partnerId);
+            ForceEncounterEventRuntime.DebugLog(
+                GetRuntimeModId(),
+                "GuardIntercept exit actor=" + actorId +
+                ", target=" + targetId +
+                ", guard=" + partnerId);
         }
 
         public override string GetReplacedContentString()
@@ -54,7 +70,15 @@ namespace ForceEncounter.Events
 
         private string StartGuardCombat()
         {
+            int partnerId = -1;
+            ArgBox?.Get(ForceEncounterConstants.ArgBox.NativePartner, ref partnerId);
+            ForceEncounterEventRuntime.DebugLog(GetRuntimeModId(), "GuardIntercept continue selected guard=" + partnerId);
             return ForceEncounterCombatStarter.StartGuardCombat(ArgBox);
+        }
+
+        private string GetRuntimeModId()
+        {
+            return ForceEncounterEventRuntime.GetRuntimeModId(this);
         }
     }
 }

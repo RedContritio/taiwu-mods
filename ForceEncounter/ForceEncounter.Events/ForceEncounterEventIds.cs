@@ -23,6 +23,7 @@ namespace ForceEncounter.Events
             public const string 内层选择 = ForceEncounterConstants.EventGuids.ConsentChoice;
             public const string 护卫出面 = ForceEncounterConstants.EventGuids.GuardIntercept;
             public const string 战斗反馈 = ForceEncounterConstants.EventGuids.CombatResult;
+            public const string 亲密反馈 = ForceEncounterConstants.EventGuids.AcceptedResult;
         }
 
         public static class 选项
@@ -33,6 +34,7 @@ namespace ForceEncounter.Events
             public static readonly EventOptionId 强制关系 = new(ForceEncounterConstants.Options.ForceCombatKey, ForceEncounterConstants.Options.ForceCombatGuid);
             public static readonly EventOptionId 其他话题 = new(ForceEncounterConstants.Options.AbandonKey, ForceEncounterConstants.Options.AbandonGuid);
             public static readonly EventOptionId 战斗反馈继续 = new(ForceEncounterConstants.Options.CombatResultContinueKey, ForceEncounterConstants.Options.CombatResultContinueGuid);
+            public static readonly EventOptionId 亲密反馈继续 = new(ForceEncounterConstants.Options.AcceptedResultContinueKey, ForceEncounterConstants.Options.AcceptedResultContinueGuid);
             public static readonly EventOptionId 护卫继续 = new(ForceEncounterConstants.Options.GuardContinueKey, ForceEncounterConstants.Options.GuardContinueGuid);
         }
 
@@ -45,13 +47,17 @@ namespace ForceEncounter.Events
         {
             public const string 行为者 = ForceEncounterConstants.ArgBox.ActorId;
             public const string 目标 = ForceEncounterConstants.ArgBox.TargetId;
+            public const string 未成年 = ForceEncounterConstants.ArgBox.未成年;
             public const string 战斗结果已处理 = ForceEncounterConstants.ArgBox.CombatResultHandled;
             public const string 战斗结算成功 = ForceEncounterConstants.ArgBox.CombatSettleOk;
             public const string 战斗分支成功 = ForceEncounterConstants.ArgBox.CombatBranchSucceeded;
             public const string 战斗目标是太吾村民 = ForceEncounterConstants.ArgBox.CombatTargetIsTaiwuVillager;
             public const string 战斗应用结仇后果 = ForceEncounterConstants.ArgBox.CombatAppliedEnmity;
             public const string 战斗结算原因 = ForceEncounterConstants.ArgBox.CombatSettleReason;
-            public const string 特殊年龄 = ForceEncounterConstants.ArgBox.SpecialAge;
+            public const string 亲密结果已处理 = ForceEncounterConstants.ArgBox.AcceptedResultHandled;
+            public const string 亲密结算成功 = ForceEncounterConstants.ArgBox.AcceptedSettleOk;
+            public const string 亲密分支成功 = ForceEncounterConstants.ArgBox.AcceptedBranchSucceeded;
+            public const string 亲密结算原因 = ForceEncounterConstants.ArgBox.AcceptedSettleReason;
         }
 
         public static class 后端

@@ -1,9 +1,9 @@
 using System;
 using GameData.Domains;
 
-namespace ForceEncounter.Shared
+namespace TaiwuMod.Common
 {
-    internal static class ForceEncounterSettings
+    internal static class TaiwuModSettings
     {
         public static bool GetBool(string modId, string key, bool fallback)
         {

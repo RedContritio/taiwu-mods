@@ -5,6 +5,7 @@ namespace ForceEncounter.Backend
         public ForceEncounterRelationSnapshot(
             bool isSpouse,
             bool isMutualLover,
+            bool actorAdoresTarget,
             bool targetAdoresActor,
             bool targetIsDeepValleyCloseFriend,
             bool targetIsTaiwuVillager,
@@ -15,6 +16,7 @@ namespace ForceEncounter.Backend
         {
             IsSpouse = isSpouse;
             IsMutualLover = isMutualLover;
+            ActorAdoresTarget = actorAdoresTarget;
             TargetAdoresActor = targetAdoresActor;
             TargetIsDeepValleyCloseFriend = targetIsDeepValleyCloseFriend;
             TargetIsTaiwuVillager = targetIsTaiwuVillager;
@@ -27,6 +29,8 @@ namespace ForceEncounter.Backend
         public bool IsSpouse { get; }
 
         public bool IsMutualLover { get; }
+
+        public bool ActorAdoresTarget { get; }
 
         public bool TargetAdoresActor { get; }
 

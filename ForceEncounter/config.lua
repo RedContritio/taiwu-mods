@@ -1,7 +1,7 @@
 ﻿return {
     Title = "情难自已",
     Description = "为玩家提供接口，主动触发角色之间的正式版强制行为。",
-    Version = "0.0.0.18",
+    Version = "0.0.0.22",
     Author = "RedContritio",
     Source = 0,
     Cover = "",
@@ -23,7 +23,7 @@
         { SettingType = "Toggle", Key = "BecomeEnemyOnForcedRoute", DisplayName = "强制路线结仇", Description = "普通强制成功或失败后，对非太吾村民目标调用原生结仇路径", DefaultValue = true },
         { SettingType = "Toggle", Key = "CreateSecretOnForcedSuccess", DisplayName = "强制成功创建秘闻", Description = "强制路线成功后创建原生强制关系秘闻", DefaultValue = true },
         { SettingType = "Toggle", Key = "CreateSecretOnAcceptedSuccess", DisplayName = "亲密成功创建秘闻", Description = "亲密直通提交成功后创建原生强制关系秘闻", DefaultValue = true },
-        { SettingType = "Toggle", Key = "AllowSpecialAge", DisplayName = "允许特殊年龄", Description = "关闭后，非正常年龄段角色不会显示情难自已交互项", DefaultValue = true },
+        { SettingType = "Toggle", Key = "允许未成年", DisplayName = "允许未成年", Description = "关闭后，未成年角色不会显示情难自已交互项", DefaultValue = true },
         { SettingType = "Toggle", Key = "DebugMode", DisplayName = "调试模式", DefaultValue = true },
     },
     TagList = { "Extensions" },

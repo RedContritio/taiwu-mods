@@ -6,6 +6,7 @@ using GameData.Domains.Combat;
 using GameData.Domains.Mod;
 using GameData.Domains.TaiwuEvent;
 using GameData.Domains.TaiwuEvent.EventHelper;
+using TaiwuMod.Common;
 
 namespace ForceEncounter.Events
 {
@@ -15,15 +16,34 @@ namespace ForceEncounter.Events
         {
             if (!ForceEncounterEventRuntime.TryGetTargetId(argBox, out int targetId))
             {
+                ForceEncounterEventRuntime.DebugLog(modId, "StartForcedCombat failed: missing target");
                 EventHelper.ToEvent(string.Empty);
                 return string.Empty;
             }
 
-            if (ForceEncounterEventRuntime.ShouldUseGuardInterceptionForTarget(targetId, modId) &&
+            bool useGuardInterception = ForceEncounterEventRuntime.ShouldUseGuardInterceptionForTarget(targetId, modId);
+            bool targetIsTaiwuVillager = ForceEncounterEventRuntime.IsTaiwuVillager(targetId);
+            bool hasGuard = DomainManager.Character.TryGetElement_Objects(targetId, out var targetForLog) &&
+                            EventHelper.HasGuard(targetForLog);
+            ForceEncounterEventRuntime.DebugLog(
+                modId,
+                "StartForcedCombat target=" + targetId +
+                ", useGuardInterception=" + useGuardInterception +
+                ", targetIsTaiwuVillager=" + targetIsTaiwuVillager +
+                ", hasGuard=" + hasGuard +
+                ", applyAlertness=" + ShouldApplyAlertnessOnCombatStart(modId));
+
+            if (useGuardInterception &&
                 DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
                 EventHelper.HasGuard(target))
             {
                 List<int> enemyTeam = EventHelper.PrepareCombatEnemy(targetId, CombatConfig.DefKey.DieNormal, false);
+                argBox.Set(ForceEncounterConstants.ArgBox.GuardTeamPrepared, true);
+                ForceEncounterEventRuntime.DebugLog(
+                    modId,
+                    "Guard preparation target=" + targetId +
+                    ", enemyTeamCount=" + enemyTeam.Count +
+                    ", firstEnemy=" + (enemyTeam.Count > 0 ? enemyTeam[0] : -1));
                 if (enemyTeam.Count == 0)
                 {
                     StoreCombatFailure(argBox, modId, ForceEncounterConstants.Reasons.GuardIntercepted);
@@ -34,27 +54,36 @@ namespace ForceEncounter.Events
                 {
                     argBox.Set(ForceEncounterConstants.ArgBox.NativePartner, enemyTeam[0]);
                     argBox.Set(ForceEncounterConstants.ArgBox.GuardInterceptActive, true);
+                    ForceEncounterEventRuntime.DebugLog(
+                        modId,
+                        "Guard intercept active target=" + targetId +
+                        ", guard=" + enemyTeam[0] +
+                        ", nextEvent=" + ForceEncounterEventIds.事件.护卫出面);
                     return ForceEncounterEventIds.事件.护卫出面;
                 }
 
                 if (EventHelper.IsCharacterDirectFallenInCombat(targetId, (CombatType)CombatConfig.DefKey.DieNormal))
                 {
-                    StoreDirectFallenFailure(argBox, modId);
+                    ForceEncounterEventRuntime.DebugLog(modId, "Target direct fallen before guarded combat target=" + targetId);
+                    StoreDirectFallenSuccess(argBox, modId);
                     return ForceEncounterEventIds.事件.战斗反馈;
                 }
 
                 ApplyAlertnessOnTargetCombatStart(targetId, modId);
+                ForceEncounterEventRuntime.DebugLog(modId, "Start guarded target combat target=" + targetId);
                 EventHelper.StartCombat(enemyTeam, CombatConfig.DefKey.DieNormal, ForceEncounterEventIds.事件.战斗反馈, argBox);
             }
             else
             {
                 if (EventHelper.IsCharacterDirectFallenInCombat(targetId, (CombatType)CombatConfig.DefKey.DieNormal))
                 {
-                    StoreDirectFallenFailure(argBox, modId);
+                    ForceEncounterEventRuntime.DebugLog(modId, "Target direct fallen before direct combat target=" + targetId);
+                    StoreDirectFallenSuccess(argBox, modId);
                     return ForceEncounterEventIds.事件.战斗反馈;
                 }
 
                 ApplyAlertnessOnTargetCombatStart(targetId, modId);
+                ForceEncounterEventRuntime.DebugLog(modId, "Start direct target combat target=" + targetId);
                 EventHelper.StartCombat(
                     targetId,
                     CombatConfig.DefKey.DieNormal,
@@ -70,19 +99,33 @@ namespace ForceEncounter.Events
         {
             if (ShouldApplyAlertnessOnCombatStart(modId))
             {
+                ForceEncounterEventRuntime.DebugLog(modId, "ApplyAlertnessOnCombatStart target=" + targetId);
                 EventHelper.ChangeAlertnessOnAttack(targetId);
+            }
+            else
+            {
+                ForceEncounterEventRuntime.DebugLog(modId, "ApplyAlertnessOnCombatStart skipped target=" + targetId);
             }
         }
 
-        private static void StoreDirectFallenFailure(EventArgBox argBox, string modId)
+        private static void StoreDirectFallenSuccess(EventArgBox argBox, string modId)
         {
-            StoreCombatFailure(argBox, modId, ForceEncounterConstants.Reasons.TargetDirectFallen);
+            StoreCombatSettlement(argBox, modId, ForceEncounterConstants.Reasons.TargetDirectFallen, battleSucceeded: true);
         }
 
         private static void StoreCombatFailure(EventArgBox argBox, string modId, string reason)
         {
+            StoreCombatSettlement(argBox, modId, reason, battleSucceeded: false);
+        }
+
+        private static void StoreCombatSettlement(EventArgBox argBox, string modId, string reason, bool battleSucceeded)
+        {
             if (!ForceEncounterEventRuntime.TryGetActorAndTarget(argBox, out int actorId, out int targetId))
             {
+                ForceEncounterEventRuntime.DebugLog(
+                    modId,
+                    "StoreCombatSettlement missing actor/target reason=" + reason +
+                    ", battleSucceeded=" + battleSucceeded);
                 ForceEncounterEventRuntime.StoreCombatSettlement(
                     argBox,
                     false,
@@ -96,7 +139,7 @@ namespace ForceEncounter.Events
                 modId,
                 actorId,
                 targetId,
-                battleSucceeded: false);
+                battleSucceeded);
 
             bool ok = false;
             bool succeeded = false;
@@ -117,11 +160,21 @@ namespace ForceEncounter.Events
                 targetIsTaiwuVillager,
                 reason,
                 appliedEnmity);
+            ForceEncounterEventRuntime.DebugLog(
+                modId,
+                "StoreCombatSettlement actor=" + actorId +
+                ", target=" + targetId +
+                ", ok=" + ok +
+                ", succeeded=" + succeeded +
+                ", targetIsTaiwuVillager=" + targetIsTaiwuVillager +
+                ", appliedEnmity=" + appliedEnmity +
+                ", reason=" + reason +
+                ", battleSucceeded=" + battleSucceeded);
         }
 
         private static bool ShouldApplyAlertnessOnCombatStart(string modId)
         {
-            return ForceEncounterSettings.GetBool(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, true);
+            return TaiwuModSettings.GetBool(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, true);
         }
 
         public static string StartGuardCombat(EventArgBox argBox)
@@ -130,6 +183,8 @@ namespace ForceEncounter.Events
             if (argBox != null && argBox.Get(ForceEncounterConstants.ArgBox.NativePartner, ref partnerId))
             {
                 argBox.Set(ForceEncounterConstants.ArgBox.GuardInterceptActive, true);
+                string modId = ForceEncounterEventRuntime.GetRuntimeModId(ForceEncounterEventIds.事件.战斗反馈);
+                ForceEncounterEventRuntime.DebugLog(modId, "StartGuardCombat guard=" + partnerId);
                 EventHelper.StartCombat(
                     partnerId,
                     CombatConfig.DefKey.DieNormal,
