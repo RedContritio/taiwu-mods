@@ -189,10 +189,10 @@ namespace ForceEncounter.Events
         {
             public const string 成年亲密 = "<Character key=RoleTaiwu str=Name/>本与<Character key=CharacterId str=Name/>情好甚笃，二人平时耳鬓厮磨，几无顾忌。\n\n这一日<Character key=RoleTaiwu str=Name/>情动难耐，不由分说便将<Character key=CharacterId str=Name/>揽入怀中。<Character key=CharacterId str=Name/>怔了怔，到底不曾挣脱。";
             public const string 成年强制 = "<Character key=RoleTaiwu str=Name/>本与<Character key=CharacterId str=Name/>素无暧昧之情。孰料<Character key=RoleTaiwu str=Name/>忽生歹念，竟欲用强。<Character key=CharacterId str=Name/>惊怒交迸，奋力抵抗。<Character key=RoleTaiwu str=Name/>哪里肯收手，局面一触即发。";
-            public const string 成年强制有护卫 = "<Character key=RoleTaiwu str=Name/>本与<Character key=CharacterId str=Name/>素无暧昧之情。孰料<Character key=RoleTaiwu str=Name/>忽生歹念，竟欲用强。<Character key=CharacterId str=Name/>惊怒交迸，奋力抵抗。\n\n正要动手，忽觉暗中似有旁人守着。若是继续动强，免不了要先过护卫这一关。";
+            public const string 成年强制有护卫 = "<Character key=RoleTaiwu str=Name/>本与<Character key=CharacterId str=Name/>素无暧昧之情。孰料<Character key=RoleTaiwu str=Name/>忽生歹念，竟欲用强。<Character key=CharacterId str=Name/>惊怒交迸，奋力抵抗。\n\n正要动手，忽觉暗中似有旁人守着。若是继续动强，免不了要先与其交手。";
             public const string 未成年亲密 = "<Character key=RoleTaiwu str=Name/>这日寻着<Character key=CharacterId str=Name/>，言笑间越凑越近。<Character key=CharacterId str=Name/>并不十分闪避，<Character key=RoleTaiwu str=Name/>便轻轻握住了<Character key=CharacterId str=Name/>的手。\n\n<Character key=CharacterId str=Name/>一颤，抽了抽手，却没多少力气，只垂着头，连耳根都红透了。";
             public const string 未成年强制 = "<Character key=RoleTaiwu str=Name/>渐渐凑近<Character key=CharacterId str=Name/>，言语间已不甚规矩。<Character key=CharacterId str=Name/>觉出不对，直往后缩。<Character key=RoleTaiwu str=Name/>却不肯收手，仍只管逼上前去。\n\n<Character key=CharacterId str=Name/>退无可退，急得声音都变了。";
-            public const string 未成年强制有护卫 = "<Character key=RoleTaiwu str=Name/>渐渐凑近<Character key=CharacterId str=Name/>，言语间已不甚规矩。<Character key=CharacterId str=Name/>觉出不对，直往后缩。<Character key=RoleTaiwu str=Name/>却不肯收手，仍只管逼上前去。\n\n<Character key=CharacterId str=Name/>退无可退，急得声音都变了。\n\n<Character key=RoleTaiwu str=Name/>正要再往前逼，忽然察觉暗中似有人照应。若是再上前一步，先得过护卫这一关。";
+            public const string 未成年强制有护卫 = "<Character key=RoleTaiwu str=Name/>渐渐凑近<Character key=CharacterId str=Name/>，言语间已不甚规矩。<Character key=CharacterId str=Name/>觉出不对，直往后缩。<Character key=RoleTaiwu str=Name/>却不肯收手，仍只管逼上前去。\n\n<Character key=CharacterId str=Name/>退无可退，急得声音都变了。\n\n<Character key=RoleTaiwu str=Name/>正要再往前逼，忽然察觉暗中似有人照应。若是再上前一步，免不了要先与其交手。";
         }
 
         private static class 亲密反馈
