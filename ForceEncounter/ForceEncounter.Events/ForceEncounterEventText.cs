@@ -4,8 +4,6 @@ namespace ForceEncounter.Events
 {
     internal static class ForceEncounterEventText
     {
-        public const string GuardInterceptContent = "对方的护卫挺身拦在你面前。";
-
         public static string 构造内层说明(bool 亲密通过, bool 未成年, bool 有护卫)
         {
             if (亲密通过)
