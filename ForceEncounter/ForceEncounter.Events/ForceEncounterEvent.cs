@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Config;
 using Config.EventConfig;
+using ForceEncounter.Shared;
 using GameData.Domains;
 using GameData.Domains.Mod;
 using GameData.Domains.TaiwuEvent;
@@ -21,7 +22,7 @@ namespace ForceEncounter.Events
             EventType = EEventType.ModEvent;
             IsHeadEvent = false;
             TriggerType = -1;
-            MainRoleKey = "RoleTaiwu";
+            MainRoleKey = ForceEncounterConstants.RoleKeys.Taiwu;
             TargetRoleKey = EventTriggerParameter.DefValue.CharacterId.ArgBoxKey;
             EscOptionKey = string.Empty;
             EventOptions = new[]
@@ -77,7 +78,7 @@ namespace ForceEncounter.Events
             string modId = GetRuntimeModId();
             bool enabled = true;
             bool settingFound = !string.IsNullOrEmpty(modId) &&
-                                DomainManager.Mod.GetSetting(modId, "Enabled", ref enabled);
+                                DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.Enabled, ref enabled);
             DebugLogOnce(
                 "enabled:" + modId + ":" + settingFound + ":" + enabled,
                 "IsEnabled packageSet=" + (Package != null) +
@@ -90,7 +91,7 @@ namespace ForceEncounter.Events
         private bool CanExecute()
         {
             string reason = GetCanExecuteFailureReason(out int actorId, out int targetId);
-            bool canExecute = reason == "Ok";
+            bool canExecute = reason == ForceEncounterConstants.Reasons.Ok;
             DebugLogOnce(
                 "can:" + actorId + ":" + targetId + ":" + reason,
                 "CanExecute actor=" + actorId +
@@ -107,56 +108,56 @@ namespace ForceEncounter.Events
 
             if (!IsEnabled())
             {
-                return "Disabled";
+                return ForceEncounterConstants.Reasons.Disabled;
             }
 
             if (ArgBox == null)
             {
-                return "NoArgBox";
+                return ForceEncounterConstants.Reasons.NoArgBox;
             }
 
             if (!ArgBox.Get(EventTriggerParameter.DefValue.CharacterId, ref targetId))
             {
-                return "MissingCharacterId";
+                return ForceEncounterConstants.Reasons.MissingCharacterId;
             }
 
             actorId = ForceEncounterEventRuntime.GetActorId();
             if (actorId == targetId)
             {
-                return "SameActorAndTarget";
+                return ForceEncounterConstants.Reasons.SameActorAndTarget;
             }
 
             if (!DomainManager.Character.TryGetElement_Objects(actorId, out var actor))
             {
-                return "ActorNotFound";
+                return ForceEncounterConstants.Reasons.ActorNotFound;
             }
 
             if (!DomainManager.Character.TryGetElement_Objects(targetId, out var target))
             {
-                return "TargetNotFound";
+                return ForceEncounterConstants.Reasons.TargetNotFound;
             }
 
             if (!DomainManager.Character.IsCharacterAlive(actorId))
             {
-                return "ActorNotAlive";
+                return ForceEncounterConstants.Reasons.ActorNotAlive;
             }
 
             if (!DomainManager.Character.IsCharacterAlive(targetId))
             {
-                return "TargetNotAlive";
+                return ForceEncounterConstants.Reasons.TargetNotAlive;
             }
 
-            if (actor.GetAgeGroup() == 0)
+            if (actor.GetAgeGroup() == ForceEncounterConstants.Gameplay.BabyAgeGroup)
             {
-                return "ActorBaby";
+                return ForceEncounterConstants.Reasons.ActorBaby;
             }
 
-            if (target.GetAgeGroup() == 0)
+            if (target.GetAgeGroup() == ForceEncounterConstants.Gameplay.BabyAgeGroup)
             {
-                return "TargetBaby";
+                return ForceEncounterConstants.Reasons.TargetBaby;
             }
 
-            return "Ok";
+            return ForceEncounterConstants.Reasons.Ok;
         }
 
         private string Execute()
@@ -203,22 +204,22 @@ namespace ForceEncounter.Events
         private void LogProbeFailure(SerializableModData result)
         {
             bool ok = false;
-            if (result != null && result.Get("Ok", out ok) && ok)
+            if (result != null && result.Get(ForceEncounterConstants.Response.Ok, out ok) && ok)
             {
                 return;
             }
 
             bool debugMode = true;
-            DomainManager.Mod.GetSetting(GetRuntimeModId(), "DebugMode", ref debugMode);
+            DomainManager.Mod.GetSetting(GetRuntimeModId(), ForceEncounterConstants.Settings.DebugMode, ref debugMode);
             if (!debugMode)
             {
                 return;
             }
 
-            string reason = "NoResult";
+            string reason = ForceEncounterConstants.Reasons.NoResult;
             if (result != null)
             {
-                result.Get("Reason", out reason);
+                result.Get(ForceEncounterConstants.Response.Reason, out reason);
             }
 
             EventHelper.Log("[ForceEncounter] Probe did not start a follow-up event: " + reason);
@@ -252,7 +253,7 @@ namespace ForceEncounter.Events
             string modId = GetRuntimeModId();
             bool debugMode = true;
             return string.IsNullOrEmpty(modId) ||
-                   !DomainManager.Mod.GetSetting(modId, "DebugMode", ref debugMode) ||
+                   !DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.DebugMode, ref debugMode) ||
                    debugMode;
         }
     }

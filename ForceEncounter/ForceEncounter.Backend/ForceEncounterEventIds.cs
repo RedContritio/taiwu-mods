@@ -1,20 +1,22 @@
+using ForceEncounter.Shared;
+
 namespace ForceEncounter.Backend
 {
     public static class ForceEncounterEventIds
     {
-        public const short InteractionTemplateId = 1099;
-        public const string NativeEnemyInteractionEventGuid = "7c70ce0c-577a-4049-bcad-e593c63d62d4";
-        public const string EventGuid = "dd8e7372-30c6-47e9-9e1a-0f6dd7f08919";
-        public const string NavigationOptionGuid = "ee1110a7-f974-4bc4-bf84-1ddcfcc04ae1";
-        public const string OptionGuid = "8267b6bc-3a92-4b3f-a013-a3446272866f";
-        public const string OptionKey = "ForceEncounter.Execute";
-        public const string BattleSucceededParam = "BattleSucceeded";
-        public const string ResolutionModeParam = "ResolutionMode";
-        public const string ResolutionParam = "Resolution";
-        public const int ResolutionModeProbe = 1;
-        public const int ResolutionModeCombat = 2;
-        public const int ResolutionModeAcceptedCommit = 3;
-        public const int ResolutionNeedCombatChoice = 1;
-        public const int ResolutionAccepted = 2;
+        public const short InteractionTemplateId = ForceEncounterConstants.Gameplay.InteractionTemplateId;
+        public const string NativeEnemyInteractionEventGuid = ForceEncounterConstants.EventGuids.NativeEnemyInteraction;
+        public const string EventGuid = ForceEncounterConstants.EventGuids.Entry;
+        public const string NavigationOptionGuid = ForceEncounterConstants.Options.OpenGuid;
+        public const string OptionGuid = ForceEncounterConstants.Options.ExecuteGuid;
+        public const string OptionKey = ForceEncounterConstants.Options.ExecuteKey;
+        public const string BattleSucceededParam = ForceEncounterConstants.Backend.BattleSucceeded;
+        public const string ResolutionModeParam = ForceEncounterConstants.Backend.ResolutionMode;
+        public const string ResolutionParam = ForceEncounterConstants.Backend.Resolution;
+        public const int ResolutionModeProbe = ForceEncounterConstants.ResolutionMode.Probe;
+        public const int ResolutionModeCombat = ForceEncounterConstants.ResolutionMode.Combat;
+        public const int ResolutionModeAcceptedCommit = ForceEncounterConstants.ResolutionMode.AcceptedCommit;
+        public const int ResolutionNeedCombatChoice = ForceEncounterConstants.ProbeResult.NeedCombatChoice;
+        public const int ResolutionAccepted = ForceEncounterConstants.ProbeResult.Accepted;
     }
 }

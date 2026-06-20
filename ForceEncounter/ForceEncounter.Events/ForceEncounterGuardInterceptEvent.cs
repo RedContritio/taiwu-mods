@@ -1,5 +1,6 @@
 using System;
 using Config.EventConfig;
+using ForceEncounter.Shared;
 using GameData.Domains.TaiwuEvent.Enum;
 using GameData.Domains.TaiwuEvent.EventHelper;
 using GameData.Domains.TaiwuEvent.EventOption;
@@ -15,8 +16,8 @@ namespace ForceEncounter.Events
             IsHeadEvent = false;
             ForceSingle = true;
             TriggerType = -1;
-            MainRoleKey = "RoleTaiwu";
-            TargetRoleKey = "Partner";
+            MainRoleKey = ForceEncounterConstants.RoleKeys.Taiwu;
+            TargetRoleKey = ForceEncounterConstants.ArgBox.NativePartner;
             EscOptionKey = ForceEncounterEventIds.选项.护卫继续.Key;
             EventOptions = new[]
             {

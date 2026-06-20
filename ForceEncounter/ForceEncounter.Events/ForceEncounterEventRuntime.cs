@@ -1,5 +1,6 @@
 using Config;
 using Config.EventConfig;
+using ForceEncounter.Shared;
 using GameData.Common;
 using GameData.Domains;
 using GameData.Domains.Mod;
@@ -59,7 +60,8 @@ namespace ForceEncounter.Events
                 return false;
             }
 
-            return actor.GetAgeGroup() != 2 || target.GetAgeGroup() != 2;
+            return actor.GetAgeGroup() != ForceEncounterConstants.Gameplay.AdultAgeGroup ||
+                   target.GetAgeGroup() != ForceEncounterConstants.Gameplay.AdultAgeGroup;
         }
 
         public static bool IsSpecialAge(EventArgBox argBox)
@@ -77,21 +79,11 @@ namespace ForceEncounter.Events
                    EventHelper.HasGuard(target);
         }
 
-        public static string GetActionSummary(EventArgBox argBox)
-        {
-            if (!TryGetActorAndTarget(argBox, out int actorId, out int targetId))
-            {
-                return "太吾";
-            }
-
-            return EventHelper.GetCharacterName(actorId) + "对" + EventHelper.GetCharacterName(targetId);
-        }
-
         public static SerializableModData CallBackend(string modId, int actorId, int targetId, int resolutionMode)
         {
             var parameter = new SerializableModData();
-            parameter.Set("ActorId", actorId);
-            parameter.Set("TargetId", targetId);
+            parameter.Set(ForceEncounterConstants.Backend.ActorId, actorId);
+            parameter.Set(ForceEncounterConstants.Backend.TargetId, targetId);
             parameter.Set(ForceEncounterEventIds.后端.结算模式, resolutionMode);
 
             return DomainManager.Mod.CallModMethodWithParamAndRet(
@@ -104,8 +96,8 @@ namespace ForceEncounter.Events
         public static SerializableModData CallCombatBackend(string modId, int actorId, int targetId, bool battleSucceeded)
         {
             var parameter = new SerializableModData();
-            parameter.Set("ActorId", actorId);
-            parameter.Set("TargetId", targetId);
+            parameter.Set(ForceEncounterConstants.Backend.ActorId, actorId);
+            parameter.Set(ForceEncounterConstants.Backend.TargetId, targetId);
             parameter.Set(ForceEncounterEventIds.后端.战斗成功, battleSucceeded);
             parameter.Set(ForceEncounterEventIds.后端.结算模式, ForceEncounterEventIds.结算模式.战斗结算);
 

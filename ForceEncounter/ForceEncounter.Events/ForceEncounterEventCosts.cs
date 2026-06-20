@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ForceEncounter.Shared;
 using GameData.Domains.TaiwuEvent.EventOption;
 
 namespace ForceEncounter.Events
@@ -9,7 +10,7 @@ namespace ForceEncounter.Events
         {
             return new List<OptionConsumeInfo>
             {
-                new OptionConsumeInfo((sbyte)8, 5, false)
+                new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, ForceEncounterConstants.Costs.ActionTimeDays, false)
             };
         }
 
@@ -17,7 +18,7 @@ namespace ForceEncounter.Events
         {
             return new List<TaiwuEventOptionConditionBase>
             {
-                new OptionConditionSbyte((short)2, (sbyte)5, OptionConditionMatcher.MovePointMore)
+                new OptionConditionSbyte(ForceEncounterConstants.Costs.ActionPointConditionType, ForceEncounterConstants.Costs.ActionPointConditionValue, OptionConditionMatcher.MovePointMore)
             };
         }
 
@@ -25,7 +26,7 @@ namespace ForceEncounter.Events
         {
             return new List<OptionConsumeInfo>
             {
-                new OptionConsumeInfo((sbyte)8, 5, true)
+                new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, ForceEncounterConstants.Costs.ActionTimeDays, true)
             };
         }
     }

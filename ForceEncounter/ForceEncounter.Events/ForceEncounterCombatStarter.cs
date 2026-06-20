@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Config;
+using ForceEncounter.Shared;
 using GameData.Domains;
 using GameData.Domains.TaiwuEvent;
 using GameData.Domains.TaiwuEvent.EventHelper;
@@ -8,8 +9,6 @@ namespace ForceEncounter.Events
 {
     internal static class ForceEncounterCombatStarter
     {
-        private const string ApplyAlertnessOnCombatStartSettingKey = "ApplyAlertnessOnCombatStart";
-
         public static string StartForcedCombat(EventArgBox argBox, string modId)
         {
             if (!ForceEncounterEventRuntime.TryGetTargetId(argBox, out int targetId))
@@ -29,7 +28,7 @@ namespace ForceEncounter.Events
                 List<int> enemyTeam = EventHelper.PrepareCombatEnemy(targetId, CombatConfig.DefKey.DieNormal, false);
                 if (enemyTeam.Count > 0 && enemyTeam[0] != targetId)
                 {
-                    argBox.Set("Partner", enemyTeam[0]);
+                    argBox.Set(ForceEncounterConstants.ArgBox.NativePartner, enemyTeam[0]);
                     return ForceEncounterEventIds.事件.护卫出面;
                 }
 
@@ -52,14 +51,14 @@ namespace ForceEncounter.Events
         {
             bool applyAlertness = true;
             return string.IsNullOrEmpty(modId) ||
-                   !DomainManager.Mod.GetSetting(modId, ApplyAlertnessOnCombatStartSettingKey, ref applyAlertness) ||
+                   !DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, ref applyAlertness) ||
                    applyAlertness;
         }
 
         public static string StartGuardCombat(EventArgBox argBox)
         {
             int partnerId = -1;
-            if (argBox != null && argBox.Get("Partner", ref partnerId))
+            if (argBox != null && argBox.Get(ForceEncounterConstants.ArgBox.NativePartner, ref partnerId))
             {
                 EventHelper.StartCombat(
                     partnerId,

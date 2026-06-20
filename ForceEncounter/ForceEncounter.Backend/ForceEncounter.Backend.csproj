@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\ForceEncounter.Shared\ForceEncounterConstants.cs" Link="ForceEncounterConstants.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="TaiwuModdingLib">
       <HintPath>$(TaiwuBackendDir)\TaiwuModdingLib.dll</HintPath>
       <Private>false</Private>

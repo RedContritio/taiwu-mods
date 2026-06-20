@@ -1,6 +1,7 @@
 using System;
 using Config;
 using Config.EventConfig;
+using ForceEncounter.Shared;
 using GameData.Common;
 using GameData.Domains.Combat;
 using GameData.Domains.Mod;
@@ -18,7 +19,7 @@ namespace ForceEncounter.Events
             EventType = EEventType.ModEvent;
             IsHeadEvent = false;
             TriggerType = -1;
-            MainRoleKey = "RoleTaiwu";
+            MainRoleKey = ForceEncounterConstants.RoleKeys.Taiwu;
             TargetRoleKey = EventTriggerParameter.DefValue.CharacterId.ArgBoxKey;
             EscOptionKey = ForceEncounterEventIds.选项.战斗反馈继续.Key;
             EventOptions = new[]
@@ -55,12 +56,12 @@ namespace ForceEncounter.Events
 
             if (!ForceEncounterEventRuntime.TryGetActorAndTarget(ArgBox, out int actorId, out int targetId))
             {
-                StoreResult(false, false, false, "MissingActorOrTarget");
+                StoreResult(false, false, false, ForceEncounterConstants.Reasons.MissingActorOrTarget);
                 return;
             }
 
             sbyte combatResult = CombatResultType.EnemyWin;
-            bool battleSucceeded = ArgBox.Get("CombatResult", ref combatResult) &&
+            bool battleSucceeded = ArgBox.Get(ForceEncounterConstants.ArgBox.NativeCombatResult, ref combatResult) &&
                                    CombatResultType.IsPlayerWin(combatResult);
 
             SerializableModData result = ForceEncounterEventRuntime.CallCombatBackend(
@@ -72,13 +73,13 @@ namespace ForceEncounter.Events
             bool ok = false;
             bool succeeded = false;
             bool targetIsTaiwuVillager = false;
-            string reason = "NoResult";
+            string reason = ForceEncounterConstants.Reasons.NoResult;
             if (result != null)
             {
-                result.Get("Ok", out ok);
-                result.Get("Succeeded", out succeeded);
-                result.Get("TargetIsTaiwuVillager", out targetIsTaiwuVillager);
-                result.Get("Reason", out reason);
+                result.Get(ForceEncounterConstants.Response.Ok, out ok);
+                result.Get(ForceEncounterConstants.Response.Succeeded, out succeeded);
+                result.Get(ForceEncounterConstants.Response.TargetIsTaiwuVillager, out targetIsTaiwuVillager);
+                result.Get(ForceEncounterConstants.Response.Reason, out reason);
             }
 
             StoreResult(ok, succeeded, targetIsTaiwuVillager, reason);

@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\ForceEncounter.Shared\ForceEncounterConstants.cs" Link="ForceEncounterConstants.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="GameData">
       <HintPath>$(TaiwuBackendDir)\GameData.dll</HintPath>
       <Private>false</Private>

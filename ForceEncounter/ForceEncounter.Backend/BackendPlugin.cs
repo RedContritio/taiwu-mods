@@ -6,18 +6,14 @@ using GameData.Domains.Map;
 using GameData.Domains.Mod;
 using GameData.Domains.TaiwuEvent.EventHelper;
 using GameData.Utilities;
+using ForceEncounter.Shared;
 using TaiwuModdingLib.Core.Plugin;
 
 namespace ForceEncounter.Backend
 {
-    [PluginConfig("ForceEncounter", "RedContritio", "0.0.0.18")]
+    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "0.0.0.18")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
-        private const string ExecuteMethod = "ExecuteForcedAction";
-        private const string ForcedFavorabilityPenaltySettingKey = "ForcedFavorabilityPenalty";
-        private const sbyte TaiwuVillageOrgTemplateId = 16;
-        private const int HatredRelationType = 32768;
-
         internal static string ModId;
 
         public override void Initialize()
@@ -48,19 +44,19 @@ namespace ForceEncounter.Backend
         private static SerializableModData ExecuteForcedAction(DataContext context, SerializableModData parameter)
         {
             var result = new SerializableModData();
-            if (!GetBoolSetting("Enabled", true))
+            if (!GetBoolSetting(ForceEncounterConstants.Settings.Enabled, true))
             {
-                return Fail(result, "ModDisabled");
+                return Fail(result, ForceEncounterConstants.Reasons.ModDisabled);
             }
 
-            if (!TryGetInt(parameter, "ActorId", out int actorId))
+            if (!TryGetInt(parameter, ForceEncounterConstants.Backend.ActorId, out int actorId))
             {
                 actorId = DomainManager.Taiwu.GetTaiwuCharId();
             }
 
-            if (!TryGetInt(parameter, "TargetId", out int targetId))
+            if (!TryGetInt(parameter, ForceEncounterConstants.Backend.TargetId, out int targetId))
             {
-                return Fail(result, "MissingActorOrTarget");
+                return Fail(result, ForceEncounterConstants.Reasons.MissingActorOrTarget);
             }
 
             int resolutionMode = GetInt(parameter, ForceEncounterEventIds.ResolutionModeParam, ForceEncounterEventIds.ResolutionModeCombat);
@@ -69,38 +65,39 @@ namespace ForceEncounter.Backend
             bool battleSucceeded = false;
             if (isCombatResolution && !TryGetBool(parameter, ForceEncounterEventIds.BattleSucceededParam, out battleSucceeded))
             {
-                return Fail(result, "MissingBattleResult");
+                return Fail(result, ForceEncounterConstants.Reasons.MissingBattleResult);
             }
 
             if (actorId == targetId)
             {
-                return Fail(result, "SameActorAndTarget");
+                return Fail(result, ForceEncounterConstants.Reasons.SameActorAndTarget);
             }
 
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (targetId == taiwuId)
             {
-                return Fail(result, "TaiwuTargetNotAllowed");
+                return Fail(result, ForceEncounterConstants.Reasons.TaiwuTargetNotAllowed);
             }
 
             if (!DomainManager.Character.TryGetElement_Objects(actorId, out Character actor))
             {
-                return Fail(result, "ActorNotFound");
+                return Fail(result, ForceEncounterConstants.Reasons.ActorNotFound);
             }
 
             if (!DomainManager.Character.TryGetElement_Objects(targetId, out Character target))
             {
-                return Fail(result, "TargetNotFound");
+                return Fail(result, ForceEncounterConstants.Reasons.TargetNotFound);
             }
 
             if (!DomainManager.Character.IsCharacterAlive(actorId) || !DomainManager.Character.IsCharacterAlive(targetId))
             {
-                return Fail(result, "CharacterNotAlive");
+                return Fail(result, ForceEncounterConstants.Reasons.CharacterNotAlive);
             }
 
-            if (actor.GetAgeGroup() == 0 || target.GetAgeGroup() == 0)
+            if (actor.GetAgeGroup() == ForceEncounterConstants.Gameplay.BabyAgeGroup ||
+                target.GetAgeGroup() == ForceEncounterConstants.Gameplay.BabyAgeGroup)
             {
-                return Fail(result, "BabyNotAllowed");
+                return Fail(result, ForceEncounterConstants.Reasons.BabyNotAllowed);
             }
 
             if (!isCombatResolution)
@@ -116,12 +113,12 @@ namespace ForceEncounter.Backend
             bool success = ExecuteResolvedAction(context, actor, target, battleSucceeded);
             bool targetIsTaiwuVillager = IsTaiwuVillager(target);
 
-            result.Set("Ok", true);
-            result.Set("Succeeded", success);
-            result.Set("ActorId", actorId);
-            result.Set("TargetId", targetId);
-            result.Set("TargetIsTaiwuVillager", targetIsTaiwuVillager);
-            result.Set("Reason", success ? "Succeed" : "Failed");
+            result.Set(ForceEncounterConstants.Response.Ok, true);
+            result.Set(ForceEncounterConstants.Response.Succeeded, success);
+            result.Set(ForceEncounterConstants.Response.ActorId, actorId);
+            result.Set(ForceEncounterConstants.Response.TargetId, targetId);
+            result.Set(ForceEncounterConstants.Response.TargetIsTaiwuVillager, targetIsTaiwuVillager);
+            result.Set(ForceEncounterConstants.Response.Reason, success ? ForceEncounterConstants.Reasons.Succeed : ForceEncounterConstants.Reasons.Failed);
             DebugLog($"Execute {actorId}->{targetId}, battleSucceeded={battleSucceeded}, success={success}, targetIsTaiwuVillager={targetIsTaiwuVillager}");
             return result;
         }
@@ -134,22 +131,22 @@ namespace ForceEncounter.Backend
             bool accepted = CanResolveAsIntimateAcceptance(actor, target);
             if (accepted)
             {
-                result.Set("Ok", true);
-                result.Set("Succeeded", false);
+                result.Set(ForceEncounterConstants.Response.Ok, true);
+                result.Set(ForceEncounterConstants.Response.Succeeded, false);
                 result.Set(ForceEncounterEventIds.ResolutionParam, ForceEncounterEventIds.ResolutionAccepted);
-                result.Set("ActorId", actor.GetId());
-                result.Set("TargetId", target.GetId());
-                result.Set("Reason", "Accepted");
+                result.Set(ForceEncounterConstants.Response.ActorId, actor.GetId());
+                result.Set(ForceEncounterConstants.Response.TargetId, target.GetId());
+                result.Set(ForceEncounterConstants.Response.Reason, ForceEncounterConstants.Reasons.Accepted);
                 DebugLog($"Probe accepted {actor.GetId()}->{target.GetId()}");
                 return result;
             }
 
-            result.Set("Ok", true);
-            result.Set("Succeeded", false);
+            result.Set(ForceEncounterConstants.Response.Ok, true);
+            result.Set(ForceEncounterConstants.Response.Succeeded, false);
             result.Set(ForceEncounterEventIds.ResolutionParam, ForceEncounterEventIds.ResolutionNeedCombatChoice);
-            result.Set("ActorId", actor.GetId());
-            result.Set("TargetId", target.GetId());
-            result.Set("Reason", "NeedCombatChoice");
+            result.Set(ForceEncounterConstants.Response.ActorId, actor.GetId());
+            result.Set(ForceEncounterConstants.Response.TargetId, target.GetId());
+            result.Set(ForceEncounterConstants.Response.Reason, ForceEncounterConstants.Reasons.NeedCombatChoice);
             DebugLog($"Probe needs combat choice {actor.GetId()}->{target.GetId()}");
             return result;
         }
@@ -165,14 +162,14 @@ namespace ForceEncounter.Backend
                 actor,
                 target,
                 addHatredRelation: false,
-                favorabilityDelta: 0);
+                favorabilityDelta: GetAcceptedFavorabilityDelta(actor, target));
 
-            result.Set("Ok", true);
-            result.Set("Succeeded", true);
+            result.Set(ForceEncounterConstants.Response.Ok, true);
+            result.Set(ForceEncounterConstants.Response.Succeeded, true);
             result.Set(ForceEncounterEventIds.ResolutionParam, ForceEncounterEventIds.ResolutionAccepted);
-            result.Set("ActorId", actor.GetId());
-            result.Set("TargetId", target.GetId());
-            result.Set("Reason", "Accepted");
+            result.Set(ForceEncounterConstants.Response.ActorId, actor.GetId());
+            result.Set(ForceEncounterConstants.Response.TargetId, target.GetId());
+            result.Set(ForceEncounterConstants.Response.Reason, ForceEncounterConstants.Reasons.Accepted);
             DebugLog($"Accepted encounter committed {actor.GetId()}->{target.GetId()}");
             return result;
         }
@@ -213,7 +210,7 @@ namespace ForceEncounter.Backend
                 bool targetIsTaiwuVillager = IsTaiwuVillager(target);
                 if (!targetIsTaiwuVillager)
                 {
-                    DomainManager.Character.AddRelation(context, targetId, actorId, HatredRelationType, currDate);
+                    ApplyNativeBecomeEnemy(target, actor);
                 }
 
                 ApplyForcedFavorabilityDelta(context, target, actor, GetForcedFavorabilityDelta(targetIsTaiwuVillager));
@@ -239,13 +236,18 @@ namespace ForceEncounter.Backend
 
             if (addHatredRelation)
             {
-                DomainManager.Character.AddRelation(context, targetId, actorId, HatredRelationType, currDate);
+                ApplyNativeBecomeEnemy(target, actor);
             }
 
             ApplyForcedFavorabilityDelta(context, target, actor, favorabilityDelta);
 
             int dataOffset = DomainManager.Information.GetSecretInformationCollection().AddRape(actorId, targetId);
             DomainManager.Information.AddSecretInformation(context, dataOffset);
+        }
+
+        private static void ApplyNativeBecomeEnemy(Character target, Character actor)
+        {
+            EventHelper.ApplyRelationBecomeEnemy(target, actor);
         }
 
         private static bool CanResolveAsIntimateAcceptance(Character actor, Character target)
@@ -258,29 +260,102 @@ namespace ForceEncounter.Backend
                 return false;
             }
 
-            bool isSpouse = RelationType.HasRelation(actorToTarget.RelationType, 1024) &&
-                            RelationType.HasRelation(targetToActor.RelationType, 1024);
-            bool isMutualLover = RelationType.HasRelation(actorToTarget.RelationType, 16384) &&
-                                 RelationType.HasRelation(targetToActor.RelationType, 16384);
+            bool actorAdoresTarget = RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Adored);
+            bool targetAdoresActor = RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Adored);
+            bool isSpouse = RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Spouse) &&
+                            RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Spouse);
+            bool isMutualLover = actorAdoresTarget && targetAdoresActor;
+            bool targetHasExclusiveAttachmentToOther = HasExclusiveLivingAttachmentToOther(target, actorId);
+            bool targetIsDeepValleyCloseFriend = IsDeepValleyCloseFriendToActor(actor, target);
             return ForceEncounterRules.CanAcceptIntimateEncounter(
                 isSpouse,
                 isMutualLover,
+                targetAdoresActor,
+                targetIsDeepValleyCloseFriend,
                 IsTaiwuVillager(target),
+                targetHasExclusiveAttachmentToOther,
                 actorToTarget.GetFavorabilityType(),
                 targetToActor.GetFavorabilityType(),
                 actor.GetBehaviorType());
         }
 
+        private static int GetAcceptedFavorabilityDelta(Character actor, Character target)
+        {
+            int actorId = actor.GetId();
+            int targetId = target.GetId();
+            if (!DomainManager.Character.TryGetRelation(actorId, targetId, out RelatedCharacter actorToTarget) ||
+                !DomainManager.Character.TryGetRelation(targetId, actorId, out RelatedCharacter targetToActor))
+            {
+                return 0;
+            }
+
+            bool actorAdoresTarget = RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Adored);
+            bool targetAdoresActor = RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Adored);
+            bool targetUnilaterallyAdoresActor = targetAdoresActor && !actorAdoresTarget;
+            bool deepValleyCloseFriendHasOtherAttachment = IsDeepValleyCloseFriendToActor(actor, target) &&
+                                                           HasExclusiveLivingAttachmentToOther(target, actorId);
+            if (targetUnilaterallyAdoresActor || deepValleyCloseFriendHasOtherAttachment)
+            {
+                return GetReducedAcceptedFavorabilityDelta();
+            }
+
+            return 0;
+        }
+
+        private static bool IsDeepValleyCloseFriendToActor(
+            Character actor,
+            Character target)
+        {
+            return target.GetFeatureIds().Contains(ForceEncounterConstants.Features.DeepValleyCloseFriend) &&
+                   actor.GetId() == DomainManager.Taiwu.GetTaiwuCharIdForCloseFriend();
+        }
+
+        private static bool HasExclusiveLivingAttachmentToOther(Character target, int actorId)
+        {
+            int targetId = target.GetId();
+            int spouseId = DomainManager.Character.GetAliveSpouse(targetId);
+            if (spouseId >= 0 && spouseId != actorId)
+            {
+                return true;
+            }
+
+            int livingAdoredCount = 0;
+            bool onlyLivingAdoredIsActor = false;
+            foreach (int adoredCharId in DomainManager.Character.GetRelatedCharIds(targetId, ForceEncounterConstants.Relations.Adored))
+            {
+                if (!DomainManager.Character.IsCharacterAlive(adoredCharId))
+                {
+                    continue;
+                }
+
+                livingAdoredCount++;
+                onlyLivingAdoredIsActor = adoredCharId == actorId;
+                if (livingAdoredCount > 1)
+                {
+                    return false;
+                }
+            }
+
+            return livingAdoredCount == 1 && !onlyLivingAdoredIsActor;
+        }
+
         private static bool IsTaiwuVillager(Character character)
         {
-            return character.GetOrganizationInfo().OrgTemplateId == TaiwuVillageOrgTemplateId;
+            return character.GetOrganizationInfo().OrgTemplateId == ForceEncounterConstants.Gameplay.TaiwuVillageOrgTemplateId;
         }
 
         private static int GetForcedFavorabilityDelta(bool targetIsTaiwuVillager)
         {
             return ForceEncounterRules.CalculateForcedFavorabilityDelta(
-                GetIntSetting(ForcedFavorabilityPenaltySettingKey, ForceEncounterRules.DefaultForcedFavorabilityPenalty),
+                GetIntSetting(ForceEncounterConstants.Settings.ForcedFavorabilityPenalty, ForceEncounterRules.DefaultForcedFavorabilityPenalty),
                 targetIsTaiwuVillager);
+        }
+
+        private static int GetReducedAcceptedFavorabilityDelta()
+        {
+            return ForceEncounterRules.CalculateForcedFavorabilityDelta(
+                GetIntSetting(ForceEncounterConstants.Settings.ForcedFavorabilityPenalty, ForceEncounterRules.DefaultForcedFavorabilityPenalty),
+                targetIsTaiwuVillager: true);
         }
 
         private static void ApplyForcedFavorabilityDelta(
@@ -299,9 +374,9 @@ namespace ForceEncounter.Backend
 
         private static SerializableModData Fail(SerializableModData result, string reason)
         {
-            result.Set("Ok", false);
-            result.Set("Succeeded", false);
-            result.Set("Reason", reason);
+            result.Set(ForceEncounterConstants.Response.Ok, false);
+            result.Set(ForceEncounterConstants.Response.Succeeded, false);
+            result.Set(ForceEncounterConstants.Response.Reason, reason);
             DebugLog($"Failed: {reason}");
             return result;
         }
@@ -346,7 +421,7 @@ namespace ForceEncounter.Backend
         {
             try
             {
-                DomainManager.Mod.AddModMethod(modId, ExecuteMethod, ExecuteForcedAction);
+                DomainManager.Mod.AddModMethod(modId, ForceEncounterConstants.Backend.ExecuteMethod, ExecuteForcedAction);
             }
             catch
             {
@@ -355,7 +430,7 @@ namespace ForceEncounter.Backend
 
             try
             {
-                DomainManager.Mod.AddModMethod(modId, ExecuteMethod, ExecuteForcedActionNoReturn);
+                DomainManager.Mod.AddModMethod(modId, ForceEncounterConstants.Backend.ExecuteMethod, ExecuteForcedActionNoReturn);
             }
             catch
             {
@@ -387,7 +462,7 @@ namespace ForceEncounter.Backend
 
         internal static bool IsDebugModeEnabled()
         {
-            return GetBoolSetting("DebugMode", true);
+            return GetBoolSetting(ForceEncounterConstants.Settings.DebugMode, true);
         }
 
     }

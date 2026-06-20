@@ -1,6 +1,7 @@
 using System;
 using Config;
 using Config.EventConfig;
+using ForceEncounter.Shared;
 using GameData.Domains.TaiwuEvent.Enum;
 using GameData.Domains.TaiwuEvent.EventHelper;
 using GameData.Domains.TaiwuEvent.EventOption;
@@ -15,7 +16,7 @@ namespace ForceEncounter.Events
             EventType = EEventType.ModEvent;
             IsHeadEvent = false;
             TriggerType = -1;
-            MainRoleKey = "RoleTaiwu";
+            MainRoleKey = ForceEncounterConstants.RoleKeys.Taiwu;
             TargetRoleKey = EventTriggerParameter.DefValue.CharacterId.ArgBoxKey;
             EscOptionKey = ForceEncounterEventIds.选项.其他话题.Key;
             EventOptions = new[]
@@ -74,11 +75,11 @@ namespace ForceEncounter.Events
 
         public override string GetReplacedContentString()
         {
-            return ForceEncounterEventText.BuildConsentContent(
-                ForceEncounterEventRuntime.GetActionSummary(ArgBox),
+            string content = ForceEncounterEventText.BuildConsentContent(
                 IsAcceptedResolution(),
                 ForceEncounterEventRuntime.IsSpecialAge(ArgBox),
                 IsForcedResolution() && ForceEncounterEventRuntime.TargetHasGuard(ArgBox));
+            return EventHelper.HandleStringTag(content, ArgBox, TaiwuEvent);
         }
 
         private bool IsAcceptedResolution()
@@ -121,7 +122,7 @@ namespace ForceEncounter.Events
 
         private string Abandon()
         {
-            return ArgBox?.GetString("MainInteractionHeadEvent") ?? ForceEncounterEventIds.事件.原生敌对菜单;
+            return ArgBox?.GetString(ForceEncounterConstants.ArgBox.NativeMainInteractionHeadEvent) ?? ForceEncounterEventIds.事件.原生敌对菜单;
         }
 
         private string GetRuntimeModId()

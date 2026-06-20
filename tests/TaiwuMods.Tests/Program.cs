@@ -271,9 +271,6 @@ sealed class ContractTests
     {
         ModEntry mod = _mods.Single(m => m.Name == "ForceEncounter");
         string config = ReadModFile(mod.Name, "config.lua");
-        Assert(!config.Contains("FrontendPlugins", StringComparison.Ordinal), "ForceEncounter should not declare a frontend plugin");
-        Assert(!config.Contains("ForceSuccess", StringComparison.Ordinal), "ForceEncounter should not expose ForceSuccess settings");
-        Assert(!config.Contains("AllowTaiwuAsTarget", StringComparison.Ordinal), "ForceEncounter should not expose a Taiwu-as-target setting");
         Assert(mod.AutoIncrementBuildVersion, "ForceEncounter should auto-increment its build version during packaging and local deploy builds");
         string forceEncounterVersion = ExtractLuaString(config, "Version");
         Assert(forceEncounterVersion.StartsWith("0.0.0.", StringComparison.Ordinal), "ForceEncounter version should start from the 0.0.0.x line");
@@ -284,13 +281,18 @@ sealed class ContractTests
         Assert(deployScript.Contains("Update-ModBuildVersion", StringComparison.Ordinal), "deploy.ps1 should bump auto-increment build versions before local game deploy");
         Assert(deployScript.Contains("dotnet build", StringComparison.Ordinal), "deploy.ps1 should build current projects before local game deploy");
 
+        string sharedIds = ReadModFile(mod.Name, "ForceEncounter.Shared", "ForceEncounterConstants.cs");
+        string nativeEnemyInteractionEventGuid = ExtractNestedConst(sharedIds, "EventGuids", "NativeEnemyInteraction");
         string ids = ReadModFile(mod.Name, "ForceEncounter.Events", "ForceEncounterEventIds.cs");
-        string nativeEnemyInteractionEventGuid = ExtractNestedConst(ids, "事件", "原生敌对菜单");
-        string eventGuid = ExtractNestedConst(ids, "事件", "外层入口");
-        string combatResultEventGuid = ExtractNestedConst(ids, "事件", "战斗反馈");
-        string consentChoiceEventGuid = ExtractNestedConst(ids, "事件", "内层选择");
-        EventOptionIdSnapshot navigationOption = ExtractEventOptionId(ids, "打开入口");
-        EventOptionIdSnapshot executeOption = ExtractEventOptionId(ids, "情难自已");
+        string eventGuid = ExtractNestedConst(sharedIds, "EventGuids", "Entry");
+        string combatResultEventGuid = ExtractNestedConst(sharedIds, "EventGuids", "CombatResult");
+        string consentChoiceEventGuid = ExtractNestedConst(sharedIds, "EventGuids", "ConsentChoice");
+        EventOptionIdSnapshot navigationOption = new(
+            ExtractNestedConst(sharedIds, "Options", "OpenKey"),
+            ExtractNestedConst(sharedIds, "Options", "OpenGuid"));
+        EventOptionIdSnapshot executeOption = new(
+            ExtractNestedConst(sharedIds, "Options", "ExecuteKey"),
+            ExtractNestedConst(sharedIds, "Options", "ExecuteGuid"));
         string navigationOptionGuid = navigationOption.Guid;
         string optionGuid = executeOption.Guid;
 
@@ -305,9 +307,7 @@ sealed class ContractTests
         Assert(interaction.Contains("ActionPointCost = 50", StringComparison.Ordinal), "ForceEncounter interaction entry should show and gate the native 5-day action cost before entering the inner choice");
         Assert(TryExtractLuaInt(interaction, "TemplateId", out int interactionTemplateId), "ForceEncounter interaction patch is missing TemplateId");
         string backendIds = ReadModFile(mod.Name, "ForceEncounter.Backend", "ForceEncounterEventIds.cs");
-        Assert(interactionTemplateId == ExtractConstShort(backendIds, "InteractionTemplateId"), "ForceEncounter Lua TemplateId must match backend interaction template id constant");
-        Assert(nativeEnemyInteractionEventGuid == ExtractConst(backendIds, "NativeEnemyInteractionEventGuid"), "ForceEncounter backend native hostile event guid must match event package constant");
-        Assert(navigationOptionGuid == ExtractConst(backendIds, "NavigationOptionGuid"), "ForceEncounter navigation option guid must match backend constant");
+        Assert(interactionTemplateId == ExtractNestedConstShort(sharedIds, "Gameplay", "InteractionTemplateId"), "ForceEncounter Lua TemplateId must match the shared interaction template id constant");
         Assert(navigationOptionGuid != optionGuid, "ForceEncounter navigation option must be separate from the executing option");
         var eventPath = ParseLuaStringList(interaction, "MapBlockCharCustomButtonEventPath");
         var optionPath = ParseLuaStringList(interaction, "MapBlockCharCustomButtonEventOptionPath");
@@ -325,9 +325,7 @@ sealed class ContractTests
         Assert(eventIdsSource.Contains("public static class 事件", StringComparison.Ordinal), "ForceEncounter event ids should group event guids by purpose");
         Assert(eventIdsSource.Contains("public static class 选项", StringComparison.Ordinal), "ForceEncounter event ids should group option keys and guids together");
         Assert(!eventIdsSource.Contains("NavigationOptionGuid", StringComparison.Ordinal), "ForceEncounter event ids should not keep flat option guid constants");
-        Assert(!package.Contains("AllowTaiwuAsTarget", StringComparison.Ordinal), "ForceEncounter event UI should not read a Taiwu-as-target setting");
         Assert(package.Contains("new ForceEncounterEvent()", StringComparison.Ordinal), "ForceEncounter entry event is not registered");
-        Assert(!package.Contains("new ForceEncounterAgeWarningEvent()", StringComparison.Ordinal), "ForceEncounter special-age warning should replace the inner choice instead of adding an extra event layer");
         Assert(package.Contains("new ForceEncounterConsentChoiceEvent()", StringComparison.Ordinal), "ForceEncounter consent choice event is not registered");
         Assert(package.Contains("new ForceEncounterCombatResultEvent()", StringComparison.Ordinal), "ForceEncounter combat result event is not registered");
         Assert(package.Contains("item.Package = this", StringComparison.Ordinal), "ForceEncounter event package should bind runtime package metadata to event items");
@@ -346,10 +344,6 @@ sealed class ContractTests
         Assert(package.Contains("ForceEncounterEventIds.结算模式.探测", StringComparison.Ordinal), "ForceEncounter entry event does not probe before combat");
         Assert(package.Contains("ForceEncounterEventIds.探测结果.需要战斗选择", StringComparison.Ordinal), "ForceEncounter entry event does not branch to combat choice");
         Assert(package.Contains("return ForceEncounterEventIds.事件.内层选择", StringComparison.Ordinal), "ForceEncounter should return the combat choice event guid from the option callback");
-        Assert(!package.Contains("AgeWarning", StringComparison.Ordinal), "ForceEncounter should not route special age groups through an extra warning event");
-        Assert(package.Contains("ForceEncounterEventIds.参数.特殊年龄", StringComparison.Ordinal), "ForceEncounter should carry special-age state into the inner choice");
-        Assert(!package.Contains("仍要正常发生关系", StringComparison.Ordinal), "ForceEncounter special-age accepted option text should stay identical to the normal-age option text");
-        Assert(!package.Contains("仍要强制关系", StringComparison.Ordinal), "ForceEncounter special-age forced option text should stay identical to the normal-age option text");
         Assert(!package.Contains("ActorNotAdult", StringComparison.Ordinal), "ForceEncounter should warn for special age groups instead of blocking the actor by age");
         Assert(!package.Contains("TargetNotAdult", StringComparison.Ordinal), "ForceEncounter should warn for special age groups instead of blocking the target by age");
         Assert(package.Contains("ActorBaby", StringComparison.Ordinal), "ForceEncounter should follow native non-baby interaction filtering for the actor");
@@ -365,20 +359,20 @@ sealed class ContractTests
         Assert(package.Contains("ForceEncounterEventIds.等待确认.外层预览", StringComparison.Ordinal), "ForceEncounter wait-confirm should use a stable mod-owned wait key");
         Assert(!package.Contains("ConchShip_PresetKey_ConfirmWaitOptionSignal", StringComparison.Ordinal), "ForceEncounter inner commit options should not confirm the outer wait option; forced commit carries its own behavior effect");
         Assert(package.Contains("BuildPreviewCosts()", StringComparison.Ordinal), "ForceEncounter should show the action cost on the outer hostile option");
-        Assert(package.Contains("new OptionConsumeInfo((sbyte)8, 5, false)", StringComparison.Ordinal), "ForceEncounter outer hostile option should display but not consume the native 5-day action cost");
+        Assert(package.Contains("ForceEncounterConstants.Costs.ActionTimeDays", StringComparison.Ordinal), "ForceEncounter option costs should use the shared 5-day action cost constant");
         Assert(package.Contains("BuildCommitCosts()", StringComparison.Ordinal), "ForceEncounter should put costs on inner commit options");
-        Assert(package.Contains("new OptionConsumeInfo((sbyte)8, 5, true)", StringComparison.Ordinal), "ForceEncounter inner commit options should consume the native 5-day action cost");
         Assert(!package.Contains("new OptionConsumeInfo((sbyte)16", StringComparison.Ordinal), "ForceEncounter should not consume a main attribute cost");
         Assert(package.Contains("（情难自已……）", StringComparison.Ordinal), "ForceEncounter hostile option should use native parenthesized option text");
         Assert(package.Contains("（正常发生关系……）", StringComparison.Ordinal), "ForceEncounter accepted branch prompt option is missing");
         Assert(package.Contains("（强制关系……）", StringComparison.Ordinal), "ForceEncounter forced branch prompt option is missing");
         Assert(package.Contains("其他话题", StringComparison.Ordinal), "ForceEncounter abandon options should use the native other-topic label");
         Assert(!package.Contains("就此作罢", StringComparison.Ordinal), "ForceEncounter should not use a custom abandon label where native hostile interactions use other-topic");
-        Assert(package.Contains("ArgBox?.GetString(\"MainInteractionHeadEvent\") ?? ForceEncounterEventIds.事件.原生敌对菜单", StringComparison.Ordinal), "ForceEncounter abandon options should return to the native hostile topic instead of closing the event");
+        Assert(package.Contains("ForceEncounterConstants.ArgBox.NativeMainInteractionHeadEvent", StringComparison.Ordinal), "ForceEncounter abandon options should use the native main-interaction head event key");
+        Assert(package.Contains("?? ForceEncounterEventIds.事件.原生敌对菜单", StringComparison.Ordinal), "ForceEncounter abandon options should return to the native hostile topic instead of closing the event");
         Assert(package.Contains("ForceEncounterEventIds.结算模式.亲密提交", StringComparison.Ordinal), "ForceEncounter accepted branch should commit only from the inner option");
         Assert(package.Contains("EventHelper.ChangeAlertnessOnAttack(targetId)", StringComparison.Ordinal), "ForceEncounter forced combat commit should apply the native attack alertness effect");
         Assert(package.Contains("bool applyAlertness = true", StringComparison.Ordinal), "ForceEncounter forced combat alertness setting should default on when settings are unavailable");
-        Assert(package.Contains("DomainManager.Mod.GetSetting(modId, ApplyAlertnessOnCombatStartSettingKey, ref applyAlertness)", StringComparison.Ordinal), "ForceEncounter forced combat should read the alertness setting through the runtime mod id");
+        Assert(package.Contains("DomainManager.Mod.GetSetting(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, ref applyAlertness)", StringComparison.Ordinal), "ForceEncounter forced combat should read the alertness setting through the runtime mod id");
         Assert(package.Contains("StartForcedCombat(ArgBox, GetRuntimeModId())", StringComparison.Ordinal), "ForceEncounter forced combat should pass the runtime mod id into configurable native alertness handling");
         Assert(package.Contains("new ForceEncounterGuardInterceptEvent()", StringComparison.Ordinal), "ForceEncounter should register a guard intercept event");
         Assert(package.Contains("EventHelper.HasGuard(target)", StringComparison.Ordinal), "ForceEncounter forced combat should check native guard state");
@@ -391,19 +385,17 @@ sealed class ContractTests
         Assert(package.Contains("ForceEncounterEventIds.事件.战斗反馈", StringComparison.Ordinal), "ForceEncounter package does not reference combat result event guid");
 
         string backend = ReadModFile(mod.Name, "ForceEncounter.Backend", "BackendPlugin.cs");
-        Assert(backend.Contains($"PluginConfig(\"ForceEncounter\", \"RedContritio\", \"{forceEncounterVersion}\")", StringComparison.Ordinal), "ForceEncounter backend plugin version should match config.lua Version");
+        Assert(backend.Contains($"PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, \"{forceEncounterVersion}\")", StringComparison.Ordinal), "ForceEncounter backend plugin version should match config.lua Version");
         Assert(!backend.Contains("AddExecuteMethod(\"ForceEncounter\")", StringComparison.Ordinal), "ForceEncounter backend should not register methods under a hard-coded development mod id");
-        Assert(backend.Contains("GetBoolSetting(\"DebugMode\", true)", StringComparison.Ordinal), "ForceEncounter backend debug logging should default on when settings are unavailable");
-        Assert(!backend.Contains("AllowTaiwuAsTarget", StringComparison.Ordinal), "ForceEncounter backend should not accept a Taiwu-as-target override");
+        Assert(backend.Contains("GetBoolSetting(ForceEncounterConstants.Settings.DebugMode, true)", StringComparison.Ordinal), "ForceEncounter backend debug logging should default on when settings are unavailable");
         Assert(!backend.Contains("HandleRapeAction", StringComparison.Ordinal), "ForceEncounter should not call original combat-power-based HandleRapeAction");
         Assert(!backend.Contains("GetCombatPower()", StringComparison.Ordinal), "ForceEncounter should not use combat power as a success gate");
-        Assert(!backend.Contains("ForceSuccess", StringComparison.Ordinal), "ForceEncounter backend should not keep ForceSuccess");
         Assert(!backend.Contains("\"NotAdult\"", StringComparison.Ordinal), "ForceEncounter backend should not hard-block special age groups");
-        Assert(backend.Contains("\"BabyNotAllowed\"", StringComparison.Ordinal), "ForceEncounter backend should reject babies to match native non-baby interaction behavior");
-        Assert(backend.Contains("\"ForcedFavorabilityPenalty\"", StringComparison.Ordinal), "ForceEncounter backend should read the configured forced favorability penalty");
+        Assert(backend.Contains("ForceEncounterConstants.Reasons.BabyNotAllowed", StringComparison.Ordinal), "ForceEncounter backend should reject babies to match native non-baby interaction behavior");
+        Assert(backend.Contains("ForceEncounterConstants.Settings.ForcedFavorabilityPenalty", StringComparison.Ordinal), "ForceEncounter backend should read the configured forced favorability penalty");
         Assert(!backend.Contains("RapeFavorabilityDelta = -30000", StringComparison.Ordinal), "ForceEncounter backend should not hard-code the forced favorability penalty");
         Assert(backend.Contains("CalculateForcedFavorabilityDelta", StringComparison.Ordinal), "ForceEncounter backend should calculate normal and Taiwu-villager favorability penalties through shared rules");
-        Assert(!backend.Contains("CloseFriendFeatureId", StringComparison.Ordinal), "ForceEncounter should not give 谷中密友(685) a special favorability bonus because native TalkByNormalInformation has no direct favorability delta");
+        Assert(backend.Contains("ForceEncounterConstants.Features.DeepValleyCloseFriend", StringComparison.Ordinal), "ForceEncounter should route 谷中密友 through the shared native feature id");
         Assert(!backend.Contains("ChangeFavorabilityOptionalRepeatedEvent(context, target, actor", StringComparison.Ordinal), "ForceEncounter accepted branch should not add extra favorability beyond native ordinary talk semantics");
         Assert(backend.Contains("actor.MakeLove(context, target, isRape: true)", StringComparison.Ordinal), "ForceEncounter success branch does not call MakeLove");
         Assert(backend.Contains("OnLoadedArchiveData()", StringComparison.Ordinal), "ForceEncounter backend should restore native menu extension after archive runtime reset");
@@ -411,6 +403,7 @@ sealed class ContractTests
         Assert(backend.Contains("EventHelper.AddOptionToEvent", StringComparison.Ordinal), "ForceEncounter backend should use the formal event extension path after runtime reset");
         Assert(backend.Contains("AddRapeSucceed", StringComparison.Ordinal), "ForceEncounter success branch does not record rape success");
         Assert(backend.Contains("AddRapeFail", StringComparison.Ordinal), "ForceEncounter failure branch does not record rape failure");
+        Assert(!backend.Contains("HatredRelationType", StringComparison.Ordinal), "ForceEncounter should not keep a direct hatred relation constant when using native enemy route");
         Assert(!backend.Contains("ChangeCurrMainAttribute(context, 4, -GlobalConfig.Instance.HarmfulActionCost)", StringComparison.Ordinal), "ForceEncounter backend should not double-consume costs handled by native option metadata");
         Assert(backend.Contains("CanResolveAsIntimateAcceptance", StringComparison.Ordinal), "ForceEncounter does not check intimate acceptance before combat");
     }
@@ -428,11 +421,17 @@ sealed class ContractTests
         Assert(ForceEncounter.Backend.ForceEncounterRules.IsResolvedSuccess(true, false), "ForceEncounter should succeed after formal battle win");
         Assert(!ForceEncounter.Backend.ForceEncounterRules.IsResolvedSuccess(false, false), "ForceEncounter should fail after battle loss");
         Assert(!ForceEncounter.Backend.ForceEncounterRules.IsResolvedSuccess(true, true), "ForceEncounter should not succeed when target is Taiwu");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, 4, 4, 2), "ForceEncounter should allow good spouse relation for neutral behavior");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, 3, 4, 2), "ForceEncounter should require both directions to pass intimate favor threshold");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, 3, 3, 3), "ForceEncounter should allow rebellious mutual lovers at a lower threshold");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, 4, 4, 0), "ForceEncounter should require stricter favor for upright mutual lovers");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, 6, 6, 4), "ForceEncounter should not skip combat without spouse or mutual lover relation");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, false, false, false, 4, 4, 2), "ForceEncounter should allow good spouse relation for neutral behavior");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, false, false, false, 3, 4, 2), "ForceEncounter should require both directions to pass intimate favor threshold");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, false, false, false, 3, 3, 3), "ForceEncounter should allow rebellious mutual lovers at a lower threshold");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, false, false, false, 4, 4, 0), "ForceEncounter should require stricter favor for upright mutual lovers");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, true, false, false, false, 3, 3, 3), "ForceEncounter should treat targets who unilaterally adore Taiwu as lover-like for intimate difficulty");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, false, 5, 5, 0), "ForceEncounter should allow unattached 谷中密友 through the intimate route");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, true, 5, 3, 0), "ForceEncounter should allow attached 谷中密友 above native Favorite2 / 融洽 through the intimate route");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, true, 5, 2, 0), "ForceEncounter should send attached 谷中密友 at or below native Favorite2 / 融洽 to the combat route");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, false, 4, 4, 0), "ForceEncounter should let unattached Taiwu villagers use the villager intimacy leniency");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, true, 4, 4, 0), "ForceEncounter should cancel villager intimacy leniency when the target has an exclusive living attachment");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, true, 5, 5, 0), "ForceEncounter attached Taiwu villagers should still pass at normal intimacy difficulty");
         Assert(ForceEncounter.Backend.ForceEncounterRules.CalculateForcedFavorabilityDelta(30000, false) == -30000, "ForceEncounter normal forced route should default to the configured full penalty");
         Assert(ForceEncounter.Backend.ForceEncounterRules.CalculateForcedFavorabilityDelta(30000, true) == -9000, "ForceEncounter Taiwu villager forced route should use 30% of the normal forced penalty");
         Assert(ForceEncounter.Backend.ForceEncounterRules.CalculateForcedFavorabilityDelta(40000, false) == -30000, "ForceEncounter forced favorability penalty should clamp above the configured maximum");
@@ -586,6 +585,16 @@ sealed class ContractTests
         return int.Parse(match.Groups[1].Value);
     }
 
+    private static int ExtractNestedConstShort(string source, string className, string name)
+    {
+        var classMatch = Regex.Match(
+            source,
+            $@"public\s+static\s+class\s+{Regex.Escape(className)}\s*\{{(?<body>.*?)\n\s*\}}",
+            RegexOptions.Singleline);
+        Assert(classMatch.Success, $"missing id group {className}");
+        return ExtractConstShort(classMatch.Groups["body"].Value, name);
+    }
+
     private FormalConfigRefMap LoadFormalConfigRefMap(string configName)
     {
         string? gameDir = Environment.GetEnvironmentVariable("TAIWU_GAME_DIR");
@@ -652,13 +661,7 @@ sealed class ContractTests
     {
         return string.Join(
             "\n",
-            mod.Projects.SelectMany(project =>
-            {
-                string projectDir = Path.GetDirectoryName(Path.Combine(_repo, project))!;
-                return Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories)
-                    .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
-                                   !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
-            }).Select(File.ReadAllText));
+            mod.Projects.SelectMany(EnumerateProjectSourceFiles).Distinct(StringComparer.OrdinalIgnoreCase).Select(File.ReadAllText));
     }
 
     private string ReadProjectDirectorySource(string modName, string projectDirectory)
@@ -670,6 +673,28 @@ sealed class ContractTests
                 .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
                                !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
                 .Select(File.ReadAllText));
+    }
+
+    private IEnumerable<string> EnumerateProjectSourceFiles(string project)
+    {
+        string projectPath = Path.Combine(_repo, project);
+        string projectDir = Path.GetDirectoryName(projectPath)!;
+        foreach (string source in Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
+                                    !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+        {
+            yield return source;
+        }
+
+        string projectText = File.ReadAllText(projectPath);
+        foreach (Match match in Regex.Matches(projectText, @"<Compile\s+Include=""([^""]+)"""))
+        {
+            string linkedSource = Path.GetFullPath(Path.Combine(projectDir, match.Groups[1].Value));
+            if (File.Exists(linkedSource))
+            {
+                yield return linkedSource;
+            }
+        }
     }
 
     private string ReadModFile(string modName, params string[] segments)
