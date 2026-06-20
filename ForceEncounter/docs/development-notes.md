@@ -52,6 +52,7 @@ Current user-approved intent:
 - If the target unilaterally adores Taiwu, it is eligible for the intimate route and uses lover-like difficulty, but accepted success applies the same 30% favorability penalty discount as the Taiwu-villager forced route.
 - `谷中密友` feature `685` gets a special acceptance route only for the native close-friend Taiwu id. If the target is already attached to another person, this route requires target-to-Taiwu favorability higher than native `Favorite2` (`type > 2`; `Language_CN/ui_language.txt` maps `LK_Favor_Type_8` to `融洽`) and applies a reduced favorability penalty on accepted success.
 - Accepted-route success records rape success. Spouse, mutual lover, unattached villager, and unattached `谷中密友` accepted success does not add forced-route hatred or extra favorability beyond native ordinary talk semantics.
+- Taiwu villagers bypass guard interception. Guard warnings and guard-front combat apply only to non-villager forced routes.
 
 ## Native Integration Findings
 

@@ -303,6 +303,7 @@ sealed class ContractTests
         Assert(Regex.IsMatch(forceEncounterConfig, @"SettingType\s*=\s*""Slider"",\s*Key\s*=\s*""ForcedFavorabilityPenalty""[\s\S]*?MinValue\s*=\s*0,\s*MaxValue\s*=\s*30000[\s\S]*?DefaultValue\s*=\s*30000"), "ForceEncounter should expose forced favorability penalty as a 0..30000 slider defaulting to 30000");
         Assert(Regex.IsMatch(forceEncounterConfig, @"SettingType\s*=\s*""Toggle"",\s*Key\s*=\s*""ApplyAlertnessOnCombatStart""[\s\S]*?DisplayName\s*=\s*""开战增加戒心""[\s\S]*?DefaultValue\s*=\s*true"), "ForceEncounter should expose forced combat alertness as an enabled-by-default toggle");
         Assert(interaction.Contains("SrcConfigRefName = \"敌对-出手袭击\"", StringComparison.Ordinal), "ForceEncounter should inherit from an existing formal hostile interaction option");
+        Assert(interaction.Contains("OncePerMonth = false", StringComparison.Ordinal), "ForceEncounter should match native attack, which is not limited to once per month");
         Assert(!interaction.Contains("ArrestPrison", StringComparison.Ordinal), "ForceEncounter should not inherit from the obsolete ArrestPrison ref name");
         Assert(interaction.Contains("ActionPointCost = 50", StringComparison.Ordinal), "ForceEncounter interaction entry should show and gate the native 5-day action cost before entering the inner choice");
         Assert(TryExtractLuaInt(interaction, "TemplateId", out int interactionTemplateId), "ForceEncounter interaction patch is missing TemplateId");
@@ -353,7 +354,7 @@ sealed class ContractTests
         Assert(package.Contains("Package?.ModIdString", StringComparison.Ordinal), "ForceEncounter events should call the backend through the runtime package mod id");
         Assert(package.Contains("bool debugMode = true", StringComparison.Ordinal), "ForceEncounter event debug logging should default on when settings are unavailable");
         Assert(Regex.IsMatch(package, @"OptionKey\s*=\s*ForceEncounterEventIds\.选项\.情难自已\.Key,[\s\S]*?Behavior\s*=\s*EventOptionBehavior\.BehaviorEgoistic,[\s\S]*?Important\s*=\s*false,[\s\S]*?OnOptionSelect\s*=\s*Execute"), "ForceEncounter outer hostile option should use native egoistic styling");
-        Assert(Regex.IsMatch(package, @"OptionKey\s*=\s*ForceEncounterEventIds\.选项\.正常发生关系\.Key,[\s\S]*?Important\s*=\s*true,[\s\S]*?OnOptionSelect\s*=\s*NormalEncounter"), "ForceEncounter accepted commit option should be marked important");
+        Assert(Regex.IsMatch(package, @"OptionKey\s*=\s*ForceEncounterEventIds\.选项\.正常发生关系\.Key,[\s\S]*?Important\s*=\s*false,[\s\S]*?OnOptionSelect\s*=\s*NormalEncounter"), "ForceEncounter accepted commit option should not be marked important");
         Assert(Regex.IsMatch(package, @"OptionKey\s*=\s*ForceEncounterEventIds\.选项\.强制关系\.Key,[\s\S]*?Behavior\s*=\s*EventOptionBehavior\.BehaviorEgoistic,[\s\S]*?Important\s*=\s*true,[\s\S]*?OnOptionSelect\s*=\s*ForceCombat"), "ForceEncounter forced commit option should carry the native egoistic behavior styling/effect");
         Assert(package.Contains("EventArgBox.OptionWaitConfirmKey", StringComparison.Ordinal), "ForceEncounter outer egoistic styling should use native wait-confirm to avoid applying behavior effects on entry");
         Assert(package.Contains("ForceEncounterEventIds.等待确认.外层预览", StringComparison.Ordinal), "ForceEncounter wait-confirm should use a stable mod-owned wait key");
@@ -376,6 +377,7 @@ sealed class ContractTests
         Assert(package.Contains("StartForcedCombat(ArgBox, GetRuntimeModId())", StringComparison.Ordinal), "ForceEncounter forced combat should pass the runtime mod id into configurable native alertness handling");
         Assert(package.Contains("new ForceEncounterGuardInterceptEvent()", StringComparison.Ordinal), "ForceEncounter should register a guard intercept event");
         Assert(package.Contains("EventHelper.HasGuard(target)", StringComparison.Ordinal), "ForceEncounter forced combat should check native guard state");
+        Assert(package.Contains("!ForceEncounterEventRuntime.IsTaiwuVillager(targetId)", StringComparison.Ordinal), "ForceEncounter Taiwu villagers should bypass guard interception");
         Assert(package.Contains("EventHelper.PrepareCombatEnemy(targetId, CombatConfig.DefKey.DieNormal, false)", StringComparison.Ordinal), "ForceEncounter forced combat should use native guarded enemy-team preparation");
         Assert(package.Contains("ForceEncounterEventIds.事件.护卫出面", StringComparison.Ordinal), "ForceEncounter forced combat should route to its own guard intercept event");
         Assert(!package.Contains("9638c0a8-fadf-4f6a-bb22-05f3aed994ed", StringComparison.Ordinal), "ForceEncounter should not jump to the native guard event because it hard-codes native attack result events");

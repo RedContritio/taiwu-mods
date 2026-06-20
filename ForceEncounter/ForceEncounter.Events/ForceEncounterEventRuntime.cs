@@ -75,8 +75,15 @@ namespace ForceEncounter.Events
         public static bool TargetHasGuard(EventArgBox argBox)
         {
             return TryGetTargetId(argBox, out int targetId) &&
+                   !IsTaiwuVillager(targetId) &&
                    DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
                    EventHelper.HasGuard(target);
+        }
+
+        public static bool IsTaiwuVillager(int characterId)
+        {
+            return DomainManager.Character.TryGetElement_Objects(characterId, out var character) &&
+                   character.GetOrganizationInfo().OrgTemplateId == ForceEncounterConstants.Gameplay.TaiwuVillageOrgTemplateId;
         }
 
         public static SerializableModData CallBackend(string modId, int actorId, int targetId, int resolutionMode)

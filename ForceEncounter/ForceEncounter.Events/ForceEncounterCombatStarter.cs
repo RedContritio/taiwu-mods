@@ -22,7 +22,8 @@ namespace ForceEncounter.Events
                 EventHelper.ChangeAlertnessOnAttack(targetId);
             }
 
-            if (DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
+            if (!ForceEncounterEventRuntime.IsTaiwuVillager(targetId) &&
+                DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
                 EventHelper.HasGuard(target))
             {
                 List<int> enemyTeam = EventHelper.PrepareCombatEnemy(targetId, CombatConfig.DefKey.DieNormal, false);

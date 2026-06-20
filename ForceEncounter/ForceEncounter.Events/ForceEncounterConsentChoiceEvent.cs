@@ -27,7 +27,7 @@ namespace ForceEncounter.Events
                     OptionGuid = ForceEncounterEventIds.选项.正常发生关系.Guid,
                     Behavior = EventOptionBehavior.None,
                     DefaultState = EventOptionState.Normal,
-                    Important = true,
+                    Important = false,
                     OptionAvailableConditions = ForceEncounterEventCosts.BuildCommitConditions(),
                     OptionConsumeInfos = ForceEncounterEventCosts.BuildCommitCosts(),
                     OnOptionVisibleCheck = IsAcceptedResolution,
