@@ -114,5 +114,24 @@ namespace ForceEncounter.Events
                 ForceEncounterEventIds.后端.执行方法,
                 parameter);
         }
+
+        public static void StoreCombatSettlement(
+            EventArgBox argBox,
+            bool ok,
+            bool succeeded,
+            bool targetIsTaiwuVillager,
+            string reason)
+        {
+            if (argBox == null)
+            {
+                return;
+            }
+
+            argBox.Set(ForceEncounterEventIds.参数.战斗结果已处理, true);
+            argBox.Set(ForceEncounterEventIds.参数.战斗结算成功, ok);
+            argBox.Set(ForceEncounterEventIds.参数.战斗分支成功, succeeded);
+            argBox.Set(ForceEncounterEventIds.参数.战斗目标是太吾村民, targetIsTaiwuVillager);
+            argBox.Set(ForceEncounterEventIds.参数.战斗结算原因, reason ?? string.Empty);
+        }
     }
 }

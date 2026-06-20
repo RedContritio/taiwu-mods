@@ -71,7 +71,8 @@ Deploy one mod to a local game install. This produces a local game build: for mo
 copies the runnable layout into the game `Mod` directory.
 
 ```powershell
-.\deploy.ps1 DreamLover -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
+$gameModDir = Join-Path $env:TAIWU_GAME_DIR "Mod"
+.\deploy.ps1 DreamLover -GameModDir $gameModDir
 ```
 
 Use `-NoBuild` only when deliberately copying an already-built layout without consuming a new

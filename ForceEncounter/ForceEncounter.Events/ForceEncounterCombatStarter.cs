@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using Config;
 using ForceEncounter.Shared;
 using GameData.Domains;
+using GameData.Domains.Combat;
+using GameData.Domains.Mod;
 using GameData.Domains.TaiwuEvent;
 using GameData.Domains.TaiwuEvent.EventHelper;
 
@@ -37,6 +39,12 @@ namespace ForceEncounter.Events
             }
             else
             {
+                if (EventHelper.IsCharacterDirectFallenInCombat(targetId, (CombatType)CombatConfig.DefKey.DieNormal))
+                {
+                    StoreDirectFallenFailure(argBox, modId);
+                    return ForceEncounterEventIds.事件.战斗反馈;
+                }
+
                 EventHelper.StartCombat(
                     targetId,
                     CombatConfig.DefKey.DieNormal,
@@ -46,6 +54,43 @@ namespace ForceEncounter.Events
             }
 
             return string.Empty;
+        }
+
+        private static void StoreDirectFallenFailure(EventArgBox argBox, string modId)
+        {
+            if (!ForceEncounterEventRuntime.TryGetActorAndTarget(argBox, out int actorId, out int targetId))
+            {
+                ForceEncounterEventRuntime.StoreCombatSettlement(
+                    argBox,
+                    false,
+                    false,
+                    false,
+                    ForceEncounterConstants.Reasons.MissingActorOrTarget);
+                return;
+            }
+
+            SerializableModData result = ForceEncounterEventRuntime.CallCombatBackend(
+                modId,
+                actorId,
+                targetId,
+                battleSucceeded: false);
+
+            bool ok = false;
+            bool succeeded = false;
+            bool targetIsTaiwuVillager = false;
+            if (result != null)
+            {
+                result.Get(ForceEncounterConstants.Response.Ok, out ok);
+                result.Get(ForceEncounterConstants.Response.Succeeded, out succeeded);
+                result.Get(ForceEncounterConstants.Response.TargetIsTaiwuVillager, out targetIsTaiwuVillager);
+            }
+
+            ForceEncounterEventRuntime.StoreCombatSettlement(
+                argBox,
+                ok,
+                succeeded,
+                targetIsTaiwuVillager,
+                ForceEncounterConstants.Reasons.TargetDirectFallen);
         }
 
         private static bool ShouldApplyAlertnessOnCombatStart(string modId)

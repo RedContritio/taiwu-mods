@@ -275,6 +275,13 @@ sealed class ContractTests
         string forceEncounterVersion = ExtractLuaString(config, "Version");
         Assert(forceEncounterVersion.StartsWith("0.0.0.", StringComparison.Ordinal), "ForceEncounter version should start from the 0.0.0.x line");
         Assert(int.TryParse(forceEncounterVersion.Split('.')[3], out int forceEncounterBuild) && forceEncounterBuild >= 1, "ForceEncounter build version should be at least 1");
+        string buildCommon = File.ReadAllText(Path.Combine(_repo, "ModBuild", "ModBuild.Common.ps1"));
+        Assert(buildCommon.Contains("Resolve-PluginConfigArgument", StringComparison.Ordinal), "ModBuild should resolve constant PluginConfig mod ids for validation and version bumping");
+        Assert(buildCommon.Contains("Get-PluginConfigConstantValues", StringComparison.Ordinal), "ModBuild should parse shared PluginConfig constants instead of trusting identifier shape");
+        Assert(buildCommon.Contains("$outerName.Mod.", StringComparison.Ordinal), "ModBuild should resolve nested Mod metadata constants by their qualified names");
+        Assert(buildCommon.Contains("$projectSourceFiles = Get-ProjectSourceFiles", StringComparison.Ordinal), "ModBuild version bumping should collect all project sources before resolving PluginConfig constants");
+        Assert(buildCommon.Contains("Get-PluginConfigConstantValues -SourceFiles $projectSourceFiles", StringComparison.Ordinal), "ModBuild version bumping should resolve PluginConfig constants from linked project sources");
+        Assert(!buildCommon.Contains("Get-PluginConfigConstantValues -SourceFiles @($sourceFile)", StringComparison.Ordinal), "ModBuild version bumping should not resolve PluginConfig constants from only the current source file");
         string packageScript = File.ReadAllText(Path.Combine(_repo, "ModBuild", "Package-Mod.ps1"));
         string deployScript = File.ReadAllText(Path.Combine(_repo, "deploy.ps1"));
         Assert(packageScript.Contains("Update-ModBuildVersion", StringComparison.Ordinal), "Package-Mod.ps1 should bump auto-increment build versions");
@@ -305,7 +312,7 @@ sealed class ContractTests
         Assert(interaction.Contains("SrcConfigRefName = \"敌对-出手袭击\"", StringComparison.Ordinal), "ForceEncounter should inherit from an existing formal hostile interaction option");
         Assert(interaction.Contains("OncePerMonth = false", StringComparison.Ordinal), "ForceEncounter should match native attack, which is not limited to once per month");
         Assert(!interaction.Contains("ArrestPrison", StringComparison.Ordinal), "ForceEncounter should not inherit from the obsolete ArrestPrison ref name");
-        Assert(interaction.Contains("ActionPointCost = 50", StringComparison.Ordinal), "ForceEncounter interaction entry should show and gate the native 5-day action cost before entering the inner choice");
+        Assert(interaction.Contains("ActionPointCost = 50", StringComparison.Ordinal), "ForceEncounter interaction entry should preview and gate the native 5-day action cost before entering the inner choice");
         Assert(TryExtractLuaInt(interaction, "TemplateId", out int interactionTemplateId), "ForceEncounter interaction patch is missing TemplateId");
         string backendIds = ReadModFile(mod.Name, "ForceEncounter.Backend", "ForceEncounterEventIds.cs");
         Assert(interactionTemplateId == ExtractNestedConstShort(sharedIds, "Gameplay", "InteractionTemplateId"), "ForceEncounter Lua TemplateId must match the shared interaction template id constant");
@@ -336,10 +343,15 @@ sealed class ContractTests
         Assert(package.Contains("StayOnEntryEvent", StringComparison.Ordinal), "ForceEncounter entry event should have a side-effect-free navigation option");
         Assert(package.Contains("EventHelper.StartCombat", StringComparison.Ordinal), "ForceEncounter does not start formal combat");
         Assert(package.Contains("CombatResultType.IsPlayerWin", StringComparison.Ordinal), "ForceEncounter does not map formal combat result");
+        Assert(package.Contains("ForceEncounterConstants.ArgBox.NativeMainEnemyId", StringComparison.Ordinal), "ForceEncounter combat result should inspect the actual main enemy before resolving against the target");
+        Assert(package.Contains("ForceEncounterConstants.Reasons.GuardIntercepted", StringComparison.Ordinal), "ForceEncounter guard combat should not resolve as target success");
+        Assert(Regex.IsMatch(package, @"mainEnemyId\s*==\s*targetId", RegexOptions.Singleline), "ForceEncounter combat result should distinguish guard combat from target combat");
+        Assert(package.Contains("EventHelper.IsCharacterDirectFallenInCombat(targetId, (CombatType)CombatConfig.DefKey.DieNormal)", StringComparison.Ordinal), "ForceEncounter direct target combat should copy native attack's direct-fallen check");
+        Assert(package.Contains("ForceEncounterConstants.Reasons.TargetDirectFallen", StringComparison.Ordinal), "ForceEncounter direct-fallen combat path should return a distinct feedback reason");
         Assert(package.Contains("ForceEncounterEventIds.选项.战斗反馈继续.Key", StringComparison.Ordinal), "ForceEncounter combat result event should show a feedback page with a continue option");
         Assert(!package.Contains("EventOptions = Array.Empty<TaiwuEventOption>()", StringComparison.Ordinal), "ForceEncounter combat result event should not silently close without feedback");
-        Assert(package.Contains("战斗已经结束。你压服了对方", StringComparison.Ordinal), "ForceEncounter combat success feedback is missing");
-        Assert(package.Contains("战斗已经结束。你未能压服对方", StringComparison.Ordinal), "ForceEncounter combat failure feedback is missing");
+        Assert(package.Contains("压服了对方", StringComparison.Ordinal), "ForceEncounter combat success feedback is missing");
+        Assert(package.Contains("未能压服对方", StringComparison.Ordinal), "ForceEncounter combat failure feedback is missing");
         Assert(!string.IsNullOrWhiteSpace(combatResultEventGuid), "ForceEncounter combat result event guid is empty");
         Assert(!string.IsNullOrWhiteSpace(consentChoiceEventGuid), "ForceEncounter consent choice event guid is empty");
         Assert(package.Contains("ForceEncounterEventIds.结算模式.探测", StringComparison.Ordinal), "ForceEncounter entry event does not probe before combat");
@@ -362,6 +374,9 @@ sealed class ContractTests
         Assert(package.Contains("BuildPreviewCosts()", StringComparison.Ordinal), "ForceEncounter should show the action cost on the outer hostile option");
         Assert(package.Contains("ForceEncounterConstants.Costs.ActionTimeDays", StringComparison.Ordinal), "ForceEncounter option costs should use the shared 5-day action cost constant");
         Assert(package.Contains("BuildCommitCosts()", StringComparison.Ordinal), "ForceEncounter should put costs on inner commit options");
+        Assert(package.Contains("new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, ForceEncounterConstants.Costs.ActionTimeDays, false)", StringComparison.Ordinal), "ForceEncounter outer cost preview must not auto-consume action time");
+        Assert(package.Contains("new OptionConsumeInfo(ForceEncounterConstants.Costs.ActionTimeConsumeType, ForceEncounterConstants.Costs.ActionTimeDays, true)", StringComparison.Ordinal), "ForceEncounter inner commit costs must auto-consume action time");
+        Assert(Regex.IsMatch(package, @"ForceEncounterEventText\.BuildConsentContent\(\s*IsAcceptedResolution\(\),\s*ForceEncounterEventRuntime\.IsSpecialAge\(ArgBox\),\s*IsForcedResolution\(\) && ForceEncounterEventRuntime\.TargetHasGuard\(ArgBox\)\)", RegexOptions.Singleline), "ForceEncounter special-age handling should only change consent text, not inner option routing");
         Assert(!package.Contains("new OptionConsumeInfo((sbyte)16", StringComparison.Ordinal), "ForceEncounter should not consume a main attribute cost");
         Assert(package.Contains("（情难自已……）", StringComparison.Ordinal), "ForceEncounter hostile option should use native parenthesized option text");
         Assert(package.Contains("（正常发生关系……）", StringComparison.Ordinal), "ForceEncounter accepted branch prompt option is missing");
@@ -382,6 +397,7 @@ sealed class ContractTests
         Assert(package.Contains("ForceEncounterEventIds.事件.护卫出面", StringComparison.Ordinal), "ForceEncounter forced combat should route to its own guard intercept event");
         Assert(!package.Contains("9638c0a8-fadf-4f6a-bb22-05f3aed994ed", StringComparison.Ordinal), "ForceEncounter should not jump to the native guard event because it hard-codes native attack result events");
         Assert(Regex.IsMatch(package, @"EventHelper\.StartCombat\(\s*partnerId,\s*CombatConfig\.DefKey\.DieNormal,\s*ForceEncounterEventIds\.事件\.战斗反馈,\s*(ArgBox|argBox),\s*true\)", RegexOptions.Singleline), "ForceEncounter guard combat should fight the intercepting guard and return to ForceEncounter result handling");
+        Assert(package.Contains("护卫阻拦在前", StringComparison.Ordinal), "ForceEncounter guard combat result should have a separate failure feedback");
         Assert(!package.Contains("actor.GetCurrMainAttribute(4) < GlobalConfig.Instance.HarmfulActionCost", StringComparison.Ordinal), "ForceEncounter entry option should not block cost-free inspection");
         Assert(!package.Contains("InsufficientHarmfulActionCost", StringComparison.Ordinal), "ForceEncounter entry option should not diagnose inner commit costs");
         Assert(package.Contains("ForceEncounterEventIds.事件.战斗反馈", StringComparison.Ordinal), "ForceEncounter package does not reference combat result event guid");
@@ -389,6 +405,8 @@ sealed class ContractTests
         string backend = ReadModFile(mod.Name, "ForceEncounter.Backend", "BackendPlugin.cs");
         Assert(backend.Contains($"PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, \"{forceEncounterVersion}\")", StringComparison.Ordinal), "ForceEncounter backend plugin version should match config.lua Version");
         Assert(!backend.Contains("AddExecuteMethod(\"ForceEncounter\")", StringComparison.Ordinal), "ForceEncounter backend should not register methods under a hard-coded development mod id");
+        Assert(backend.Contains("actorId != taiwuId", StringComparison.Ordinal), "ForceEncounter backend should reject non-Taiwu actors until its public interface supports NPC actors");
+        Assert(backend.Contains("ForceEncounterConstants.Reasons.NonTaiwuActorNotAllowed", StringComparison.Ordinal), "ForceEncounter backend should return a clear reason for non-Taiwu actors");
         Assert(backend.Contains("GetBoolSetting(ForceEncounterConstants.Settings.DebugMode, true)", StringComparison.Ordinal), "ForceEncounter backend debug logging should default on when settings are unavailable");
         Assert(!backend.Contains("HandleRapeAction", StringComparison.Ordinal), "ForceEncounter should not call original combat-power-based HandleRapeAction");
         Assert(!backend.Contains("GetCombatPower()", StringComparison.Ordinal), "ForceEncounter should not use combat power as a success gate");

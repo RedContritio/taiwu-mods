@@ -1,93 +1,95 @@
-# ForceEncounter Development Notes
+# ForceEncounter 开发记录
 
-This file records ForceEncounter-specific design decisions and native-path findings.
-Keep general Taiwu mod development workflow in the Codex skill; keep this file for
-this mod's mechanics, user-approved design, and verified native side effects.
+本文记录 ForceEncounter 专属设计决策和原生路径调查结果。通用太吾 Mod 开发流程放在 Codex skill 中；这里只保留本 Mod 的机制、用户已确认设计和已验证原生副作用。
 
-## Design Decisions
+## 设计决策
 
-- The player-facing actor is Taiwu. Do not keep a setting that allows targeting Taiwu as the action target.
-- Do not use combat power as a success gate. If force is required, start formal combat and use combat result.
-- Do not let fertility block the player's intent.
-- Costs belong on inner commit options, not the outer hostile menu entry.
-- The accepted cost is 5 days of action time:
+- 玩家侧行为者固定为太吾。不要保留允许把太吾作为动作目标的设置。
+- 后端 `ActorId` 只作为兼容参数保留；省略时取太吾，显式传入时必须等于太吾。
+- 不使用战力作为成功门槛。需要强制时，进入正式战斗并使用战斗结果。
+- 生育力不阻止玩家意图。
+- 外层敌对菜单入口可以用 `AutoConsume=false` 的 `OptionConsumeInfo` 显示、校验 5 天行动力成本，但不能实际消耗。
+- 内层提交选项使用 `AutoConsume=true`，实际消耗 5 天行动力。
+- 已确认成本是 5 天行动力：
 
 ```csharp
 new OptionConsumeInfo((sbyte)8, 5, true)
 ```
 
-- Abandoning from the inner choice must not consume cost, start combat, add hatred, or record success/failure.
-- If an intimate acceptance check passes, allow a non-combat branch but still record success through the same backend success path.
-- If acceptance fails, show an inner choice: proceed with force/combat or abandon.
-- Outer hostile rows may show `BehaviorEgoistic` / `「唯我」` styling, but behavior effects and costs must happen only when the user commits.
-- Normal age and special-age presentations may differ, but their commit choices should stay mechanically aligned unless the user requests a different consequence.
+- 从内层选择“其他话题”必须不消耗成本、不开战、不结仇、不记录成功/失败。
+- 如果亲密同意判定通过，允许非战斗分支，但仍通过同一个后端成功路径记录成功。
+- 如果亲密同意判定失败，显示内层选择：继续强制/战斗，或放弃返回其他话题。
+- 外层敌对行可以显示 `BehaviorEgoistic` / `「唯我」` 风格，但行为效果和成本只能在玩家提交时发生。
+- 正常年龄和特殊年龄的说明可以不同，但提交选项的机制应保持一致，除非用户明确要求不同后果。
 
-## Versioning
+## 版本
 
-- `ForceEncounter` / `情难自已` starts at `0.0.0.1` and uses four numeric version parts.
-- `ModBuild/mods.json` marks it with `autoIncrementBuildVersion: true`.
-- Artifact-producing builds increment only the fourth version component and synchronize `config.lua` with backend `[PluginConfig]`.
-- Raw `dotnet build` is for development verification and does not bump the mod version.
+- `ForceEncounter` / `情难自已` 从 `0.0.0.1` 开始，使用四段数字版本。
+- `ModBuild/mods.json` 中设置 `autoIncrementBuildVersion: true`。
+- 产生产物的构建只递增第四段版本，并同步 `config.lua` 与后端 `[PluginConfig]`。
+- 原始 `dotnet build` 只用于开发验证，不 bump Mod 版本。
 
-## Event Flow
+## 事件流程
 
-- Outer hostile menu option: `ForceEncounter.Execute` / `情难自已`; opens or probes but should not consume.
-- Probe mode: checks whether relationship/personality permits non-combat acceptance; should not mutate relationship state.
-- Accepted commit mode: after the user chooses the accepted inner option, applies success.
-- Forced combat mode: after the user chooses force, starts formal combat and resolves success/failure from combat result.
+- 外层敌对菜单选项：`ForceEncounter.Execute` / `情难自已`；只打开或试探，不消耗。
+- 试探模式：检查关系/性格是否允许非战斗亲密直通；不修改关系状态。
+- 亲密提交模式：玩家选择亲密直通内层选项后，应用成功。
+- 强制战斗模式：玩家选择强制后，启动正式战斗，并从战斗结果结算成功/失败。
+- 直接与目标开战前沿用原生袭击的 `EventHelper.IsCharacterDirectFallenInCombat(targetId, CombatType.DieNormal)` 检查。命中时不启动战斗，按强制失败结算并显示独立反馈。
+- 护卫出面后只与护卫开战。战斗反馈必须读取原生 `MainEnemyId`；如果实际主敌不是原目标，不能把护卫战胜利等同于压服目标，而应按护卫拦截导致强制失败处理。
 
-## Relationship And Acceptance Rules
+## 关系与亲密判定规则
 
-Current user-approved intent:
+当前用户已确认意图：
 
-- Existing spouse whose spouse is alive and is not Taiwu counts as already attached to another person.
-- Existing admiration counts as attached to another person only when exactly one admired character is alive and that character is not Taiwu.
-- Multiple living admired characters imply the character is not exclusively attached.
-- Dead admired characters do not count as current attachment.
-- Taiwu villagers are generally easier for Taiwu.
-- Existing attachment to another person cancels Taiwu village leniency back to normal difficulty.
-- Implemented existing attachment means: the target has any living spouse other than Taiwu, or the target adores exactly one living character other than Taiwu. Multiple living adored characters, only dead adored characters, or sole adoration toward Taiwu do not count as an exclusive attachment to another person.
-- For villagers only, a forced route may avoid hatred at sufficiently high relationship.
-- Non-villagers should treat the forced route as severe unless the user changes the design.
-- If the target unilaterally adores Taiwu, it is eligible for the intimate route and uses lover-like difficulty, but accepted success applies the same 30% favorability penalty discount as the Taiwu-villager forced route.
-- `谷中密友` feature `685` gets a special acceptance route only for the native close-friend Taiwu id. If the target is already attached to another person, this route requires target-to-Taiwu favorability higher than native `Favorite2` (`type > 2`; `Language_CN/ui_language.txt` maps `LK_Favor_Type_8` to `融洽`) and applies a reduced favorability penalty on accepted success.
-- Accepted-route success records rape success. Spouse, mutual lover, unattached villager, and unattached `谷中密友` accepted success does not add forced-route hatred or extra favorability beyond native ordinary talk semantics.
-- Taiwu villagers bypass guard interception. Guard warnings and guard-front combat apply only to non-villager forced routes.
+- 目标已有配偶，且配偶存活且不是太吾，视为已有所属。
+- 目标有爱慕对象时，只有“恰好一个爱慕对象存活且不是太吾”才视为已有所属。
+- 多个存活爱慕对象表示目标不是专一所属。
+- 已死亡的爱慕对象不算当前所属。
+- 太吾村民整体更容易接受太吾。
+- 已有他人所属会抵消太吾村民宽免，回到正常难度。
+- 当前实现中的已有所属：目标存在任意存活配偶且配偶不是太吾，或目标恰好爱慕一个存活角色且该角色不是太吾。多个存活爱慕对象、只有已死爱慕对象、或唯一爱慕对象是太吾，都不算已有他人所属。
+- 只有村民强制路线可以在足够高关系时避免结仇。
+- 非村民强制路线应保持严重后果，除非用户改变设计。
+- 如果目标单恋太吾，则可进入亲密路线，并使用恋人类难度；但亲密成功后使用与太吾村民强制路线相同的 30% 好感惩罚折扣。
+- `谷中密友` 特性 `685` 只对原生谷中密友太吾 id 获得特殊亲密路线。如果目标已有他人所属，则该路线要求目标对太吾好感高于原生 `Favorite2`（`type > 2`；`Language_CN/ui_language.txt` 将 `LK_Favor_Type_8` 映射为 `融洽`），并在亲密成功后应用折扣好感惩罚。
+- 亲密路线成功记录 rape success。配偶、双向恋人、无他人所属村民、无他人所属 `谷中密友` 的亲密成功，不添加强制路线结仇，也不额外改变好感；单恋太吾和已有他人所属但高好感的 `谷中密友` 亲密成功会应用折扣好感惩罚。
+- 太吾村民跳过护卫拦截。护卫预警和护卫顶在队首的战斗只适用于非村民强制路线。
 
-## Native Integration Findings
+## 原生整合结论
 
-- `AddOptionToEvent` is the formal extension path for adding to the hostile event; it is not the same as editing the native compiled `EventOptions` array.
-- Keep backend registration under runtime `ModIdStr`; avoid hard-coded development mod ids.
-- Re-add runtime event extension on new world and loaded archive if event extension state can reset.
-- Use `OptionConsumeInfos` for cost display and consumption. Do not write costs only into text.
-- Use native helpers for relationship side effects when available. For hatred/enemy creation, prefer `EventHelper.ApplyRelationBecomeEnemy(target, actor)` over direct `DomainManager.Character.AddRelation` so native life records, secrets, and mood effects remain aligned.
+- `AddOptionToEvent` 是向敌对事件添加选项的正式扩展路径；它不等同于编辑原生编译后的 `EventOptions` 数组。
+- 后端注册使用运行时 `ModIdStr`；避免硬编码开发期 Mod id。
+- 如果事件扩展状态可能在新世界或读档后重置，需要在新世界和读档时重新添加运行时事件扩展。
+- 成本显示和消耗使用 `OptionConsumeInfos`。不要只把成本写进文本。
+- 有可用原生 helper 时，使用原生 helper 保留关系副作用。对于结仇/敌对创建，优先使用 `EventHelper.ApplyRelationBecomeEnemy(target, actor)`，不要直接 `DomainManager.Character.AddRelation`，以保留原生人生经历、密闻和心情效果。
 
-## Native Side Effects
+## 原生副作用
 
-Useful confirmed paths:
+已确认的有用路径：
 
-- Native forced sexual encounter success calls `actor.MakeLove(context, target, isRape: true)`, records rape success, creates `SecretInformationCollection.AddRape(actorId, targetId)`, then adds it through `DomainManager.Information.AddSecretInformation`.
-- `AddRape` creates secret information template `106`.
-- `SecretInformationEffectItem(106)` has actor fame conditions and negative fame actions such as ids `66`, `63`, `62`, `65`, and `82`.
-- Fame changes occur when the secret-information processor applies/disseminates the secret, not because favorability, alertness, or happiness changed directly.
-- Failed forced encounter should not create the rape secret unless native code for that path does.
-- Failed forced encounter may still create native hatred/enemy side effects if the selected branch calls `ApplyRelationBecomeEnemy`.
-- Become-enemy secret template `115` exists, but its fame-apply content is effectively empty in the inspected build. Do not assume hatred itself lowers Taiwu fame.
-- Native rape handling changes target favorability through `ChangeFavorabilityOptionalMonthlyEvolution`; it does not appear to directly change target happiness on that path.
-- Native become-enemy behavior has personality-based happiness changes. Preserve those by using the native helper rather than custom relation mutation.
-- Alertness does not directly change happiness. It affects favorability cap toward Taiwu, favorability delta percent by alertness level, and harmful interaction success rates.
+- 原生强制关系成功调用 `actor.MakeLove(context, target, isRape: true)`，记录 rape success，创建 `SecretInformationCollection.AddRape(actorId, targetId)`，然后通过 `DomainManager.Information.AddSecretInformation` 添加。
+- `AddRape` 创建密闻模板 `106`。
+- `SecretInformationEffectItem(106)` 有行为者名誉条件和负面名誉行为，例如 ids `66`、`63`、`62`、`65`、`82`。
+- 名誉变化发生在密闻处理器应用/传播密闻时，不是因为好感、戒心或心情直接改变。
+- 强制失败不应创建 rape 密闻，除非原生失败路径确实会创建。
+- 如果选中分支调用 `ApplyRelationBecomeEnemy`，强制失败仍可创建原生结仇/敌对副作用。
+- 结仇密闻模板 `115` 存在，但已检查版本中的名誉应用内容基本为空。不要假设结仇本身降低太吾名誉。
+- 原生 rape 处理通过 `ChangeFavorabilityOptionalMonthlyEvolution` 修改目标好感；该路径未发现直接修改目标心情。
+- 原生结仇行为有基于性格的心情变化。应使用原生 helper 保留它，而不是自定义关系写入。
+- 戒心不会直接改变心情。它影响目标对太吾好感上限、按戒心等级修正好感变化百分比，以及有害互动成功率。
 
-## Test And Debug Expectations
+## 测试与调试期望
 
-- Debug mode can be enabled by default for rapid in-game testing when the user requests it, but keep it explicit and visible in config.
-- Cover at least four paths in contract or manual test plans when touching the flow:
-  - normal-age intimate acceptance
-  - normal-age combat
-  - special-age intimate acceptance
-  - special-age combat
-- Tests should lock native-path contracts:
-  - use of `OptionConsumeInfos`
-  - wait-confirm/cancel behavior
-  - runtime mod id
-  - native enemy helper
-  - native rape secret creation when success is intended
+- 用户要求快速游戏内测试时，调试模式可以默认开启，但必须在配置中显式、可见。
+- 修改流程时，合同测试或手动测试计划至少覆盖四条路径：
+  - 正常年龄亲密直通
+  - 正常年龄战斗
+  - 特殊年龄亲密直通
+  - 特殊年龄战斗
+- 测试应锁定原生路径合同：
+  - 使用 `OptionConsumeInfos`
+  - wait-confirm / 取消行为
+  - 运行时 Mod id
+  - 原生敌对 helper
+  - 成功意图下创建原生 rape 密闻

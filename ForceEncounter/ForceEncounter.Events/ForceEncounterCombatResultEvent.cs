@@ -63,6 +63,12 @@ namespace ForceEncounter.Events
             sbyte combatResult = CombatResultType.EnemyWin;
             bool battleSucceeded = ArgBox.Get(ForceEncounterConstants.ArgBox.NativeCombatResult, ref combatResult) &&
                                    CombatResultType.IsPlayerWin(combatResult);
+            string reason = ForceEncounterConstants.Reasons.NoResult;
+            if (!IsCombatAgainstTarget(targetId))
+            {
+                battleSucceeded = false;
+                reason = ForceEncounterConstants.Reasons.GuardIntercepted;
+            }
 
             SerializableModData result = ForceEncounterEventRuntime.CallCombatBackend(
                 GetRuntimeModId(),
@@ -73,13 +79,15 @@ namespace ForceEncounter.Events
             bool ok = false;
             bool succeeded = false;
             bool targetIsTaiwuVillager = false;
-            string reason = ForceEncounterConstants.Reasons.NoResult;
             if (result != null)
             {
                 result.Get(ForceEncounterConstants.Response.Ok, out ok);
                 result.Get(ForceEncounterConstants.Response.Succeeded, out succeeded);
                 result.Get(ForceEncounterConstants.Response.TargetIsTaiwuVillager, out targetIsTaiwuVillager);
-                result.Get(ForceEncounterConstants.Response.Reason, out reason);
+                if (reason == ForceEncounterConstants.Reasons.NoResult)
+                {
+                    result.Get(ForceEncounterConstants.Response.Reason, out reason);
+                }
             }
 
             StoreResult(ok, succeeded, targetIsTaiwuVillager, reason);
@@ -94,25 +102,26 @@ namespace ForceEncounter.Events
             bool ok = false;
             bool succeeded = false;
             bool targetIsTaiwuVillager = false;
+            string reason = ForceEncounterConstants.Reasons.NoResult;
             ArgBox?.Get(ForceEncounterEventIds.参数.战斗结算成功, ref ok);
             ArgBox?.Get(ForceEncounterEventIds.参数.战斗分支成功, ref succeeded);
             ArgBox?.Get(ForceEncounterEventIds.参数.战斗目标是太吾村民, ref targetIsTaiwuVillager);
+            ArgBox?.Get(ForceEncounterEventIds.参数.战斗结算原因, ref reason);
 
-            return ForceEncounterEventText.BuildCombatResultContent(ok, succeeded, targetIsTaiwuVillager);
+            return ForceEncounterEventText.BuildCombatResultContent(ok, succeeded, targetIsTaiwuVillager, reason);
         }
 
         private void StoreResult(bool ok, bool succeeded, bool targetIsTaiwuVillager, string reason)
         {
-            if (ArgBox == null)
-            {
-                return;
-            }
+            ForceEncounterEventRuntime.StoreCombatSettlement(ArgBox, ok, succeeded, targetIsTaiwuVillager, reason);
+        }
 
-            ArgBox.Set(ForceEncounterEventIds.参数.战斗结果已处理, true);
-            ArgBox.Set(ForceEncounterEventIds.参数.战斗结算成功, ok);
-            ArgBox.Set(ForceEncounterEventIds.参数.战斗分支成功, succeeded);
-            ArgBox.Set(ForceEncounterEventIds.参数.战斗目标是太吾村民, targetIsTaiwuVillager);
-            ArgBox.Set(ForceEncounterEventIds.参数.战斗结算原因, reason ?? string.Empty);
+        private bool IsCombatAgainstTarget(int targetId)
+        {
+            int mainEnemyId = targetId;
+            return ArgBox == null ||
+                   !ArgBox.Get(ForceEncounterConstants.ArgBox.NativeMainEnemyId, ref mainEnemyId) ||
+                   mainEnemyId == targetId;
         }
 
         private string Continue()

@@ -95,6 +95,7 @@ namespace ForceEncounter.Shared
             public const string CombatTargetIsTaiwuVillager = "ForceEncounter.CombatResultTargetTaiwuVillager";
             public const string CombatSettleReason = "ForceEncounter.CombatResultReason";
             public const string NativeCombatResult = "CombatResult";
+            public const string NativeMainEnemyId = "MainEnemyId";
             public const string NativeMainInteractionHeadEvent = "MainInteractionHeadEvent";
             public const string NativePartner = "Partner";
         }
@@ -152,6 +153,7 @@ namespace ForceEncounter.Shared
             public const string MissingActorOrTarget = "MissingActorOrTarget";
             public const string MissingBattleResult = "MissingBattleResult";
             public const string SameActorAndTarget = "SameActorAndTarget";
+            public const string NonTaiwuActorNotAllowed = "NonTaiwuActorNotAllowed";
             public const string TaiwuTargetNotAllowed = "TaiwuTargetNotAllowed";
             public const string ActorNotFound = "ActorNotFound";
             public const string TargetNotFound = "TargetNotFound";
@@ -161,6 +163,8 @@ namespace ForceEncounter.Shared
             public const string ActorBaby = "ActorBaby";
             public const string TargetBaby = "TargetBaby";
             public const string BabyNotAllowed = "BabyNotAllowed";
+            public const string TargetDirectFallen = "TargetDirectFallen";
+            public const string GuardIntercepted = "GuardIntercepted";
         }
     }
 }

@@ -257,9 +257,11 @@ function Update-ModBuildVersion {
         1)
     Set-Content -LiteralPath $configPath -Value $updatedConfigText -Encoding UTF8 -NoNewline
 
-    $pluginPattern = "(?<prefix>PluginConfig\(\s*`"$([regex]::Escape($Entry.name))`"\s*,\s*`"[^`"]+`"\s*,\s*`")(?<version>[^`"]+)(?<suffix>`"\s*\))"
+    $pluginPattern = '(?<prefix>PluginConfig\(\s*(?<mod>"' + [regex]::Escape($Entry.name) + '"|[A-Za-z_][A-Za-z0-9_.]*)\s*,\s*(?<author>"[^"]+"|[A-Za-z_][A-Za-z0-9_.]*)\s*,\s*")(?<version>[^"]+)(?<suffix>"\s*\))'
     foreach ($project in @($Entry.projects)) {
-        foreach ($sourceFile in (Get-ProjectSourceFiles -ProjectPath (Resolve-RepoPath $project))) {
+        $projectSourceFiles = Get-ProjectSourceFiles -ProjectPath (Resolve-RepoPath $project)
+        $constantValues = Get-PluginConfigConstantValues -SourceFiles $projectSourceFiles
+        foreach ($sourceFile in $projectSourceFiles) {
             $sourceText = Get-Content $sourceFile.FullName -Raw -Encoding UTF8
             if (-not [regex]::IsMatch($sourceText, $pluginPattern)) {
                 continue
@@ -268,7 +270,15 @@ function Update-ModBuildVersion {
             $updatedSourceText = [regex]::Replace(
                 $sourceText,
                 $pluginPattern,
-                "`${prefix}$nextVersion`${suffix}")
+                {
+                    param($match)
+                    $modId = Resolve-PluginConfigArgument -Argument $match.Groups["mod"].Value -ConstantValues $constantValues
+                    if ($modId -ne $Entry.name) {
+                        return $match.Value
+                    }
+
+                    return $match.Groups["prefix"].Value + $nextVersion + $match.Groups["suffix"].Value
+                })
             Set-Content -LiteralPath $sourceFile.FullName -Value $updatedSourceText -Encoding UTF8 -NoNewline
         }
     }
@@ -287,31 +297,86 @@ function Get-ProjectSourceFiles {
         return @()
     }
 
-    return @(Get-ChildItem $projectDir -Filter "*.cs" -Recurse | Where-Object {
+    $files = New-Object System.Collections.Generic.List[object]
+    foreach ($file in @(Get-ChildItem $projectDir -Filter "*.cs" -Recurse | Where-Object {
         $_.FullName -notmatch "\\(bin|obj)\\"
-    })
+    })) {
+        $files.Add($file)
+    }
+
+    $projectText = Get-Content $ProjectPath -Raw -ErrorAction SilentlyContinue
+    foreach ($match in [regex]::Matches($projectText, '<Compile\s+Include="(?<path>[^"]+\.cs)"')) {
+        $linkedPath = Join-Path $projectDir $match.Groups["path"].Value
+        if (Test-Path $linkedPath) {
+            $files.Add((Get-Item $linkedPath))
+        }
+    }
+
+    return @($files | Sort-Object FullName -Unique)
 }
 
 function Get-PluginConfigsFromSources {
     param(
         [Parameter(Mandatory)]
-        [array]$SourceFiles
+        [array]$SourceFiles,
+        [string]$ExpectedModId
     )
 
     $configs = New-Object System.Collections.ArrayList
+    $constantValues = Get-PluginConfigConstantValues -SourceFiles $SourceFiles
     foreach ($sourceFile in $SourceFiles) {
         $text = Get-Content $sourceFile.FullName -Raw
-        foreach ($match in [regex]::Matches($text, 'PluginConfig\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)')) {
+        foreach ($match in [regex]::Matches($text, 'PluginConfig\(\s*(?<mod>"[^"]+"|[A-Za-z_][A-Za-z0-9_.]*)\s*,\s*(?<author>"[^"]+"|[A-Za-z_][A-Za-z0-9_.]*)\s*,\s*"(?<version>[^"]+)"\s*\)')) {
             [void]$configs.Add([PSCustomObject]@{
                 File = $sourceFile.FullName
-                ModId = $match.Groups[1].Value
-                Author = $match.Groups[2].Value
-                Version = $match.Groups[3].Value
+                ModId = Resolve-PluginConfigArgument -Argument $match.Groups["mod"].Value -ConstantValues $constantValues
+                Author = Resolve-PluginConfigArgument -Argument $match.Groups["author"].Value -ConstantValues $constantValues
+                Version = $match.Groups["version"].Value
             })
         }
     }
 
     return @($configs)
+}
+
+function Resolve-PluginConfigArgument {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Argument,
+        [hashtable]$ConstantValues
+    )
+
+    $value = $Argument.Trim()
+    $literalMatch = [regex]::Match($value, '^"(?<literal>[^"]*)"$')
+    if ($literalMatch.Success) {
+        return $literalMatch.Groups["literal"].Value
+    }
+
+    if ($ConstantValues -and $ConstantValues.ContainsKey($value)) {
+        return $ConstantValues[$value]
+    }
+
+    return $value
+}
+
+function Get-PluginConfigConstantValues {
+    param(
+        [Parameter(Mandatory)]
+        [array]$SourceFiles
+    )
+
+    $values = @{}
+    foreach ($sourceFile in $SourceFiles) {
+        $text = Get-Content $sourceFile.FullName -Raw
+        foreach ($outerMatch in [regex]::Matches($text, 'public\s+static\s+class\s+(?<outer>[A-Za-z_][A-Za-z0-9_]*)[\s\S]*?public\s+static\s+class\s+Mod\s*\{(?<body>[\s\S]*?)\n\s*\}')) {
+            $outerName = $outerMatch.Groups["outer"].Value
+            foreach ($constMatch in [regex]::Matches($outerMatch.Groups["body"].Value, 'public\s+const\s+string\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(?<value>[^"]*)"')) {
+                $values["$outerName.Mod.$($constMatch.Groups["name"].Value)"] = $constMatch.Groups["value"].Value
+            }
+        }
+    }
+
+    return $values
 }
 
 function Test-ModStructure {
@@ -478,7 +543,7 @@ function Test-ModStructure {
             continue
         }
 
-        $pluginConfigs = Get-PluginConfigsFromSources -SourceFiles $sourceFiles
+        $pluginConfigs = Get-PluginConfigsFromSources -SourceFiles $sourceFiles -ExpectedModId $Entry.name
         $hasEventPackage = Test-ProjectHasEventPackage -SourceFiles $sourceFiles
         if ($pluginConfigs.Count -eq 0) {
             if (-not $hasEventPackage) {

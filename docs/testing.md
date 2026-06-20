@@ -64,10 +64,11 @@ Acceptance:
 Deploy one mod at a time into a real formal-version game install:
 
 ```powershell
-.\deploy.ps1 DreamLover -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
-.\deploy.ps1 AntiNTR -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
-.\deploy.ps1 FertilityControl -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
-.\deploy.ps1 ForceEncounter -GameModDir "D:\SteamLibrary\steamapps\common\The Scroll Of Taiwu\Mod"
+$gameModDir = Join-Path $env:TAIWU_GAME_DIR "Mod"
+.\deploy.ps1 DreamLover -GameModDir $gameModDir
+.\deploy.ps1 AntiNTR -GameModDir $gameModDir
+.\deploy.ps1 FertilityControl -GameModDir $gameModDir
+.\deploy.ps1 ForceEncounter -GameModDir $gameModDir
 ```
 
 For auto-increment mods such as ForceEncounter, local deploy is treated as a runnable build:
@@ -108,12 +109,13 @@ FertilityControl:
 
 ForceEncounter:
 
-- Enable `ForceEncounter`, load the main map, choose an adult living NPC, open the character interaction event window, and confirm the `敌对` tab includes `情难自已`.
+- Enable `ForceEncounter`, load the main map, choose a living non-baby NPC, open the character interaction event window, and confirm the `敌对` tab includes `情难自已`.
 - Select `情难自已` on a non-intimate adult NPC and confirm the backend log reports `Probe needs combat choice`.
-- Choose `就此作罢` and confirm the event exits without formal combat, failure records, hatred, or favorability loss.
-- Select `情难自已` again, choose `强行开战`, and confirm success/failure follows formal combat results rather than combat power or fertility.
+- Choose `其他话题` and confirm the event returns to the hostile topic without formal combat, failure records, hatred, favorability loss, or action-time consumption.
+- Select `情难自已` again, choose `强制关系`, and confirm success/failure follows formal combat results rather than combat power or fertility.
 - Use DreamLover or a prepared save to create a spouse or mutual-lover target with high mutual favorability; select `情难自已` and confirm the backend log reports `Probe accepted`, writes `RapeSucceed`, and does not force hatred/favorability loss.
-- Confirm the backend rejects attempts where the target is Taiwu, the actor equals the target, or either character is not adult/alive.
+- Use a special-age but non-baby NPC and confirm `情难自已` shows the special-age warning while keeping the same inner commit choices and costs.
+- Confirm the backend rejects attempts where the target is Taiwu, the actor equals the target, either character is dead, or either character is a baby.
 
 ## Integration Automation Roadmap
 

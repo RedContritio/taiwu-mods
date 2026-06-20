@@ -74,6 +74,11 @@ namespace ForceEncounter.Backend
             }
 
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
+            if (actorId != taiwuId)
+            {
+                return Fail(result, ForceEncounterConstants.Reasons.NonTaiwuActorNotAllowed);
+            }
+
             if (targetId == taiwuId)
             {
                 return Fail(result, ForceEncounterConstants.Reasons.TaiwuTargetNotAllowed);
