@@ -24,7 +24,7 @@ new OptionConsumeInfo((sbyte)8, 5, true)
 
 ## 版本
 
-- `ForceEncounter` / `情难自已` 从 `0.0.0.1` 开始，使用四段数字版本。
+- `ForceEncounter` / `情难自已` 从 `1.0.0.0` 开始，使用四段数字版本。
 - `ModBuild/mods.json` 中设置 `autoIncrementBuildVersion: true`。
 - 产生产物的构建只递增第四段版本，并同步 `config.lua` 与后端 `[PluginConfig]`。
 - 原始 `dotnet build` 只用于开发验证，不 bump Mod 版本。

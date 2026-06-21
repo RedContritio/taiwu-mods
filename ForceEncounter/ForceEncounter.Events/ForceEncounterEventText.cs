@@ -20,7 +20,7 @@ namespace ForceEncounter.Events
 
         public static class 过场
         {
-            public const string 护卫出面 = "对方的护卫挺身拦在你面前。";
+            public const string 护卫出面 = "忽有一人挺身而出，拦在了前面。";
         }
 
         public static string 构造内层说明(bool 亲密通过, bool 未成年, bool 有护卫)
@@ -242,84 +242,84 @@ namespace ForceEncounter.Events
 
         private static class 亲密反馈
         {
-            public const string 成年成功 = "良久，<Character key=CharacterId str=Name/>才慢慢平复气息，仍倚在<Character key=RoleTaiwu str=Name/>身侧。二人虽一时无话，方才之事却已不必再言。";
+            public const string 成年成功 = "也不知过了多久，二人才渐渐安顿下来。<Character key=CharacterId str=Name/>鬓发散乱，面上红潮未褪，只侧身倚在<Character key=RoleTaiwu str=Name/>肩头，半晌不曾开口。\n\n<Character key=RoleTaiwu str=Name/>伸手替<Character key=CharacterId str=Name/>拢了拢碎发，指节擦过耳际时，<Character key=CharacterId str=Name/>微微一缩，随即又松弛下来，连呼吸都轻了。";
             [异常兜底]
-            public const string 成年结算失败 = "<Character key=RoleTaiwu str=Name/>与<Character key=CharacterId str=Name/>情意虽近，临到此时却忽然生出几分迟疑。二人相顾无言，只好暂且止住。";
-            public const string 未成年成功 = "过了许久，<Character key=CharacterId str=Name/>仍低着头，耳根红意未褪，只轻轻攥着衣袖。方才之事既已发生，二人一时都不知该如何开口。";
+            public const string 成年结算失败 = "孰料临到此时，<Character key=CharacterId str=Name/>却忽然偏过头去，呼吸急促了几分，一只手轻轻抵在<Character key=RoleTaiwu str=Name/>胸前。<Character key=RoleTaiwu str=Name/>怔了怔，到底不忍勉强，只握住那只手，低低说了句什么。二人便这么依偎着，许久没有再进一步。";
+            public const string 未成年成功 = "过了许久，<Character key=CharacterId str=Name/>仍蜷着身子不敢动，耳根的红一路蔓延到颈侧。方才的一切像场突如其来的暴雨，<Character key=CharacterId str=Name/>还没想明白，却已浑身湿透。\n\n<Character key=RoleTaiwu str=Name/>替<Character key=CharacterId str=Name/>理了理揉皱的衣领，<Character key=CharacterId str=Name/>这才抬起眼飞快地看了一眼，又迅速垂下目光，手指却悄悄勾住了<Character key=RoleTaiwu str=Name/>的袖角。";
             [异常兜底]
-            public const string 未成年结算失败 = "<Character key=CharacterId str=Name/>低着头退开半步，神色惶惑不安。<Character key=RoleTaiwu str=Name/>一时也不知该如何继续，只得暂且停下。";
+            public const string 未成年结算失败 = "<Character key=CharacterId str=Name/>忽然往后退了半步，眼眶微微泛红，呼吸又急又浅，像被什么吓着了。<Character key=RoleTaiwu str=Name/>伸出的手顿在半空，见<Character key=CharacterId str=Name/>整个人都快缩成一团，心中忽生不忍。半晌，<Character key=RoleTaiwu str=Name/>叹了口气，替<Character key=CharacterId str=Name/>把滑落的衣带重新系好，不再迫近。";
         }
 
         private static class 强制反馈
         {
-            private const string 村民成功余波 = "对方身在太吾村中，仍将这份怨惧暂且压在心底。";
-            private const string 村民失败余波 = "对方身在太吾村中，虽未当场决裂，此后只怕也难再坦然相对。";
+            private const string 村民成功余波 = "";
+            private const string 村民失败余波 = "";
 
             [异常兜底]
-            public const string 成年结算失败 = "一番争斗过后，<Character key=CharacterId str=Name/>仍强撑着避开<Character key=RoleTaiwu str=Name/>，惊怒之色未褪。<Character key=RoleTaiwu str=Name/>虽仍不肯就此罢手，却终究没能再逼近一步。";
+            public const string 成年结算失败 = "一番争斗过后，<Character key=CharacterId str=Name/>仍强撑着没有倒下，衣衫凌乱，喘息未定，只死死盯着<Character key=RoleTaiwu str=Name/>。\n\n<Character key=RoleTaiwu str=Name/>虽仍不肯就此罢手，却终究没能再逼近一步。";
             [异常兜底]
-            public const string 未成年结算失败 = "一番争斗过后，尚未成年的<Character key=CharacterId str=Name/>仍勉力缩身避开，惊惶得几乎说不出话。<Character key=RoleTaiwu str=Name/>虽仍不肯就此罢手，却终究没能再逼近一步。";
+            public const string 未成年结算失败 = "一番争斗过后，<Character key=CharacterId str=Name/>缩在角落里，抱紧双臂，浑身仍在发颤。\n\n<Character key=RoleTaiwu str=Name/>虽仍不肯就此罢手，却终究没能再逼近一步。";
 
-            public const string 成年成功 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>俯身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，凌乱衣襟与压低的哽咽都沉进昏暗里。";
-            public const string 成年成功村民 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>俯身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，凌乱衣襟与压低的哽咽都沉进昏暗里。" + 村民成功余波;
-            public const string 未成年成功 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，只余仓皇的哭声与满地狼藉。";
-            public const string 未成年成功村民 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，只余仓皇的哭声与满地狼藉。" + 村民成功余波;
+            public const string 成年成功 = "争斗结束了。<Character key=CharacterId str=Name/>伏在地上，浑身微微发抖，却没有再挣扎的气力。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，一步一步走近前去。衣料窸窣，混着断续的呜咽与破碎的喘息，在暗处响了许久。待到一切终于停歇，只余下压抑不住的低泣，断断续续。";
+            public const string 成年成功村民 = "争斗结束了。<Character key=CharacterId str=Name/>伏在地上，浑身微微发抖，却没有再挣扎的气力。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，一步一步走近前去。衣料窸窣，混着断续的呜咽与破碎的喘息，在暗处响了许久。早已没了多少挣扎，只余下细碎的抽噎。待到一切终于停歇，只余下压抑不住的低泣，却死死忍着，不敢放出声来。";
+            public const string 未成年成功 = "争斗止息。<Character key=CharacterId str=Name/>缩在角落里，胳膊仍在发抖，已连退避的力气都使不出来。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼上前去。昏暗里只听得见细弱的哭声，时而急促，时而被人捂住了似的闷下去，久久才渐次平息。待到一切停歇，只剩细细的抽泣，像被掐住了喉咙。";
+            public const string 未成年成功村民 = "争斗止息。<Character key=CharacterId str=Name/>缩在角落里，胳膊仍在发抖，已连退避的力气都使不出来。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼上前去。昏暗里只听得见细弱的哭声，时而急促，时而自己捂住了嘴似的闷下去，久久才渐次平息。早已不敢挣动，只缩着身子发抖。待到一切停歇，只剩细细的抽泣，像被掐住了喉咙，却连抽泣都捂在掌心里，唯恐被人听见。";
 
-            public const string 成年战死后成功 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>俯身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，<Character key=CharacterId str=Name/>气息渐弱，终因伤势过重而气绝。";
-            public const string 成年战死后成功村民 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>俯身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，<Character key=CharacterId str=Name/>气息渐弱，终因伤势过重而气绝。" + 村民成功余波;
-            public const string 未成年战死后成功 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，<Character key=CharacterId str=Name/>气息渐弱，终因伤势过重而气绝。";
-            public const string 未成年战死后成功村民 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，<Character key=CharacterId str=Name/>气息渐弱，终因伤势过重而气绝。" + 村民成功余波;
+            public const string 成年战死后成功 = "争斗过后，<Character key=CharacterId str=Name/>已无力再起。\n\n<Character key=RoleTaiwu str=Name/>没有就此停手，欺身而上。衣料窸窣与断续的低泣在暗处响了许久，<Character key=CharacterId str=Name/>的喘息却越来越弱，终因伤势过重而气绝。";
+            public const string 成年战死后成功村民 = "争斗过后，<Character key=CharacterId str=Name/>已无力再起。\n\n<Character key=RoleTaiwu str=Name/>没有就此停手，欺身而上。衣料窸窣与断续的低泣在暗处响了许久，其间偶有微弱的挣动，却旋即便止。<Character key=CharacterId str=Name/>的喘息却越来越弱，终因伤势过重而气绝。四下寂静，无人知晓，也无人赶来。";
+            public const string 未成年战死后成功 = "争斗过后，<Character key=CharacterId str=Name/>已无力再起。\n\n<Character key=RoleTaiwu str=Name/>没有就此停手，仍然逼近。昏暗里只听得见细弱的哭声时高时低，久久不停。待到哭声渐弱，<Character key=CharacterId str=Name/>的呼吸也已越来越轻，终因伤势过重而气绝。";
+            public const string 未成年战死后成功村民 = "争斗过后，<Character key=CharacterId str=Name/>已无力再起。\n\n<Character key=RoleTaiwu str=Name/>没有就此停手，仍然逼近。昏暗里只听得见细弱的哭声时高时低，久久不停，其间偶有微弱的挣动，却旋即便止。待到哭声渐弱，<Character key=CharacterId str=Name/>的呼吸也已越来越轻，终因伤势过重而气绝。四下寂静，无人知晓，也无人赶来。";
 
-            public const string 成年擒获后成功 = "绳索收紧，<Character key=CharacterId str=Name/>已被牢牢缚住，再难抗拒。<Character key=RoleTaiwu str=Name/>欺身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，绳索仍未松开，凌乱衣襟与压低的哽咽都沉进昏暗里。";
-            public const string 成年擒获后成功村民 = "绳索收紧，<Character key=CharacterId str=Name/>已被牢牢缚住，再难抗拒。<Character key=RoleTaiwu str=Name/>欺身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，绳索仍未松开，凌乱衣襟与压低的哽咽都沉进昏暗里。" + 村民成功余波;
-            public const string 未成年擒获后成功 = "绳索收紧，尚未成年的<Character key=CharacterId str=Name/>已被牢牢缚住，再难挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，绳索仍未松开，只余仓皇的哭声与满地狼藉。";
-            public const string 未成年擒获后成功村民 = "绳索收紧，尚未成年的<Character key=CharacterId str=Name/>已被牢牢缚住，再难挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，绳索仍未松开，只余仓皇的哭声与满地狼藉。" + 村民成功余波;
+            public const string 成年擒获后成功 = "绳索缚得极紧，<Character key=CharacterId str=Name/>挣了几下便不动了。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，欺近身前。绳索勒动的声音混着断续的抽噎，在暗处响了许久。待到一切终于停歇，绳索仍未松开，昏暗里只余断断续续的呜咽。";
+            public const string 成年擒获后成功村民 = "绳索缚得极紧，<Character key=CharacterId str=Name/>挣了几下便不动了。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，欺近身前。绳索勒动的声音混着断续的抽噎，在暗处响了许久。早已不再挣动，只任绳索勒着。待到一切终于停歇，绳索仍未松开，昏暗里只余断断续续的呜咽，却不敢抬高声嗓。";
+            public const string 未成年擒获后成功 = "绳索缚得极紧，<Character key=CharacterId str=Name/>挣了几下便不动了。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼近。绳索勒动的声音混着细弱的哭声，时高时低，在暗处响了许久。待到一切停歇，绳索仍未松开，只剩断断续续的抽泣在暗处回荡。";
+            public const string 未成年擒获后成功村民 = "绳索缚得极紧，<Character key=CharacterId str=Name/>挣了几下便不动了。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼近。绳索勒动的声音混着细弱的哭声，时高时低，在暗处响了许久。早已不再挣动，只任绳索勒着，缩成一团。待到一切停歇，绳索仍未松开，只剩断断续续的抽泣在暗处回荡，却连回声都散不远，被黑暗吞尽了似的。";
 
-            public const string 成年已关押成功 = "<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从抵抗。<Character key=RoleTaiwu str=Name/>欺身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，牢门复又合上，昏暗里只余压低的哽咽。";
-            public const string 成年已关押成功村民 = "<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从抵抗。<Character key=RoleTaiwu str=Name/>欺身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，牢门复又合上，昏暗里只余压低的哽咽。" + 村民成功余波;
-            public const string 未成年已关押成功 = "尚未成年的<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，牢门复又合上，只余仓皇的哭声在暗处回荡。";
-            public const string 未成年已关押成功村民 = "尚未成年的<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从挣开。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，牢门复又合上，只余仓皇的哭声在暗处回荡。" + 村民成功余波;
+            public const string 成年已关押成功 = "<Character key=CharacterId str=Name/>本已被缚住双手，押在<Character key=RoleTaiwu str=Name/>身边，纵有不甘，此刻也无从抗拒。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，欺近身前。衣料窸窣间，只听得压低的呜咽时断时续，绳索偶尔挣动，却终究挣不脱。待到一切停歇，绳索仍未解开，昏暗里只余细碎的喘息。";
+            public const string 成年已关押成功村民 = "<Character key=CharacterId str=Name/>本已被缚住双手，押在<Character key=RoleTaiwu str=Name/>身边，纵有不甘，此刻也无从抗拒。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，欺近身前。衣料窸窣间，只听得压低的呜咽时断时续。绳索只偶尔挣动了一下，便再没了声息。待到一切停歇，绳索仍未解开，昏暗里只余细碎的喘息，连喘息都不敢太重，唯恐再生事端。";
+            public const string 未成年已关押成功 = "<Character key=CharacterId str=Name/>本已被缚住双手，押在<Character key=RoleTaiwu str=Name/>身边，纵有不甘，此刻也无从挣开。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼近。绳索偶尔挣动，却终是徒劳，细弱的哭声时而被堵住似的闷下去，久久才渐次平息。待到一切停歇，绳索仍未解开，只剩细细的抽泣在暗处回荡。";
+            public const string 未成年已关押成功村民 = "<Character key=CharacterId str=Name/>本已被缚住双手，押在<Character key=RoleTaiwu str=Name/>身边，纵有不甘，此刻也无从挣开。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼近。绳索只偶尔挣动了一下便再没了声息，细弱的哭声时而被自己捂住了似的闷下去，久久才渐次平息。待到一切停歇，绳索仍未解开，只剩细细的抽泣在暗处回荡，连抽泣都死死压在喉咙里。";
 
-            public const string 成年无力应战成功 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>俯身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，凌乱衣襟与压低的哽咽都沉进昏暗里。";
-            public const string 成年无力应战成功村民 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>俯身逼近，没有就此停手，终究遂了自己的念头。待一切停歇，凌乱衣襟与压低的哽咽都沉进昏暗里。" + 村民成功余波;
-            public const string 未成年无力应战成功 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，只余仓皇的哭声与满地狼藉。";
-            public const string 未成年无力应战成功村民 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>仍然逼近，没有就此停手，终究遂了自己的念头。待一切停歇，只余仓皇的哭声与满地狼藉。" + 村民成功余波;
+            public const string 成年无力应战成功 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，一步一步走近前去。衣料窸窣与破碎的喘息在暗处响了许久，偶有微弱的推拒，却终是徒劳。待到一切终于停歇，只余下细碎的低泣，沉入昏暗。";
+            public const string 成年无力应战成功村民 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，一步一步走近前去。衣料窸窣与破碎的喘息在暗处响了许久，其间推拒渐渐弱了下去，终至不再动弹。待到一切终于停歇，只余下细碎的低泣，沉入昏暗，却一声也不敢抬高。";
+            public const string 未成年无力应战成功 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼上前去。昏暗里只听得见细弱的哭声时高时低，偶有挣动，却终是徒劳，久久才渐次平息。待到一切停歇，只剩细细的抽泣，像被掐住了喉咙。";
+            public const string 未成年无力应战成功村民 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。\n\n<Character key=RoleTaiwu str=Name/>没有就此收手，仍然逼上前去。昏暗里只听得见细弱的哭声时高时低，挣动渐渐弱了下去，久久才渐次平息。待到一切停歇，只剩细细的抽泣，像被掐住了喉咙，却连抽泣都捂在掌心里，唯恐被人听见。";
 
-            public const string 成年普通失败结仇 = "一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事未成，却已使双方结下怨仇。";
-            public const string 成年普通失败不结仇 = "一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事只能暂且作罢。";
-            public const string 成年普通失败村民 = "一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。" + 村民失败余波;
-            public const string 未成年普通失败结仇 = "一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事未成，却已使双方结下怨仇。";
-            public const string 未成年普通失败不结仇 = "一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事只能暂且作罢。";
-            public const string 未成年普通失败村民 = "一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。" + 村民失败余波;
+            public const string 成年普通失败结仇 = "争斗过后，<Character key=CharacterId str=Name/>挣脱了<Character key=RoleTaiwu str=Name/>的压制，踉跄退开数步，狠狠瞪了一眼，捂着手臂走了，再也没有回头。";
+            public const string 成年普通失败不结仇 = "争斗过后，<Character key=CharacterId str=Name/>挣脱了<Character key=RoleTaiwu str=Name/>的压制，踉跄退开数步。此事只得暂且作罢。";
+            public const string 成年普通失败村民 = "争斗过后，<Character key=CharacterId str=Name/>挣脱了<Character key=RoleTaiwu str=Name/>的压制，踉跄退开数步，却不敢多说什么，只低着头退开了。";
+            public const string 未成年普通失败结仇 = "争斗过后，<Character key=CharacterId str=Name/>总算挣脱了<Character key=RoleTaiwu str=Name/>，缩着身子退到远处，回头看了一眼，眼里满是委屈与恨意，随即转身跑了。";
+            public const string 未成年普通失败不结仇 = "争斗过后，<Character key=CharacterId str=Name/>总算挣脱了<Character key=RoleTaiwu str=Name/>，缩着身子退到远处，浑身仍在发抖。此事只得暂且作罢。";
+            public const string 未成年普通失败村民 = "争斗过后，<Character key=CharacterId str=Name/>总算挣脱了<Character key=RoleTaiwu str=Name/>，缩着身子退到远处，却不敢哭出声来，只把脸埋在膝盖里。";
 
-            public const string 成年护卫拦截结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。此事未成，却已使双方结下怨仇。";
-            public const string 成年护卫拦截不结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。此事只能暂且作罢。";
-            public const string 成年护卫拦截村民 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。" + 村民失败余波;
-            public const string 未成年护卫拦截结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近尚未成年的<Character key=CharacterId str=Name/>的身。此事未成，却已使双方结下怨仇。";
-            public const string 未成年护卫拦截不结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近尚未成年的<Character key=CharacterId str=Name/>的身。此事只能暂且作罢。";
-            public const string 未成年护卫拦截村民 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近尚未成年的<Character key=CharacterId str=Name/>的身。" + 村民失败余波;
+            public const string 成年护卫拦截结仇 = "一人挺身拦在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。\n\n<Character key=CharacterId str=Name/>在来人身后冷冷望了<Character key=RoleTaiwu str=Name/>一眼，转身便走。";
+            public const string 成年护卫拦截不结仇 = "一人挺身拦在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。此事只好暂且搁下。";
+            public const string 成年护卫拦截村民 = "一人挺身拦在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。\n\n<Character key=CharacterId str=Name/>躲在来人身后，不敢朝这边看。";
+            public const string 未成年护卫拦截结仇 = "一人挺身拦在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。\n\n<Character key=CharacterId str=Name/>躲在来人身后，眼里却全是恨意。";
+            public const string 未成年护卫拦截不结仇 = "一人挺身拦在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。此事只好暂且搁下。";
+            public const string 未成年护卫拦截村民 = "一人挺身拦在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。\n\n<Character key=CharacterId str=Name/>躲在来人身后，死死抓着来人的衣角，不敢出声。";
 
-            public const string 成年目标逃走结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去。此事未成，却已使双方结下怨仇。";
-            public const string 成年目标逃走不结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去。此事只能暂且作罢。";
-            public const string 成年目标逃走村民 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去。" + 村民失败余波;
-            public const string 未成年目标逃走结仇 = "混乱之中，尚未成年的<Character key=CharacterId str=Name/>趁隙脱身而去。此事未成，却已使双方结下怨仇。";
-            public const string 未成年目标逃走不结仇 = "混乱之中，尚未成年的<Character key=CharacterId str=Name/>趁隙脱身而去。此事只能暂且作罢。";
-            public const string 未成年目标逃走村民 = "混乱之中，尚未成年的<Character key=CharacterId str=Name/>趁隙脱身而去。" + 村民失败余波;
+            public const string 成年目标逃走结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去，转眼便没了踪影，连头也不回。";
+            public const string 成年目标逃走不结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去，转眼便没了踪影。此事只好暂且搁下。";
+            public const string 成年目标逃走村民 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去，转眼便没了踪影。脚步声渐渐远了，四周复归寂静。";
+            public const string 未成年目标逃走结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去，头也不回地逃远了。";
+            public const string 未成年目标逃走不结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去，头也不回地逃远了。此事只好暂且搁下。";
+            public const string 未成年目标逃走村民 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去，头也不回地逃远了。脚步声渐渐远了，四周复归寂静。";
 
-            public const string 成年太吾撤退结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事未成，却已使双方结下怨仇。";
-            public const string 成年太吾撤退不结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事只能暂且作罢。";
-            public const string 成年太吾撤退村民 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。" + 村民失败余波;
-            public const string 未成年太吾撤退结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事未成，却已使双方结下怨仇。";
-            public const string 未成年太吾撤退不结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事只能暂且作罢。";
-            public const string 未成年太吾撤退村民 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。" + 村民失败余波;
+            public const string 成年太吾撤退结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。\n\n<Character key=CharacterId str=Name/>盯着那道背影看了许久，才咬牙转身离去。";
+            public const string 成年太吾撤退不结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。\n\n<Character key=CharacterId str=Name/>站在原地，半晌才松了口气，也转身走了。";
+            public const string 成年太吾撤退村民 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。\n\n<Character key=CharacterId str=Name/>立在原地，没有出声，等那道身影彻底消失才敢挪步。";
+            public const string 未成年太吾撤退结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。\n\n<Character key=CharacterId str=Name/>盯着那道背影看了许久，才咬着嘴唇转身走了。";
+            public const string 未成年太吾撤退不结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。\n\n<Character key=CharacterId str=Name/>站在原地，半晌才回过神来，也转身跑了。";
+            public const string 未成年太吾撤退村民 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。\n\n<Character key=CharacterId str=Name/>立在原地，没有出声，等那道身影彻底消失才敢挪步。";
         }
 
         private static class 擒获处置
         {
-            public const string 选择 = "<Character key=Prisoner str=Name/>已被绳索缚住，暂时无法脱身。此事既已了结，接下来便只看你要如何处置。";
-            public const string 关押 = "<Character key=RoleTaiwu str=Name/>将<Character key=Prisoner str=Name/>押在身边，不许其离去。";
-            public const string 秘密关押 = "<Character key=RoleTaiwu str=Name/>避开旁人耳目，将<Character key=Prisoner str=Name/>押在身边。";
-            public const string 释放 = "<Character key=RoleTaiwu str=Name/>替<Character key=Prisoner str=Name/>解开束缚，任其离去。";
+            public const string 选择 = "<Character key=RoleTaiwu str=Name/>将<Character key=Prisoner str=Name/>击倒在地，用绳索五花大绑，使其无法脱身。\n\n<Character key=RoleTaiwu str=Name/>停下手来，打量着眼前的人。";
+            public const string 关押 = "<Character key=RoleTaiwu str=Name/>收紧绳索，将<Character key=Prisoner str=Name/>押在身边，不许离去。\n\n<Character key=Prisoner str=Name/>低着头，一言不发地跟在了后面。";
+            public const string 秘密关押 = "<Character key=RoleTaiwu str=Name/>四下环顾，见无人注意，便将<Character key=Prisoner str=Name/>押在身边。\n\n<Character key=Prisoner str=Name/>连哭都不敢出声，只默默跟着。";
+            public const string 释放 = "<Character key=RoleTaiwu str=Name/>替<Character key=Prisoner str=Name/>解开绳索。\n\n<Character key=Prisoner str=Name/>愣了一瞬，随即踉跄着退开几步，头也不回地走了。";
         }
 
         [AttributeUsage(AttributeTargets.Field)]
