@@ -266,70 +266,73 @@ namespace ForceEncounter.Events
 
         private static class 强制反馈
         {
+            private const string 村民成功余波 = "对方身在太吾村中，仍将这份怨惧暂且压在心底。";
+            private const string 村民失败余波 = "对方身在太吾村中，虽未当场决裂，此后只怕也难再坦然相对。";
+
             [异常兜底]
-            public const string 成年结算失败 = "战斗已经结束，但成年强制路线的情难自已结算未能完成。";
+            public const string 成年结算失败 = "战斗虽已止息，事态却未能照预想收束。<Character key=RoleTaiwu str=Name/>与<Character key=CharacterId str=Name/>相对无言，一时竟不知该如何了结此事。";
             [异常兜底]
-            public const string 未成年结算失败 = "战斗已经结束，但未成年强制路线的情难自已结算未能完成。";
+            public const string 未成年结算失败 = "争斗后的混乱很快散去，尚未成年的<Character key=CharacterId str=Name/>惊惶未定。<Character key=RoleTaiwu str=Name/>一时无从继续，只得暂且停下。";
 
-            public const string 成年成功 = "战斗已经结束。你以武力压服了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效。";
-            public const string 成年成功村民 = "战斗已经结束。你以武力压服了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
-            public const string 未成年成功 = "战斗已经结束。你以武力压服了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效。";
-            public const string 未成年成功村民 = "战斗已经结束。你以武力压服了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 成年成功 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 成年成功村民 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
+            public const string 未成年成功 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 未成年成功村民 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
 
-            public const string 成年战死后成功 = "战斗已经结束。你压服了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效；随后对方伤重身死。";
-            public const string 成年战死后成功村民 = "战斗已经结束。你压服了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效；随后对方伤重身死。对方身为太吾村民，未因此立刻与你结为仇敌。";
-            public const string 未成年战死后成功 = "战斗已经结束。你压服了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效；随后对方伤重身死。";
-            public const string 未成年战死后成功村民 = "战斗已经结束。你压服了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效；随后对方伤重身死。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 成年战死后成功 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头；只是事后不久，对方便因伤势过重而气绝。";
+            public const string 成年战死后成功村民 = "尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头；只是事后不久，对方便因伤势过重而气绝。" + 村民成功余波;
+            public const string 未成年战死后成功 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头；只是事后不久，对方便因伤势过重而气绝。";
+            public const string 未成年战死后成功村民 = "争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头；只是事后不久，对方便因伤势过重而气绝。" + 村民成功余波;
 
-            public const string 成年擒获后成功 = "战斗已经结束。你以绳索擒住了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效。";
-            public const string 成年擒获后成功村民 = "战斗已经结束。你以绳索擒住了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
-            public const string 未成年擒获后成功 = "战斗已经结束。你以绳索擒住了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效。";
-            public const string 未成年擒获后成功村民 = "战斗已经结束。你以绳索擒住了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 成年擒获后成功 = "绳索收紧，<Character key=CharacterId str=Name/>已被牢牢缚住，再难抗拒。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 成年擒获后成功村民 = "绳索收紧，<Character key=CharacterId str=Name/>已被牢牢缚住，再难抗拒。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
+            public const string 未成年擒获后成功 = "绳索收紧，尚未成年的<Character key=CharacterId str=Name/>已被牢牢缚住，再难挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 未成年擒获后成功村民 = "绳索收紧，尚未成年的<Character key=CharacterId str=Name/>已被牢牢缚住，再难挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
 
-            public const string 成年已关押成功 = "<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；成年强制路线的情难自已结果已经生效。";
-            public const string 成年已关押成功村民 = "<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
-            public const string 未成年已关押成功 = "尚未成年的<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；未成年强制路线的情难自已结果已经生效。";
-            public const string 未成年已关押成功村民 = "尚未成年的<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；未成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 成年已关押成功 = "<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从抵抗。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 成年已关押成功村民 = "<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从抵抗。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
+            public const string 未成年已关押成功 = "尚未成年的<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 未成年已关押成功村民 = "尚未成年的<Character key=CharacterId str=Name/>本已落在<Character key=RoleTaiwu str=Name/>掌中，纵有不甘，也无从挣开。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
 
-            public const string 成年无力应战成功 = "<Character key=CharacterId str=Name/>已无力应战，无法再作抵抗；成年强制路线的情难自已结果已经生效。";
-            public const string 成年无力应战成功村民 = "<Character key=CharacterId str=Name/>已无力应战，无法再作抵抗；成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
-            public const string 未成年无力应战成功 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，无法再作抵抗；未成年强制路线的情难自已结果已经生效。";
-            public const string 未成年无力应战成功村民 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，无法再作抵抗；未成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 成年无力应战成功 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 成年无力应战成功村民 = "<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
+            public const string 未成年无力应战成功 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。";
+            public const string 未成年无力应战成功村民 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，连退避都显得勉强。<Character key=RoleTaiwu str=Name/>终究遂了自己的念头。" + 村民成功余波;
 
-            public const string 成年普通失败结仇 = "战斗已经结束。你未能压服<Character key=CharacterId str=Name/>，成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 成年普通失败不结仇 = "战斗已经结束。你未能压服<Character key=CharacterId str=Name/>，成年强制路线的情难自已未能达成。";
-            public const string 成年普通失败村民 = "战斗已经结束。你未能压服<Character key=CharacterId str=Name/>，成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
-            public const string 未成年普通失败结仇 = "战斗已经结束。你未能压服尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 未成年普通失败不结仇 = "战斗已经结束。你未能压服尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已未能达成。";
-            public const string 未成年普通失败村民 = "战斗已经结束。你未能压服尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
+            public const string 成年普通失败结仇 = "一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事未成，却已使双方结下怨仇。";
+            public const string 成年普通失败不结仇 = "一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事只能暂且作罢。";
+            public const string 成年普通失败村民 = "一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。" + 村民失败余波;
+            public const string 未成年普通失败结仇 = "一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事未成，却已使双方结下怨仇。";
+            public const string 未成年普通失败不结仇 = "一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。此事只能暂且作罢。";
+            public const string 未成年普通失败村民 = "一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服。" + 村民失败余波;
 
-            public const string 成年无力应战结仇 = "<Character key=CharacterId str=Name/>已无力应战，成年强制路线无法再以此战斗压服对方；情难自已未能达成，但此事已经使双方结怨。";
-            public const string 成年无力应战不结仇 = "<Character key=CharacterId str=Name/>已无力应战，成年强制路线无法再以此战斗压服对方；情难自已未能达成。";
-            public const string 成年无力应战村民 = "<Character key=CharacterId str=Name/>已无力应战，成年强制路线无法再以此战斗压服对方；情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
-            public const string 未成年无力应战结仇 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，未成年强制路线无法再以此战斗压服对方；情难自已未能达成，但此事已经使双方结怨。";
-            public const string 未成年无力应战不结仇 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，未成年强制路线无法再以此战斗压服对方；情难自已未能达成。";
-            public const string 未成年无力应战村民 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，未成年强制路线无法再以此战斗压服对方；情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
+            public const string 成年无力应战结仇 = "<Character key=CharacterId str=Name/>已无力应战，这场争斗已无法再给<Character key=RoleTaiwu str=Name/>想要的结果。此事未成，却已使双方结下怨仇。";
+            public const string 成年无力应战不结仇 = "<Character key=CharacterId str=Name/>已无力应战，这场争斗已无法再给<Character key=RoleTaiwu str=Name/>想要的结果。此事只能暂且作罢。";
+            public const string 成年无力应战村民 = "<Character key=CharacterId str=Name/>已无力应战，这场争斗已无法再给<Character key=RoleTaiwu str=Name/>想要的结果。" + 村民失败余波;
+            public const string 未成年无力应战结仇 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，这场争斗已无法再给<Character key=RoleTaiwu str=Name/>想要的结果。此事未成，却已使双方结下怨仇。";
+            public const string 未成年无力应战不结仇 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，这场争斗已无法再给<Character key=RoleTaiwu str=Name/>想要的结果。此事只能暂且作罢。";
+            public const string 未成年无力应战村民 = "尚未成年的<Character key=CharacterId str=Name/>已无力应战，这场争斗已无法再给<Character key=RoleTaiwu str=Name/>想要的结果。" + 村民失败余波;
 
-            public const string 成年护卫拦截结仇 = "战斗已经结束。护卫阻拦在前，你未能接近<Character key=CharacterId str=Name/>；成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 成年护卫拦截不结仇 = "战斗已经结束。护卫阻拦在前，你未能接近<Character key=CharacterId str=Name/>；成年强制路线的情难自已未能达成。";
-            public const string 成年护卫拦截村民 = "战斗已经结束。护卫阻拦在前，你未能接近<Character key=CharacterId str=Name/>；成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
-            public const string 未成年护卫拦截结仇 = "战斗已经结束。护卫阻拦在前，你未能接近尚未成年的<Character key=CharacterId str=Name/>；未成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 未成年护卫拦截不结仇 = "战斗已经结束。护卫阻拦在前，你未能接近尚未成年的<Character key=CharacterId str=Name/>；未成年强制路线的情难自已未能达成。";
-            public const string 未成年护卫拦截村民 = "战斗已经结束。护卫阻拦在前，你未能接近尚未成年的<Character key=CharacterId str=Name/>；未成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
+            public const string 成年护卫拦截结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。此事未成，却已使双方结下怨仇。";
+            public const string 成年护卫拦截不结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。此事只能暂且作罢。";
+            public const string 成年护卫拦截村民 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近<Character key=CharacterId str=Name/>的身。" + 村民失败余波;
+            public const string 未成年护卫拦截结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近尚未成年的<Character key=CharacterId str=Name/>的身。此事未成，却已使双方结下怨仇。";
+            public const string 未成年护卫拦截不结仇 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近尚未成年的<Character key=CharacterId str=Name/>的身。此事只能暂且作罢。";
+            public const string 未成年护卫拦截村民 = "护卫横在前面，<Character key=RoleTaiwu str=Name/>终究未能近尚未成年的<Character key=CharacterId str=Name/>的身。" + 村民失败余波;
 
-            public const string 成年目标逃走结仇 = "战斗已经结束。<Character key=CharacterId str=Name/>趁乱脱身，成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 成年目标逃走不结仇 = "战斗已经结束。<Character key=CharacterId str=Name/>趁乱脱身，成年强制路线的情难自已未能达成。";
-            public const string 成年目标逃走村民 = "战斗已经结束。<Character key=CharacterId str=Name/>趁乱脱身，成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
-            public const string 未成年目标逃走结仇 = "战斗已经结束。尚未成年的<Character key=CharacterId str=Name/>趁乱脱身，未成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 未成年目标逃走不结仇 = "战斗已经结束。尚未成年的<Character key=CharacterId str=Name/>趁乱脱身，未成年强制路线的情难自已未能达成。";
-            public const string 未成年目标逃走村民 = "战斗已经结束。尚未成年的<Character key=CharacterId str=Name/>趁乱脱身，未成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
+            public const string 成年目标逃走结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去。此事未成，却已使双方结下怨仇。";
+            public const string 成年目标逃走不结仇 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去。此事只能暂且作罢。";
+            public const string 成年目标逃走村民 = "混乱之中，<Character key=CharacterId str=Name/>趁隙脱身而去。" + 村民失败余波;
+            public const string 未成年目标逃走结仇 = "混乱之中，尚未成年的<Character key=CharacterId str=Name/>趁隙脱身而去。此事未成，却已使双方结下怨仇。";
+            public const string 未成年目标逃走不结仇 = "混乱之中，尚未成年的<Character key=CharacterId str=Name/>趁隙脱身而去。此事只能暂且作罢。";
+            public const string 未成年目标逃走村民 = "混乱之中，尚未成年的<Character key=CharacterId str=Name/>趁隙脱身而去。" + 村民失败余波;
 
-            public const string 成年太吾撤退结仇 = "战斗已经结束。你已抽身而退，成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 成年太吾撤退不结仇 = "战斗已经结束。你已抽身而退，成年强制路线的情难自已未能达成。";
-            public const string 成年太吾撤退村民 = "战斗已经结束。你已抽身而退，成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
-            public const string 未成年太吾撤退结仇 = "战斗已经结束。你已抽身而退，未成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
-            public const string 未成年太吾撤退不结仇 = "战斗已经结束。你已抽身而退，未成年强制路线的情难自已未能达成。";
-            public const string 未成年太吾撤退村民 = "战斗已经结束。你已抽身而退，未成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
+            public const string 成年太吾撤退结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事未成，却已使双方结下怨仇。";
+            public const string 成年太吾撤退不结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事只能暂且作罢。";
+            public const string 成年太吾撤退村民 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。" + 村民失败余波;
+            public const string 未成年太吾撤退结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事未成，却已使双方结下怨仇。";
+            public const string 未成年太吾撤退不结仇 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退，此事只能暂且作罢。";
+            public const string 未成年太吾撤退村民 = "<Character key=RoleTaiwu str=Name/>先一步抽身而退。" + 村民失败余波;
         }
 
         private static class 擒获处置

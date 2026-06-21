@@ -398,10 +398,13 @@ sealed class ContractTests
                package.Contains("未成年无力应战成功", StringComparison.Ordinal), "ForceEncounter direct-fallen success should have adult and minor feedback text");
         Assert(package.Contains("ForceEncounterEventIds.选项.战斗反馈继续.Key", StringComparison.Ordinal), "ForceEncounter combat result event should show a feedback page with a continue option");
         Assert(!package.Contains("EventOptions = Array.Empty<TaiwuEventOption>()", StringComparison.Ordinal), "ForceEncounter combat result event should not silently close without feedback");
-        Assert(package.Contains("成年强制路线的情难自已结果已经生效", StringComparison.Ordinal), "ForceEncounter adult forced success feedback is missing");
-        Assert(package.Contains("未成年强制路线的情难自已结果已经生效", StringComparison.Ordinal), "ForceEncounter minor forced success feedback is missing");
-        Assert(package.Contains("成年强制路线的情难自已未能达成", StringComparison.Ordinal), "ForceEncounter adult forced failure feedback is missing");
-        Assert(package.Contains("未成年强制路线的情难自已未能达成", StringComparison.Ordinal), "ForceEncounter minor forced failure feedback is missing");
+        Assert(package.Contains("尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒", StringComparison.Ordinal), "ForceEncounter adult forced success feedback is missing");
+        Assert(package.Contains("争斗止息，尚未成年的<Character key=CharacterId str=Name/>再无力挣开", StringComparison.Ordinal), "ForceEncounter minor forced success feedback is missing");
+        Assert(package.Contains("一场争斗过后，<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服", StringComparison.Ordinal), "ForceEncounter adult forced failure feedback is missing");
+        Assert(package.Contains("一场争斗过后，尚未成年的<Character key=CharacterId str=Name/>终究没有被<Character key=RoleTaiwu str=Name/>压服", StringComparison.Ordinal), "ForceEncounter minor forced failure feedback is missing");
+        Assert(package.Contains("仍将这份怨惧暂且压在心底", StringComparison.Ordinal), "ForceEncounter villager forced success aftermath should avoid raw relationship-state wording");
+        Assert(package.Contains("虽未当场决裂，此后只怕也难再坦然相对", StringComparison.Ordinal), "ForceEncounter villager forced failure aftermath should avoid raw relationship-state wording");
+        Assert(!package.Contains("死仇", StringComparison.Ordinal), "ForceEncounter forced feedback should not expose enmity as raw death-feud wording");
         Assert(!string.IsNullOrWhiteSpace(combatResultEventGuid), "ForceEncounter combat result event guid is empty");
         Assert(!string.IsNullOrWhiteSpace(capturedTargetDispositionEventGuid), "ForceEncounter captured-target disposition event guid is empty");
         Assert(!string.IsNullOrWhiteSpace(consentChoiceEventGuid), "ForceEncounter consent choice event guid is empty");
@@ -475,7 +478,7 @@ sealed class ContractTests
         Assert(Regex.IsMatch(package, @"EventHelper\.StartCombat\(\s*partnerId,\s*CombatConfig\.DefKey\.DieNormal,\s*ForceEncounterEventIds\.事件\.战斗反馈,\s*(ArgBox|argBox),\s*true\)", RegexOptions.Singleline), "ForceEncounter guard combat should fight the intercepting guard and return to ForceEncounter result handling");
         Assert(package.Contains("guardInterceptActive && !hasMainEnemy", StringComparison.Ordinal), "ForceEncounter guard combat result should fail closed when the native main enemy id is missing");
         Assert(Regex.IsMatch(package, @"!ArgBox\.Get\(ForceEncounterConstants\.ArgBox\.NativeCombatResult,[\s\S]*?StoreResult\(false,\s*false,\s*false,\s*ForceEncounterConstants\.Reasons\.MissingBattleResult\)[\s\S]*?return;"), "ForceEncounter combat result should not write backend failure side effects when native CombatResult is missing");
-        Assert(package.Contains("护卫阻拦在前", StringComparison.Ordinal), "ForceEncounter guard combat result should have a separate failure feedback");
+        Assert(package.Contains("护卫横在前面", StringComparison.Ordinal), "ForceEncounter guard combat result should have a separate failure feedback");
         Assert(package.Contains("成年护卫拦截村民", StringComparison.Ordinal) &&
                package.Contains("未成年护卫拦截村民", StringComparison.Ordinal), "ForceEncounter guard-intercept villager failure should have adult and minor feedback text");
         Assert(package.Contains("成年目标逃走村民", StringComparison.Ordinal) &&
