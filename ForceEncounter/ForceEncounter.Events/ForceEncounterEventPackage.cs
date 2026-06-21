@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Config.EventConfig;
+using ForceEncounter.Shared;
 using GameData.Domains.TaiwuEvent.EventHelper;
 
 namespace ForceEncounter.Events
@@ -8,15 +9,16 @@ namespace ForceEncounter.Events
     {
         public ForceEncounterEventPackage()
         {
-            NameSpace = "ForceEncounter";
-            Author = "RedContritio";
-            Group = "Interaction";
+            NameSpace = ForceEncounterConstants.Mod.Id;
+            Author = ForceEncounterConstants.Mod.Author;
+            Group = ForceEncounterConstants.Mod.EventGroup;
             EventList = new List<TaiwuEventItem>
             {
                 new ForceEncounterEvent(),
                 new ForceEncounterConsentChoiceEvent(),
                 new ForceEncounterGuardInterceptEvent(),
                 new ForceEncounterCombatResultEvent(),
+                new ForceEncounterCapturedTargetDispositionEvent(),
                 new ForceEncounterAcceptedResultEvent()
             };
 

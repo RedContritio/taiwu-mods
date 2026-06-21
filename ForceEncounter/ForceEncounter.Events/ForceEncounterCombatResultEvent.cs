@@ -36,7 +36,7 @@ namespace ForceEncounter.Events
                     OnOptionSelect = Continue
                 }
             };
-            EventOptions[0].SetContent("离开");
+            EventOptions[0].SetContent(ForceEncounterEventText.按钮.离开);
         }
 
         public override bool OnCheckEventCondition()
@@ -210,7 +210,7 @@ namespace ForceEncounter.Events
 
                 if (seizedCharacterId == targetId)
                 {
-                    return new CombatRoute(true, ForceEncounterConstants.Reasons.NoResult);
+                    return new CombatRoute(true, ForceEncounterConstants.Reasons.TargetCapturedInCombat);
                 }
 
                 EscapeTargetAfterGuardRoute(targetId, hasNotification: guardTeamPrepared);
@@ -349,6 +349,19 @@ namespace ForceEncounter.Events
         private string Continue()
         {
             ForceEncounterEventRuntime.DebugLog(GetRuntimeModId(), "CombatResult continue selected");
+            bool ok = false;
+            bool succeeded = false;
+            string reason = ForceEncounterConstants.Reasons.NoResult;
+            ArgBox?.Get(ForceEncounterEventIds.参数.战斗结算成功, ref ok);
+            ArgBox?.Get(ForceEncounterEventIds.参数.战斗分支成功, ref succeeded);
+            ArgBox?.Get(ForceEncounterEventIds.参数.战斗结算原因, ref reason);
+            if (ok &&
+                succeeded &&
+                reason == ForceEncounterConstants.Reasons.TargetCapturedInCombat)
+            {
+                return ForceEncounterEventIds.事件.擒获处置;
+            }
+
             EventHelper.ToEvent(string.Empty);
             return string.Empty;
         }

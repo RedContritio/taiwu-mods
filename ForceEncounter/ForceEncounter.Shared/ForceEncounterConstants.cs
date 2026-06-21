@@ -6,6 +6,7 @@ namespace ForceEncounter.Shared
         {
             public const string Id = "ForceEncounter";
             public const string Author = "RedContritio";
+            public const string EventGroup = "Interaction";
         }
 
         public static class Settings
@@ -70,6 +71,7 @@ namespace ForceEncounter.Shared
             public const string ConsentChoice = "a5ef5a51-2c64-40d2-a936-7c9d8ff7c6c6";
             public const string GuardIntercept = "27f95f25-e7bb-470a-970e-3fb4cf12f63b";
             public const string CombatResult = "ea75dd81-9054-4e54-9e6e-799669e2fb41";
+            public const string CapturedTargetDisposition = "b607fb0e-411d-4ef3-b0b2-8ac9efde7dd4";
             public const string AcceptedResult = "5af48fa3-2fa8-44c5-8a04-8ad9805d3f47";
         }
 
@@ -87,6 +89,12 @@ namespace ForceEncounter.Shared
             public const string AbandonGuid = "8904aa49-9a92-4b82-9045-dad4f125ff8b";
             public const string CombatResultContinueKey = "ForceEncounter.CombatResultContinue";
             public const string CombatResultContinueGuid = "2bf7c96a-d482-45ce-96d8-47dd4ecb795c";
+            public const string KeepCapturedTargetKey = "ForceEncounter.KeepCapturedTarget";
+            public const string KeepCapturedTargetGuid = "455bd1be-1cbc-4ecb-8c41-f40d20bc0c4e";
+            public const string KeepCapturedTargetSecretlyKey = "ForceEncounter.KeepCapturedTargetSecretly";
+            public const string KeepCapturedTargetSecretlyGuid = "762a1632-c322-4679-85c5-6bd64901bd8b";
+            public const string ReleaseCapturedTargetKey = "ForceEncounter.ReleaseCapturedTarget";
+            public const string ReleaseCapturedTargetGuid = "a1c0cc59-7aa0-4abc-89a0-06fd1d4f1ee9";
             public const string AcceptedResultContinueKey = "ForceEncounter.AcceptedResultContinue";
             public const string AcceptedResultContinueGuid = "8d6c8b16-2eb7-46f4-b3f5-e7e9b7d5bf46";
             public const string GuardContinueKey = "ForceEncounter.GuardInterceptContinue";
@@ -176,6 +184,8 @@ namespace ForceEncounter.Shared
             public const string Succeed = "Succeed";
             public const string Failed = "Failed";
             public const string NoResult = "NoResult";
+            public const string VisibleAllowedBySetting = "VisibleAllowedBySetting";
+            public const string MissingTargetForVisibleCheck = "MissingTargetForVisibleCheck";
             public const string NoArgBox = "NoArgBox";
             public const string MissingCharacterId = "MissingCharacterId";
             public const string MissingActorOrTarget = "MissingActorOrTarget";
@@ -197,6 +207,8 @@ namespace ForceEncounter.Shared
             public const string TargetEscaped = "TargetEscaped";
             public const string ActorEscaped = "ActorEscaped";
             public const string TargetDiedInCombat = "TargetDiedInCombat";
+            public const string TargetCapturedInCombat = "TargetCapturedInCombat";
+            public const string TargetAlreadyPrisoner = "TargetAlreadyPrisoner";
         }
     }
 }

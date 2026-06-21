@@ -23,6 +23,7 @@ namespace ForceEncounter.Events
             public const string 内层选择 = ForceEncounterConstants.EventGuids.ConsentChoice;
             public const string 护卫出面 = ForceEncounterConstants.EventGuids.GuardIntercept;
             public const string 战斗反馈 = ForceEncounterConstants.EventGuids.CombatResult;
+            public const string 擒获处置 = ForceEncounterConstants.EventGuids.CapturedTargetDisposition;
             public const string 亲密反馈 = ForceEncounterConstants.EventGuids.AcceptedResult;
         }
 
@@ -34,6 +35,9 @@ namespace ForceEncounter.Events
             public static readonly EventOptionId 强制关系 = new(ForceEncounterConstants.Options.ForceCombatKey, ForceEncounterConstants.Options.ForceCombatGuid);
             public static readonly EventOptionId 其他话题 = new(ForceEncounterConstants.Options.AbandonKey, ForceEncounterConstants.Options.AbandonGuid);
             public static readonly EventOptionId 战斗反馈继续 = new(ForceEncounterConstants.Options.CombatResultContinueKey, ForceEncounterConstants.Options.CombatResultContinueGuid);
+            public static readonly EventOptionId 关押擒获目标 = new(ForceEncounterConstants.Options.KeepCapturedTargetKey, ForceEncounterConstants.Options.KeepCapturedTargetGuid);
+            public static readonly EventOptionId 秘密关押擒获目标 = new(ForceEncounterConstants.Options.KeepCapturedTargetSecretlyKey, ForceEncounterConstants.Options.KeepCapturedTargetSecretlyGuid);
+            public static readonly EventOptionId 释放擒获目标 = new(ForceEncounterConstants.Options.ReleaseCapturedTargetKey, ForceEncounterConstants.Options.ReleaseCapturedTargetGuid);
             public static readonly EventOptionId 亲密反馈继续 = new(ForceEncounterConstants.Options.AcceptedResultContinueKey, ForceEncounterConstants.Options.AcceptedResultContinueGuid);
             public static readonly EventOptionId 护卫继续 = new(ForceEncounterConstants.Options.GuardContinueKey, ForceEncounterConstants.Options.GuardContinueGuid);
         }

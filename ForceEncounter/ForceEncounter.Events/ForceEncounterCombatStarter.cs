@@ -33,6 +33,16 @@ namespace ForceEncounter.Events
                 ", hasGuard=" + hasGuard +
                 ", applyAlertness=" + ShouldApplyAlertnessOnCombatStart(modId));
 
+            if (TargetIsAlreadyPrisonerOfActor(argBox, targetId, out int actorId))
+            {
+                ForceEncounterEventRuntime.DebugLog(
+                    modId,
+                    "Target already prisoner before forced combat actor=" + actorId +
+                    ", target=" + targetId);
+                StoreCombatSettlement(argBox, modId, ForceEncounterConstants.Reasons.TargetAlreadyPrisoner, battleSucceeded: true);
+                return ForceEncounterEventIds.事件.战斗反馈;
+            }
+
             if (useGuardInterception &&
                 DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
                 EventHelper.HasGuard(target))
@@ -175,6 +185,18 @@ namespace ForceEncounter.Events
         private static bool ShouldApplyAlertnessOnCombatStart(string modId)
         {
             return TaiwuModSettings.GetBool(modId, ForceEncounterConstants.Settings.ApplyAlertnessOnCombatStart, true);
+        }
+
+        private static bool TargetIsAlreadyPrisonerOfActor(EventArgBox argBox, int targetId, out int actorId)
+        {
+            actorId = DomainManager.Taiwu.GetTaiwuCharId();
+            if (argBox != null)
+            {
+                argBox.Get(ForceEncounterEventIds.参数.行为者, ref actorId);
+            }
+
+            return DomainManager.Character.TryGetElement_Objects(targetId, out var target) &&
+                   target.GetKidnapperId() == actorId;
         }
 
         public static string StartGuardCombat(EventArgBox argBox)

@@ -4,6 +4,25 @@ namespace ForceEncounter.Events
 {
     internal static class ForceEncounterEventText
     {
+        public static class 按钮
+        {
+            public const string 空 = "";
+            public const string 情难自已 = "（情难自已……）";
+            public const string 正常发生关系 = "（正常发生关系……）";
+            public const string 强制关系 = "（强制关系……）";
+            public const string 其他话题 = "其他话题";
+            public const string 离开 = "离开";
+            public const string 继续 = "（继续……）";
+            public const string 公开关押擒获目标 = "（公开关押！）";
+            public const string 秘密关押擒获目标 = "（秘密关押……）";
+            public const string 放其离开擒获目标 = "（放其离开……）";
+        }
+
+        public static class 过场
+        {
+            public const string 护卫出面 = "对方的护卫挺身拦在你面前。";
+        }
+
         public static string 构造内层说明(bool 亲密通过, bool 未成年, bool 有护卫)
         {
             if (亲密通过)
@@ -36,6 +55,28 @@ namespace ForceEncounter.Events
                     强制反馈.成年战死后成功村民,
                     强制反馈.未成年战死后成功,
                     强制反馈.未成年战死后成功村民);
+            }
+
+            if (succeeded && reason == ForceEncounter.Shared.ForceEncounterConstants.Reasons.TargetCapturedInCombat)
+            {
+                return SelectSuccessContent(
+                    未成年,
+                    targetIsTaiwuVillager,
+                    强制反馈.成年擒获后成功,
+                    强制反馈.成年擒获后成功村民,
+                    强制反馈.未成年擒获后成功,
+                    强制反馈.未成年擒获后成功村民);
+            }
+
+            if (succeeded && reason == ForceEncounter.Shared.ForceEncounterConstants.Reasons.TargetAlreadyPrisoner)
+            {
+                return SelectSuccessContent(
+                    未成年,
+                    targetIsTaiwuVillager,
+                    强制反馈.成年已关押成功,
+                    强制反馈.成年已关押成功村民,
+                    强制反馈.未成年已关押成功,
+                    强制反馈.未成年已关押成功村民);
             }
 
             if (succeeded && reason == ForceEncounter.Shared.ForceEncounterConstants.Reasons.TargetDirectFallen)
@@ -138,6 +179,26 @@ namespace ForceEncounter.Events
             return 未成年 ? 亲密反馈.未成年成功 : 亲密反馈.成年成功;
         }
 
+        public static string BuildCapturedTargetDispositionContent()
+        {
+            return 擒获处置.选择;
+        }
+
+        public static string BuildCapturedTargetKeptContent()
+        {
+            return 擒获处置.关押;
+        }
+
+        public static string BuildCapturedTargetKeptSecretlyContent()
+        {
+            return 擒获处置.秘密关押;
+        }
+
+        public static string BuildCapturedTargetReleasedContent()
+        {
+            return 擒获处置.释放;
+        }
+
         private static string SelectSuccessContent(
             bool 未成年,
             bool targetIsTaiwuVillager,
@@ -195,12 +256,12 @@ namespace ForceEncounter.Events
 
         private static class 亲密反馈
         {
-            public const string 成年成功 = "<Character key=RoleTaiwu str=Name/>与<Character key=CharacterId str=Name/>情意相投，此番亲密之事已经成就。";
+            public const string 成年成功 = "良久，<Character key=CharacterId str=Name/>才慢慢平复气息，仍倚在<Character key=RoleTaiwu str=Name/>身侧。二人虽一时无话，方才之事却已不必再言。";
             [异常兜底]
-            public const string 成年结算失败 = "<Character key=RoleTaiwu str=Name/>与<Character key=CharacterId str=Name/>情意相投，但亲密结算未能完成。";
-            public const string 未成年成功 = "<Character key=RoleTaiwu str=Name/>对尚未成年的<Character key=CharacterId str=Name/>情难自已；对方未作抗拒，此事已经按亲密路线结算。";
+            public const string 成年结算失败 = "<Character key=RoleTaiwu str=Name/>与<Character key=CharacterId str=Name/>情意虽近，临到此时却忽然生出几分迟疑。二人相顾无言，只好暂且止住。";
+            public const string 未成年成功 = "过了许久，<Character key=CharacterId str=Name/>仍低着头，耳根红意未褪，只轻轻攥着衣袖。方才之事既已发生，二人一时都不知该如何开口。";
             [异常兜底]
-            public const string 未成年结算失败 = "<Character key=RoleTaiwu str=Name/>对尚未成年的<Character key=CharacterId str=Name/>情难自已，但亲密结算未能完成。";
+            public const string 未成年结算失败 = "<Character key=CharacterId str=Name/>低着头退开半步，神色惶惑不安。<Character key=RoleTaiwu str=Name/>一时也不知该如何继续，只得暂且停下。";
         }
 
         private static class 强制反馈
@@ -219,6 +280,16 @@ namespace ForceEncounter.Events
             public const string 成年战死后成功村民 = "战斗已经结束。你压服了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效；随后对方伤重身死。对方身为太吾村民，未因此立刻与你结为仇敌。";
             public const string 未成年战死后成功 = "战斗已经结束。你压服了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效；随后对方伤重身死。";
             public const string 未成年战死后成功村民 = "战斗已经结束。你压服了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效；随后对方伤重身死。对方身为太吾村民，未因此立刻与你结为仇敌。";
+
+            public const string 成年擒获后成功 = "战斗已经结束。你以绳索擒住了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效。";
+            public const string 成年擒获后成功村民 = "战斗已经结束。你以绳索擒住了<Character key=CharacterId str=Name/>，成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 未成年擒获后成功 = "战斗已经结束。你以绳索擒住了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效。";
+            public const string 未成年擒获后成功村民 = "战斗已经结束。你以绳索擒住了尚未成年的<Character key=CharacterId str=Name/>，未成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+
+            public const string 成年已关押成功 = "<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；成年强制路线的情难自已结果已经生效。";
+            public const string 成年已关押成功村民 = "<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
+            public const string 未成年已关押成功 = "尚未成年的<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；未成年强制路线的情难自已结果已经生效。";
+            public const string 未成年已关押成功村民 = "尚未成年的<Character key=CharacterId str=Name/>已被你制住，无法再作抵抗；未成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
 
             public const string 成年无力应战成功 = "<Character key=CharacterId str=Name/>已无力应战，无法再作抵抗；成年强制路线的情难自已结果已经生效。";
             public const string 成年无力应战成功村民 = "<Character key=CharacterId str=Name/>已无力应战，无法再作抵抗；成年强制路线的情难自已结果已经生效。对方身为太吾村民，未因此立刻与你结为仇敌。";
@@ -259,6 +330,14 @@ namespace ForceEncounter.Events
             public const string 未成年太吾撤退结仇 = "战斗已经结束。你已抽身而退，未成年强制路线的情难自已未能达成，但此事已经使双方结怨。";
             public const string 未成年太吾撤退不结仇 = "战斗已经结束。你已抽身而退，未成年强制路线的情难自已未能达成。";
             public const string 未成年太吾撤退村民 = "战斗已经结束。你已抽身而退，未成年强制路线的情难自已未能达成。对方身为太吾村民，虽未立刻与你结为仇敌，心中仍难免芥蒂。";
+        }
+
+        private static class 擒获处置
+        {
+            public const string 选择 = "<Character key=Prisoner str=Name/>已被绳索缚住，暂时无法脱身。此事既已了结，接下来便只看你要如何处置。";
+            public const string 关押 = "<Character key=RoleTaiwu str=Name/>将<Character key=Prisoner str=Name/>押在身边，不许其离去。";
+            public const string 秘密关押 = "<Character key=RoleTaiwu str=Name/>避开旁人耳目，将<Character key=Prisoner str=Name/>押在身边。";
+            public const string 释放 = "<Character key=RoleTaiwu str=Name/>替<Character key=Prisoner str=Name/>解开束缚，任其离去。";
         }
 
         [AttributeUsage(AttributeTargets.Field)]

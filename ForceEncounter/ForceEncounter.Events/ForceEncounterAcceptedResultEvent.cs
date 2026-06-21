@@ -31,7 +31,7 @@ namespace ForceEncounter.Events
                     OnOptionSelect = Continue
                 }
             };
-            EventOptions[0].SetContent("离开");
+            EventOptions[0].SetContent(ForceEncounterEventText.按钮.离开);
         }
 
         public override bool OnCheckEventCondition()

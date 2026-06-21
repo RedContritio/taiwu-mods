@@ -58,9 +58,9 @@ namespace ForceEncounter.Events
                     OnOptionSelect = Abandon
                 }
             };
-            EventOptions[0].SetContent("（正常发生关系……）");
-            EventOptions[1].SetContent("（强制关系……）");
-            EventOptions[2].SetContent("其他话题");
+            EventOptions[0].SetContent(ForceEncounterEventText.按钮.正常发生关系);
+            EventOptions[1].SetContent(ForceEncounterEventText.按钮.强制关系);
+            EventOptions[2].SetContent(ForceEncounterEventText.按钮.其他话题);
         }
 
         public override bool OnCheckEventCondition()

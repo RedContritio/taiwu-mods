@@ -52,8 +52,8 @@ namespace ForceEncounter.Events
                     OnOptionSelect = Execute
                 }
             };
-            EventOptions[0].SetContent(string.Empty);
-            EventOptions[1].SetContent("（情难自已……）");
+            EventOptions[0].SetContent(ForceEncounterEventText.按钮.空);
+            EventOptions[1].SetContent(ForceEncounterEventText.按钮.情难自已);
         }
 
         public override bool OnCheckEventCondition()
@@ -145,13 +145,13 @@ namespace ForceEncounter.Events
 
             if (允许未成年)
             {
-                reason = "AllowedBySetting";
+                reason = ForceEncounterConstants.Reasons.VisibleAllowedBySetting;
                 return true;
             }
 
             if (ArgBox == null || !ArgBox.Get(EventTriggerParameter.DefValue.CharacterId, ref targetId))
             {
-                reason = "MissingTargetForVisibleCheck";
+                reason = ForceEncounterConstants.Reasons.MissingTargetForVisibleCheck;
                 return true;
             }
 

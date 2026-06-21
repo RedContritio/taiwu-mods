@@ -9,8 +9,6 @@ namespace ForceEncounter.Events
 {
     internal sealed class ForceEncounterGuardInterceptEvent : TaiwuEventItem
     {
-        private const string 护卫出面内容 = "对方的护卫挺身拦在你面前。";
-
         public ForceEncounterGuardInterceptEvent()
         {
             Guid = Guid.Parse(ForceEncounterEventIds.事件.护卫出面);
@@ -33,7 +31,7 @@ namespace ForceEncounter.Events
                     OnOptionSelect = StartGuardCombat
                 }
             };
-            EventOptions[0].SetContent("（继续……）");
+            EventOptions[0].SetContent(ForceEncounterEventText.按钮.继续);
         }
 
         public override bool OnCheckEventCondition()
@@ -67,7 +65,7 @@ namespace ForceEncounter.Events
 
         public override string GetReplacedContentString()
         {
-            return 护卫出面内容;
+            return ForceEncounterEventText.过场.护卫出面;
         }
 
         private string StartGuardCombat()
