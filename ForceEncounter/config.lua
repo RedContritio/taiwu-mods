@@ -1,7 +1,7 @@
 ﻿return {
     Title = "情难自已",
     Description = "为玩家提供接口，主动触发角色之间的正式版强制行为。",
-    Version = "1.0.0.0",
+    Version = "1.0.0.2",
     Author = "RedContritio",
     Source = 0,
     Cover = "",

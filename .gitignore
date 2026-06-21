@@ -49,4 +49,5 @@ nunit-*.xml
 **/Plugins/
 **/Events/EventLib/
 _decompiled/
+_scratch/
 Taiwu_mods/
