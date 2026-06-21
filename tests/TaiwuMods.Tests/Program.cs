@@ -396,6 +396,9 @@ sealed class ContractTests
         Assert(package.Contains("ForceEncounterConstants.Reasons.TargetAlreadyPrisoner, battleSucceeded: true", StringComparison.Ordinal), "ForceEncounter already-prisoner path should settle as forced-route success");
         Assert(package.Contains("成年无力应战成功", StringComparison.Ordinal) &&
                package.Contains("未成年无力应战成功", StringComparison.Ordinal), "ForceEncounter direct-fallen success should have adult and minor feedback text");
+        Assert(!package.Contains("if (reason == ForceEncounter.Shared.ForceEncounterConstants.Reasons.TargetDirectFallen)", StringComparison.Ordinal), "ForceEncounter direct-fallen target should not be routed to forced-route failure feedback");
+        Assert(!package.Contains("成年无力应战结仇", StringComparison.Ordinal) &&
+               !package.Contains("未成年无力应战结仇", StringComparison.Ordinal), "ForceEncounter direct-fallen target should not have failure/enmity feedback text");
         Assert(package.Contains("ForceEncounterEventIds.选项.战斗反馈继续.Key", StringComparison.Ordinal), "ForceEncounter combat result event should show a feedback page with a continue option");
         Assert(!package.Contains("EventOptions = Array.Empty<TaiwuEventOption>()", StringComparison.Ordinal), "ForceEncounter combat result event should not silently close without feedback");
         Assert(package.Contains("尘埃落定，<Character key=CharacterId str=Name/>再无力抗拒", StringComparison.Ordinal), "ForceEncounter adult forced success feedback is missing");
@@ -452,8 +455,8 @@ sealed class ContractTests
         Assert(package.Contains("actor.GetAgeGroup() < ForceEncounterConstants.Gameplay.成年年龄组", StringComparison.Ordinal), "ForceEncounter minor checks should not classify elders as minors");
         Assert(!package.Contains("new OptionConsumeInfo((sbyte)16", StringComparison.Ordinal), "ForceEncounter should not consume a main attribute cost");
         Assert(package.Contains("（情难自已……）", StringComparison.Ordinal), "ForceEncounter hostile option should use native parenthesized option text");
-        Assert(package.Contains("（正常发生关系……）", StringComparison.Ordinal), "ForceEncounter accepted branch prompt option is missing");
-        Assert(package.Contains("（强制关系……）", StringComparison.Ordinal), "ForceEncounter forced branch prompt option is missing");
+        Assert(package.Contains("（半推半就……）", StringComparison.Ordinal), "ForceEncounter accepted branch prompt option is missing");
+        Assert(package.Contains("（更进一步……）", StringComparison.Ordinal), "ForceEncounter forced branch prompt option is missing");
         Assert(package.Contains("其他话题", StringComparison.Ordinal), "ForceEncounter abandon options should use the native other-topic label");
         Assert(!package.Contains("就此作罢", StringComparison.Ordinal), "ForceEncounter should not use a custom abandon label where native hostile interactions use other-topic");
         Assert(package.Contains("ForceEncounterConstants.ArgBox.NativeMainInteractionHeadEvent", StringComparison.Ordinal), "ForceEncounter abandon options should use the native main-interaction head event key");
