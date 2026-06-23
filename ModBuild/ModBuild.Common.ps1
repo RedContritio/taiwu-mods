@@ -660,5 +660,14 @@ function Copy-ModFiles {
         }
     }
 
+    # Carry sibling dependency DLLs that are not themselves declared plugins (e.g. a backend
+    # plugin that bundles Roslyn for runtime C# eval). Other mods have none, so this is a no-op for them.
+    $declaredSet = @(@($validation.DeclaredPlugins) | ForEach-Object { $_.ToLowerInvariant() })
+    Get-ChildItem $validation.PluginsDir -File -Filter *.dll | Where-Object {
+        $declaredSet -notcontains $_.Name.ToLowerInvariant()
+    } | ForEach-Object {
+        Copy-Item $_.FullName $destinationPlugins -Force
+    }
+
     return $Destination
 }

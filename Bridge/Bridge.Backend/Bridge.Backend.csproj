@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputPath>..\Plugins</OutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <!-- Override Directory.Build.props (false) so the Roslyn scripting package DLLs copy
+         into ..\Plugins. Game references keep <Private>false</Private> so they do NOT copy.
+         net8 in-box System.* satisfy Roslyn's BCL deps; only Microsoft.CodeAnalysis*.dll
+         resolve from the plugin folder via the backend loader's AssemblyResolve handler. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- 不要把 Roslyn 的本地化卫星资源（cs/de/ja/...）拷进 Plugins。 -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\TaiwuMod.Common\TaiwuModSettings.cs" Link="TaiwuModSettings.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TaiwuModdingLib">
+      <HintPath>$(TaiwuBackendDir)\TaiwuModdingLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(TaiwuBackendDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameData">
+      <HintPath>$(TaiwuBackendDir)\GameData.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameData.Common">
+      <HintPath>$(TaiwuBackendDir)\GameData.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameData.Shared">
+      <HintPath>$(TaiwuBackendDir)\GameData.Shared.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameData.ArchiveData">
+      <HintPath>$(TaiwuBackendDir)\GameData.ArchiveData.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameData.Utilities">
+      <HintPath>$(TaiwuBackendDir)\GameData.Utilities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Redzen">
+      <HintPath>$(TaiwuBackendDir)\Redzen.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
