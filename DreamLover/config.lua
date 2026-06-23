@@ -1,11 +1,11 @@
 return {
     Title = "梦中情人",
     Description = "NPC主动对太吾产生爱慕、表白与求婚。",
-    Version = "2.0.0.0",
+    Version = "2.0.1.0",
     Author = "RedContritio",
     Source = 0,
     Cover = "",
-    GameVersion = "1.0.7",
+    GameVersion = "1.0.20",
     BackendPlugins = {
         "DreamLover.Backend.dll",
     },

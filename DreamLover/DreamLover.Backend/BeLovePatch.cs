@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using HarmonyLib;
 using GameData.Common;
 using GameData.Domains;
@@ -16,6 +15,16 @@ namespace DreamLover.Backend
     {
         private const ushort Adored = 16384;
         private const ushort Spouse = 1024;
+
+        // NPC 主动对【太吾】发起的关系，必须在月度补全阶段（单线程）直接 Apply。
+        // 原因：游戏的 ComplementPeriAdvanceMonth_RelationsUpdate 在“新关系目标是太吾”时，
+        // 只会把它转成月报事件（AddAdore/AddConfess/AddProposeMarriage），并【不】真正建立关系；
+        // 只有目标非太吾时才直接调用 Apply*。所以记录 NewRegularRelations(target=太吾) 无效，
+        // 必须自己在补全阶段直接调用 Character.Apply* 把关系落到太吾身上（与 ForgetMe 的处理方式一致）。
+        private enum LoveAction { Enamor, Confession, Marriage }
+
+        private static readonly ConcurrentQueue<(int CharId, LoveAction Action)> ActionQueue
+            = new ConcurrentQueue<(int, LoveAction)>();
         private static readonly ConcurrentQueue<int> ForgetMeQueue = new ConcurrentQueue<int>();
 
         private static void Log(string message)
@@ -51,16 +60,36 @@ namespace DreamLover.Backend
             if (!PassFilters(__instance, charId, taiwuId, taiwu))
                 return true;
 
-            if (Settings.EnableMarry && TryMarriage(context, charId, __instance, taiwu))
+            // 决策顺序：双向爱慕→求婚；单向(npc爱慕)→表白；尚未爱慕→爱慕。
+            // 仅做决策与入队，真正的关系变更在补全阶段（DrainQueues）单线程执行。
+            if (Settings.EnableMarry && ShouldMarry(charId, __instance, taiwu, taiwuId))
+            {
+                Enqueue(context, __instance, charId, LoveAction.Marriage);
                 return true;
+            }
 
-            if (Settings.EnablePursued && TryConfession(context, charId, __instance, taiwu))
+            if (Settings.EnablePursued && ShouldConfess(charId, __instance, taiwu, taiwuId))
+            {
+                Enqueue(context, __instance, charId, LoveAction.Confession);
                 return true;
+            }
 
-            if (Settings.EnableEnamor && TryEnamor(context, charId, __instance, taiwu))
+            if (Settings.EnableEnamor && ShouldEnamor(charId, __instance, taiwu, taiwuId))
+            {
+                Enqueue(context, __instance, charId, LoveAction.Enamor);
                 return true;
+            }
 
             return true;
+        }
+
+        private static void Enqueue(DataContext context, Character npc, int charId, LoveAction action)
+        {
+            Log(charId + " queued: " + action);
+            ActionQueue.Enqueue((charId, action));
+            // 记录一条空的关系更新，确保补全阶段（ComplementPeriAdvanceMonth_RelationsUpdate）会被调用，
+            // 从而 DrainQueues 得以执行。
+            RecordEmptyRelationsUpdate(context, npc);
         }
 
         private static void TryForgetMe(DataContext context, Character npc, int charId, int taiwuId)
@@ -132,9 +161,10 @@ namespace DreamLover.Backend
             return true;
         }
 
-        private static bool TryMarriage(DataContext context, int charId, Character npc, Character taiwu)
+        // ---------- 决策（worker 线程，只读状态 + 正式规则校验） ----------
+
+        private static bool ShouldMarry(int charId, Character npc, Character taiwu, int taiwuId)
         {
-            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
             if (!DomainManager.Character.HasRelation(taiwuId, charId, Adored))
@@ -181,14 +211,11 @@ namespace DreamLover.Backend
                 return false;
             }
 
-            Log(charId + " marriage: recording monthly relation update");
-            RecordNewRegularRelation(context, npc, taiwu, Spouse, true);
             return true;
         }
 
-        private static bool TryConfession(DataContext context, int charId, Character npc, Character taiwu)
+        private static bool ShouldConfess(int charId, Character npc, Character taiwu, int taiwuId)
         {
-            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
             if (DomainManager.Character.HasRelation(taiwuId, charId, Adored))
@@ -202,18 +229,11 @@ namespace DreamLover.Backend
                 return false;
             }
 
-            Log(charId + " confession: recording monthly relation update");
-            var mod = new PeriAdvanceMonthRelationsUpdateModification(npc)
-            {
-                NewBoyOrGirlFriend = (targetChar: taiwu, succeed: true)
-            };
-            RecordRelationsUpdate(context, mod);
             return true;
         }
 
-        private static bool TryEnamor(DataContext context, int charId, Character npc, Character taiwu)
+        private static bool ShouldEnamor(int charId, Character npc, Character taiwu, int taiwuId)
         {
-            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
             if (!RelationTypeHelper.AllowAddingAdoredRelation(charId, taiwuId))
@@ -228,41 +248,65 @@ namespace DreamLover.Backend
                 return false;
             }
 
-            Log(charId + " enamor: recording monthly relation update");
-            RecordNewRegularRelation(context, npc, taiwu, Adored, false);
             return true;
-        }
-
-        private static void RecordNewRegularRelation(DataContext context, Character npc, Character taiwu, ushort relationType, bool succeed)
-        {
-            var mod = new PeriAdvanceMonthRelationsUpdateModification(npc)
-            {
-                NewRegularRelations = new List<(Character targetChar, ushort relationType, bool succeed)>
-                {
-                    (taiwu, relationType, succeed)
-                }
-            };
-            RecordRelationsUpdate(context, mod);
         }
 
         private static void RecordEmptyRelationsUpdate(DataContext context, Character npc)
         {
-            RecordRelationsUpdate(context, new PeriAdvanceMonthRelationsUpdateModification(npc));
-        }
-
-        private static void RecordRelationsUpdate(DataContext context, PeriAdvanceMonthRelationsUpdateModification mod)
-        {
+            var mod = new PeriAdvanceMonthRelationsUpdateModification(npc);
             var recorder = context.ParallelModificationsRecorder;
             recorder.RecordType(ParallelModificationType.PeriAdvanceMonthRelationsUpdate);
             recorder.RecordParameterClass(mod);
         }
 
-        internal static void DrainForgetMeQueue(DataContext context)
+        // ---------- 应用（补全阶段，单线程，直接落关系到太吾身上） ----------
+
+        internal static void DrainQueues(DataContext context)
         {
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (taiwuId < 0 || !DomainManager.Character.TryGetElement_Objects(taiwuId, out Character taiwu))
                 return;
 
+            bool taiwuIsTaiwuPeople = DomainManager.Character.IsTaiwuPeople(taiwuId);
+
+            while (ActionQueue.TryDequeue(out var item))
+            {
+                if (!DomainManager.Character.TryGetElement_Objects(item.CharId, out Character npc))
+                    continue;
+
+                sbyte bt = npc.GetBehaviorType();
+                bool npcIsTaiwuPeople = DomainManager.Character.IsTaiwuPeople(item.CharId);
+
+                switch (item.Action)
+                {
+                    case LoveAction.Enamor:
+                        if (DomainManager.Character.HasRelation(item.CharId, taiwuId, Adored))
+                            break;
+                        Log(item.CharId + " enamor: applying adore for Taiwu");
+                        Character.ApplyAddRelation_Adore(context, npc, taiwu, bt, false, npcIsTaiwuPeople, taiwuIsTaiwuPeople);
+                        break;
+
+                    case LoveAction.Confession:
+                        if (DomainManager.Character.HasRelation(taiwuId, item.CharId, Adored))
+                            break;
+                        Log(item.CharId + " confession: applying mutual adoration with Taiwu");
+                        Character.ApplyBecomeBoyOrGirlFriend(context, npc, taiwu, bt, true, npcIsTaiwuPeople, taiwuIsTaiwuPeople);
+                        break;
+
+                    case LoveAction.Marriage:
+                        if (DomainManager.Character.HasRelation(item.CharId, taiwuId, Spouse))
+                            break;
+                        Log(item.CharId + " marriage: applying marriage with Taiwu");
+                        Character.ApplyBecomeHusbandOrWife(context, npc, taiwu, bt, true, npcIsTaiwuPeople, taiwuIsTaiwuPeople);
+                        break;
+                }
+            }
+
+            DrainForgetMeQueue(context, taiwuId, taiwu);
+        }
+
+        private static void DrainForgetMeQueue(DataContext context, int taiwuId, Character taiwu)
+        {
             while (ForgetMeQueue.TryDequeue(out int charId))
             {
                 if (!DomainManager.Character.TryGetElement_Objects(charId, out Character npc))
@@ -287,7 +331,7 @@ namespace DreamLover.Backend
         [HarmonyPostfix]
         public static void Postfix(DataContext context)
         {
-            BeLovePatch.DrainForgetMeQueue(context);
+            BeLovePatch.DrainQueues(context);
         }
     }
 }

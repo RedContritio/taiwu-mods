@@ -3,7 +3,7 @@ using TaiwuModdingLib.Core.Plugin;
 
 namespace DreamLover.Backend
 {
-    [PluginConfig("DreamLover", "RedContritio", "2.0.0")]
+    [PluginConfig("DreamLover", "RedContritio", "2.0.1")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
         internal static string ModId;

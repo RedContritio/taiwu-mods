@@ -73,3 +73,13 @@ NPC 在过月时主动对太吾产生倾心爱慕。
 ## 架构
 
 纯后端 Mod，所有设置通过 config.lua 声明式配置。
+
+Harmony 挂在 `Character.PeriAdvanceMonth_RelationsUpdate`（前置，过滤+决策、入队）与
+`ComplementPeriAdvanceMonth_RelationsUpdate`（后置，单线程应用）。
+
+**关键实现点：指向太吾的关系必须在补全阶段直接 Apply。** 游戏的月度关系补全在“新关系目标是太吾”时，
+只会生成月报事件（`AddAdore`/`AddConfess`/`AddProposeMarriage`），并【不】真正建立关系——只有目标非太吾时
+才会调用 `Apply*`。所以本 mod 不能靠记录 `NewRegularRelations(target=太吾)` 来建立关系，而是在补全阶段
+（单线程）直接调用 `Character.ApplyAddRelation_Adore` / `ApplyBecomeBoyOrGirlFriend` /
+`ApplyBecomeHusbandOrWife` / `ApplySeverAdore` 把关系落到太吾身上。四条路径（爱慕/表白/求婚/断情）均已在
+游戏内端到端验证（配合 EasyBridge：构造候选 NPC、过月、读回关系）。
