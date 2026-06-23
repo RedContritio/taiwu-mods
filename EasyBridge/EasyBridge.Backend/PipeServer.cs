@@ -5,7 +5,7 @@ using System.IO.Pipes;
 using System.Text;
 using System.Threading;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 命名管道服务器（后端进程）。管道名固定为 "taiwu-testbridge"。
@@ -22,7 +22,7 @@ namespace Bridge.Backend
         public void Start()
         {
             _running = true;
-            _acceptThread = new Thread(AcceptLoop) { IsBackground = true, Name = "Bridge.PipeServer" };
+            _acceptThread = new Thread(AcceptLoop) { IsBackground = true, Name = "EasyBridge.PipeServer" };
             _acceptThread.Start();
         }
 

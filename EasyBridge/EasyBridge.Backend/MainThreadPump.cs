@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using GameData.Common;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 把管道线程的工作封送到后端主线程执行。后端的域写操作（DomainManager.*）

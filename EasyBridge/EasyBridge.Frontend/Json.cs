@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace Bridge.Backend
+namespace EasyBridge.Frontend
 {
     /// <summary>
-    /// 极简 JSON 读写，避免对游戏内程序集的硬依赖。移植自 UiBridge.Frontend.Json。
+    /// 极简 JSON 读写，避免对游戏内 Newtonsoft 等程序集的硬依赖。
     /// 写：支持 Dictionary&lt;string,object&gt;、IEnumerable、string、bool、整数/浮点、null。
     /// 读：支持对象/数组/字符串/数字/bool/null，足够解析小型 POST 请求体。
     /// </summary>
@@ -46,6 +46,7 @@ namespace Bridge.Backend
                     WriteArray(sb, seq);
                     break;
                 default:
+                    // 整数及其它 IConvertible 直接走不变文化输出
                     if (value is int || value is long || value is short || value is byte ||
                         value is sbyte || value is uint || value is ulong || value is ushort)
                     {
@@ -117,9 +118,11 @@ namespace Bridge.Backend
         {
             if (string.IsNullOrEmpty(text)) return null;
             int i = 0;
-            return ParseValue(text, ref i);
+            var v = ParseValue(text, ref i);
+            return v;
         }
 
+        /// <summary>把 Parse 结果当作对象取字符串字段（缺失返回 null）。</summary>
         public static string GetString(object obj, string key)
         {
             if (obj is IDictionary<string, object> m && m.TryGetValue(key, out var v) && v != null)
@@ -127,20 +130,17 @@ namespace Bridge.Backend
             return null;
         }
 
-        public static bool TryGetInt(object obj, string key, out int val)
+        public static bool TryGetDouble(object obj, string key, out double val)
         {
             val = 0;
             if (obj is IDictionary<string, object> m && m.TryGetValue(key, out var v))
             {
-                if (v is double d) { val = (int)d; return true; }
-                if (v is string s && int.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var p)) { val = p; return true; }
+                if (v is double d) { val = d; return true; }
+                if (v is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var p)) { val = p; return true; }
                 if (v is bool b) { val = b ? 1 : 0; return true; }
             }
             return false;
         }
-
-        public static int GetInt(object obj, string key, int fallback)
-            => TryGetInt(obj, key, out var v) ? v : fallback;
 
         public static bool TryGetBool(object obj, string key, out bool val)
         {
@@ -153,9 +153,6 @@ namespace Bridge.Backend
             }
             return false;
         }
-
-        public static bool GetBool(object obj, string key, bool fallback)
-            => TryGetBool(obj, key, out var v) ? v : fallback;
 
         private static void SkipWs(string s, ref int i)
         {
@@ -172,9 +169,9 @@ namespace Bridge.Backend
                 case '{': return ParseObject(s, ref i);
                 case '[': return ParseArray(s, ref i);
                 case '"': return ParseString(s, ref i);
-                case 't': i += 4; return true;
-                case 'f': i += 5; return false;
-                case 'n': i += 4; return null;
+                case 't': i += 4; return true;   // true
+                case 'f': i += 5; return false;  // false
+                case 'n': i += 4; return null;   // null
                 default: return ParseNumber(s, ref i);
             }
         }
@@ -182,7 +179,7 @@ namespace Bridge.Backend
         private static Dictionary<string, object> ParseObject(string s, ref int i)
         {
             var map = new Dictionary<string, object>();
-            i++;
+            i++; // {
             SkipWs(s, ref i);
             if (i < s.Length && s[i] == '}') { i++; return map; }
             while (i < s.Length)
@@ -204,7 +201,7 @@ namespace Bridge.Backend
         private static List<object> ParseArray(string s, ref int i)
         {
             var list = new List<object>();
-            i++;
+            i++; // [
             SkipWs(s, ref i);
             if (i < s.Length && s[i] == ']') { i++; return list; }
             while (i < s.Length)

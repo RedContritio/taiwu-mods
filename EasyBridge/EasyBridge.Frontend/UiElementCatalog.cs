@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// 维护游戏语义化窗口（UIElement 静态实例）与名字的双向映射，

@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 动态执行任意 C# 代码（Roslyn CSharpScript）：在后端主线程上、用传入的 DataContext ctx 运行，
@@ -108,7 +108,7 @@ namespace Bridge.Backend
                 try
                 {
                     refs.Add(MetadataReference.CreateFromImage(File.ReadAllBytes(selfDll)));
-                    imports.Add("Bridge.Backend");
+                    imports.Add("EasyBridge.Backend");
                 }
                 catch { }
             }
@@ -120,7 +120,7 @@ namespace Bridge.Backend
         {
             try
             {
-                string p = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Mod", "Bridge", "Plugins", "Bridge.Backend.dll"));
+                string p = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Mod", "EasyBridge", "Plugins", "EasyBridge.Backend.dll"));
                 if (File.Exists(p)) return p;
             }
             catch { }

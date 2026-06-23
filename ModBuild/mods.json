@@ -40,11 +40,11 @@
       "note": "Development environment sample; not a Workshop release target."
     },
     {
-      "name": "Bridge",
+      "name": "EasyBridge",
       "status": "sample",
       "projects": [
-        "Bridge/Bridge.Backend/Bridge.Backend.csproj",
-        "Bridge/Bridge.Frontend/Bridge.Frontend.csproj"
+        "EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj",
+        "EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj"
       ],
       "note": "Dev/test tool: one mod with a frontend UI pipe (taiwu-uibridge) and a backend state pipe (taiwu-testbridge, incl. /eval dynamic C#) for verifying mods. Not a Workshop release target."
     }

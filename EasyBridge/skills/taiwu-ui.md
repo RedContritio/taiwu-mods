@@ -1,9 +1,9 @@
 ---
 name: taiwu-ui
-description: Inspect and interact with the running Taiwu game UI via the UiBridge mod's named pipe. Use when you need to verify game UI state, find UI elements, or perform actions (click, toggle, set, select) during automated testing.
+description: Inspect and interact with the running Taiwu game UI via the EasyBridge mod's frontend named pipe (taiwu-uibridge). Use when you need to verify game UI state, find UI elements, or perform actions (click, toggle, set, select) during automated testing.
 ---
 
-# Taiwu UI Bridge Skill
+# EasyBridge UI Skill
 
 与运行中的太吾绘卷游戏 UI 交互，用于自动化测试和验证。
 

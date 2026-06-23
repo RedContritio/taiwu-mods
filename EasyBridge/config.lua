@@ -1,5 +1,5 @@
 return {
-    Title = "Bridge",
+    Title = "EasyBridge",
     Description = "自动化测试桥：前端 UI 桥（taiwu-uibridge，检视/操控游戏 UI）+ 后端状态桥（taiwu-testbridge，读取/构造角色状态，含 /eval 动态执行任意 C#）。仅供开发调试使用。",
     Version = "0.0.1",
     Author = "RedContritio",
@@ -7,10 +7,10 @@ return {
     Cover = "",
     GameVersion = "",
     FrontendPlugins = {
-        "Bridge.Frontend.dll",
+        "EasyBridge.Frontend.dll",
     },
     BackendPlugins = {
-        "Bridge.Backend.dll",
+        "EasyBridge.Backend.dll",
     },
     DefaultSettings = {
         { SettingType = "Toggle", Key = "Enabled", DisplayName = "启用桥", Description = "关闭后不创建前端/后端命名管道", DefaultValue = true },

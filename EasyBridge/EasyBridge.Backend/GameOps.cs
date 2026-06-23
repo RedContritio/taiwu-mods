@@ -9,7 +9,7 @@ using GameData.Domains.Map;
 using GameData.Domains.Organization;
 using GameData.Domains.TaiwuEvent.EventHelper;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 后端游戏状态操作：读取/构造角色与关系，专门用于满足 ForceEncounter 各分支的前置条件。

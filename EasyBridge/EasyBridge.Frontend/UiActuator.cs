@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// 在主线程对指定控件执行动作：click / toggle / set / select。

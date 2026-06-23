@@ -3,7 +3,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// GameObject 层级遍历、文本读取、控件识别与路径解析的共享工具。

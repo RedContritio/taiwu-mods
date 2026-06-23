@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// 把当前活动 UI 转成语义化数据。所有方法都假定运行在 Unity 主线程上

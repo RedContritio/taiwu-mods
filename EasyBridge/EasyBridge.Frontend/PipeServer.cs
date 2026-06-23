@@ -5,7 +5,7 @@ using System.IO.Pipes;
 using System.Text;
 using System.Threading;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// 命名管道服务器。管道名固定为 "taiwu-uibridge"，即连接地址。
@@ -23,7 +23,7 @@ namespace Bridge.Frontend
         public void Start()
         {
             _running = true;
-            _acceptThread = new Thread(AcceptLoop) { IsBackground = true, Name = "Bridge.PipeServer" };
+            _acceptThread = new Thread(AcceptLoop) { IsBackground = true, Name = "EasyBridge.PipeServer" };
             _acceptThread.Start();
         }
 

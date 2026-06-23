@@ -3,9 +3,9 @@ using HarmonyLib;
 using TaiwuModdingLib.Core.Plugin;
 using UnityEngine;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
-    [PluginConfig("Bridge", "RedContritio", "0.0.1")]
+    [PluginConfig("EasyBridge", "RedContritio", "0.0.1")]
     public class FrontendPlugin : TaiwuRemakePlugin
     {
         private static readonly Type ModManagerType = AccessTools.TypeByName("ModManager");
@@ -21,7 +21,7 @@ namespace Bridge.Frontend
             }
             catch (Exception ex)
             {
-                Debug.LogError("[Bridge] init failed: " + ex);
+                Debug.LogError("[EasyBridge] init failed: " + ex);
             }
         }
 
@@ -44,7 +44,7 @@ namespace Bridge.Frontend
 
             if (!enabled)
             {
-                Debug.Log("[Bridge] disabled by setting; pipe bridge not started.");
+                Debug.Log("[EasyBridge] disabled by setting; pipe bridge not started.");
                 return;
             }
 
@@ -52,11 +52,11 @@ namespace Bridge.Frontend
             try
             {
                 _server.Start();
-                Debug.Log($"[Bridge] named pipe bridge listening on \\\\.\\pipe\\{PipeServer.PipeName}");
+                Debug.Log($"[EasyBridge] named pipe bridge listening on \\\\.\\pipe\\{PipeServer.PipeName}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[Bridge] failed to start pipe server: {ex.Message}");
+                Debug.LogError($"[EasyBridge] failed to start pipe server: {ex.Message}");
                 _server = null;
             }
         }

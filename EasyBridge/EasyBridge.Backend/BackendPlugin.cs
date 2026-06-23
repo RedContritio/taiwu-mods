@@ -7,17 +7,17 @@ using HarmonyLib;
 using TaiwuMod.Common;
 using TaiwuModdingLib.Core.Plugin;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
-    /// Bridge 后端插件：在后端进程内开一个命名管道（taiwu-testbridge），
+    /// EasyBridge 后端插件：在后端进程内开一个命名管道（taiwu-testbridge），
     /// 让自动化测试 agent 读取/构造游戏内角色与关系状态，用于验证 ForceEncounter 等 mod 的各分支。
     /// 仅供开发/测试使用，不随正式 mod 发布。
     /// </summary>
-    [PluginConfig("Bridge", "RedContritio", "0.0.1")]
+    [PluginConfig("EasyBridge", "RedContritio", "0.0.1")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
-        public const string ModId = "Bridge";
+        public const string ModId = "EasyBridge";
         public const string Version = "0.0.1";
 
         internal static string RuntimeModId;
@@ -41,11 +41,11 @@ namespace Bridge.Backend
             {
                 _harmony = new Harmony(ModId + ".tick");
                 _harmony.PatchAll(typeof(BackendPlugin).Assembly);
-                AdaptableLog.Info("[Bridge] Harmony tick patched");
+                AdaptableLog.Info("[EasyBridge] Harmony tick patched");
             }
             catch (System.Exception ex)
             {
-                AdaptableLog.Info("[Bridge] Harmony patch failed: " + ex.Message);
+                AdaptableLog.Info("[EasyBridge] Harmony patch failed: " + ex.Message);
             }
 
             StartFromSettings();
@@ -65,13 +65,13 @@ namespace Bridge.Backend
 
         private static Assembly ResolveFromPluginDir(AssemblyLoadContext context, AssemblyName name)
         {
-            // 脚本程序集会按名引用本 mod 程序集（Bridge.Backend，字节加载、Location 空）。返回【已加载的那一份】，
+            // 脚本程序集会按名引用本 mod 程序集（EasyBridge.Backend，字节加载、Location 空）。返回【已加载的那一份】，
             // 而不是从路径再加载一份新副本，否则跨 ALC 的 Globals/GameOps 类型身份不一致 → InvalidCastException。
             if (name.Name == typeof(BackendPlugin).Assembly.GetName().Name)
                 return typeof(BackendPlugin).Assembly;
             try
             {
-                string dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Mod", "Bridge", "Plugins"));
+                string dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Mod", "EasyBridge", "Plugins"));
                 string path = Path.Combine(dir, name.Name + ".dll");
                 if (File.Exists(path)) return context.LoadFromAssemblyPath(path);
             }
@@ -97,13 +97,13 @@ namespace Bridge.Backend
         {
             if (!TaiwuModSettings.GetBool(RuntimeModId, "Enabled", true))
             {
-                AdaptableLog.Info("[Bridge] disabled by setting");
+                AdaptableLog.Info("[EasyBridge] disabled by setting");
                 return;
             }
 
             _server = new PipeServer();
             _server.Start();
-            AdaptableLog.Info("[Bridge] listening on \\\\.\\pipe\\" + PipeServer.PipeName);
+            AdaptableLog.Info("[EasyBridge] listening on \\\\.\\pipe\\" + PipeServer.PipeName);
         }
 
         private void StopServer()

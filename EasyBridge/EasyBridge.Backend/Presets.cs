@@ -3,7 +3,7 @@ using GameData.Common;
 using GameData.Domains;
 using GameData.Domains.Character;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 预设：一次调用即构造好满足某条 ForceEncounter 分支的 NPC，并返回预期路由，便于自动化校验。

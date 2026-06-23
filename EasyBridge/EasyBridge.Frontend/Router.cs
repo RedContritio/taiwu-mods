@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// 把 HTTP 请求映射到检视/动作逻辑。涉及 Unity 对象的部分通过
@@ -9,7 +9,7 @@ namespace Bridge.Frontend
     /// </summary>
     internal static class Router
     {
-        public const string ModName = "Bridge";
+        public const string ModName = "EasyBridge";
         public const string Version = "0.0.1";
         public static int DefaultMax = 60;
         public static int MainThreadTimeoutMs = 5000;

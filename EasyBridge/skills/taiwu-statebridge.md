@@ -1,9 +1,9 @@
 ---
 name: taiwu-statebridge
-description: Use to construct in-game character/relationship state (generate condition-meeting NPCs), read it back for assertions, and run arbitrary C# via /eval — over the Bridge mod's backend pipe (taiwu-testbridge). Pair with the taiwu-ui skill (same Bridge mod's frontend pipe taiwu-uibridge) to drive and verify ForceEncounter event paths end-to-end.
+description: Use to construct in-game character/relationship state (generate condition-meeting NPCs), read it back for assertions, and run arbitrary C# via /eval — over the EasyBridge mod's backend pipe (taiwu-testbridge). Pair with the taiwu-ui skill (same EasyBridge mod's frontend pipe taiwu-uibridge) to drive and verify ForceEncounter event paths end-to-end.
 ---
 
-# Taiwu StateBridge Skill
+# EasyBridge State Skill
 
 后端状态桥 `taiwu-testbridge`：生成/改造 NPC、读取角色状态。与前端 `taiwu-uibridge`（UI 驱动）配合，
 端到端验证 `ForceEncounter`（情难自已）各分支。
@@ -20,7 +20,7 @@ description: Use to construct in-game character/relationship state (generate con
 ## 连接函数（每次调用都要包含）
 
 ```powershell
-function Invoke-StateBridge {
+function Invoke-StateEasyBridge {
     param([string]$Path, [hashtable]$Body)
     $req = @{ path = $Path }
     if ($Body) { $req.body = ($Body | ConvertTo-Json -Compress) }
@@ -38,29 +38,29 @@ function Invoke-StateBridge {
 
 ## 端点
 
-- `Invoke-StateBridge -Path "/ping"` → `{ok, tickAlive}`
-- `Invoke-StateBridge -Path "/taiwu"` → `{taiwuId, closeFriendId, areaId, blockId, behaviorType, ...}`
-- `Invoke-StateBridge -Path "/whereami"` → 太吾当前格 `{areaId, blockId, blockType, blockTypeName}`（护卫判定看 blockType）
-- `Invoke-StateBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
-- `Invoke-StateBridge -Path "/preset" -Body @{ name="spouse" }` → 一键造 NPC，返回 `{id, name, expectedRoute, snapshot}`
-- `Invoke-StateBridge -Path "/spawn" -Body @{ gender=0; age=25 }`
-- `Invoke-StateBridge -Path "/sects" -Body @{ count=8 }` → 门派据点格位列表 `{orgTemplate, areaId, blockId, blockTypeName}`
-- `Invoke-StateBridge -Path "/settlements" -Body @{ civilianOnly=$true; max=80 }` → 城镇/城市据点列表（含 blockType），找弱平民格触发护卫拦截
-- `Invoke-StateBridge -Path "/move/taiwu" -Body @{ areaId=..; blockId=.. }` → 瞬移太吾（跨区自动 QuickTravel）
-- `Invoke-StateBridge -Path "/relation" -Body @{ a=$taiwu; b=$npc; type="spouse"; both=$true }`
-- `Invoke-StateBridge -Path "/favor" -Body @{ from=$taiwu; to=$npc; type=6 }`
-- `Invoke-StateBridge -Path "/villager" -Body @{ id=$npc }` / `-Path "/nonvillager"`
-- `Invoke-StateBridge -Path "/prisoner" -Body @{ id=$npc }`
-- `Invoke-StateBridge -Path "/injure" -Body @{ id=$npc; level=6 }` → 叠伤势，84 标记 → 无力应战；对太吾 6818 削弱可制造战败
-- `Invoke-StateBridge -Path "/heal" -Body @{ id=6818 }` → 清空伤势（复原太吾）
-- `Invoke-StateBridge -Path "/favor/exact" -Body @{ from=$npc; to=$taiwu; value=16000 }` → 精确好感（绕过缩放，BranchA 用）
-- `Invoke-StateBridge -Path "/block/chars"` → 当前格全部角色 `{id,name,orgTemplateId,hasGuard,kidnapperId}`
-- `Invoke-StateBridge -Path "/cripple" -Body @{ id=$npc }` → 撤销全部战技 + 内力清零，返回 combatPowerBefore/After（注：根基属性主导，降幅有限）
-- `Invoke-StateBridge -Path "/giverope" -Body @{ template=90 }` → 给太吾高级捕绳（开战前调用）
-- `Invoke-StateBridge -Path "/throwrope"` → 战斗中向敌扔绳（重试至命中 → 擒获）
-- `Invoke-StateBridge -Path "/eval" -Body @{ code="return DomainManager.Taiwu.GetTaiwuCharId();" }` → **动态执行任意 C#**（见下「/eval」节）
+- `Invoke-StateEasyBridge -Path "/ping"` → `{ok, tickAlive}`
+- `Invoke-StateEasyBridge -Path "/taiwu"` → `{taiwuId, closeFriendId, areaId, blockId, behaviorType, ...}`
+- `Invoke-StateEasyBridge -Path "/whereami"` → 太吾当前格 `{areaId, blockId, blockType, blockTypeName}`（护卫判定看 blockType）
+- `Invoke-StateEasyBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
+- `Invoke-StateEasyBridge -Path "/preset" -Body @{ name="spouse" }` → 一键造 NPC，返回 `{id, name, expectedRoute, snapshot}`
+- `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25 }`
+- `Invoke-StateEasyBridge -Path "/sects" -Body @{ count=8 }` → 门派据点格位列表 `{orgTemplate, areaId, blockId, blockTypeName}`
+- `Invoke-StateEasyBridge -Path "/settlements" -Body @{ civilianOnly=$true; max=80 }` → 城镇/城市据点列表（含 blockType），找弱平民格触发护卫拦截
+- `Invoke-StateEasyBridge -Path "/move/taiwu" -Body @{ areaId=..; blockId=.. }` → 瞬移太吾（跨区自动 QuickTravel）
+- `Invoke-StateEasyBridge -Path "/relation" -Body @{ a=$taiwu; b=$npc; type="spouse"; both=$true }`
+- `Invoke-StateEasyBridge -Path "/favor" -Body @{ from=$taiwu; to=$npc; type=6 }`
+- `Invoke-StateEasyBridge -Path "/villager" -Body @{ id=$npc }` / `-Path "/nonvillager"`
+- `Invoke-StateEasyBridge -Path "/prisoner" -Body @{ id=$npc }`
+- `Invoke-StateEasyBridge -Path "/injure" -Body @{ id=$npc; level=6 }` → 叠伤势，84 标记 → 无力应战；对太吾 6818 削弱可制造战败
+- `Invoke-StateEasyBridge -Path "/heal" -Body @{ id=6818 }` → 清空伤势（复原太吾）
+- `Invoke-StateEasyBridge -Path "/favor/exact" -Body @{ from=$npc; to=$taiwu; value=16000 }` → 精确好感（绕过缩放，BranchA 用）
+- `Invoke-StateEasyBridge -Path "/block/chars"` → 当前格全部角色 `{id,name,orgTemplateId,hasGuard,kidnapperId}`
+- `Invoke-StateEasyBridge -Path "/cripple" -Body @{ id=$npc }` → 撤销全部战技 + 内力清零，返回 combatPowerBefore/After（注：根基属性主导，降幅有限）
+- `Invoke-StateEasyBridge -Path "/giverope" -Body @{ template=90 }` → 给太吾高级捕绳（开战前调用）
+- `Invoke-StateEasyBridge -Path "/throwrope"` → 战斗中向敌扔绳（重试至命中 → 擒获）
+- `Invoke-StateEasyBridge -Path "/eval" -Body @{ code="return DomainManager.Taiwu.GetTaiwuCharId();" }` → **动态执行任意 C#**（见下「/eval」节）
 
-> 自 Bridge 合并版起，前端 UI 桥 + 后端状态桥同属**一个 mod「Bridge」**（管道名不变：`taiwu-uibridge` / `taiwu-testbridge`）。
+> 自 EasyBridge 合并版起，前端 UI 桥 + 后端状态桥同属**一个 mod「EasyBridge」**（管道名不变：`taiwu-uibridge` / `taiwu-testbridge`）。
 
 ## /eval：动态执行任意 C#（无需为每个新操作重编译重启）
 
@@ -79,7 +79,7 @@ SB -Path "/eval" -Body @{ code = "return GameOps.Spawn(ctx, (sbyte)0, (short)20,
 
 > 下文配方用 `SB`/`UI`/`FE-Open`/`Drive-Combat` 等简写助手——它们在 `_scratch/bridge.ps1`，每次调用前先
 > `. D:\TaiwuMods\_scratch\bridge.ps1` 点进来（`SB`=本桥、`UI`=UiBridge）。`SB -Path P -Obj @{...}` 等价于
-> 上面的 `Invoke-StateBridge -Path P -Body (...|ConvertTo-Json)`。
+> 上面的 `Invoke-StateEasyBridge -Path P -Body (...|ConvertTo-Json)`。
 
 ## 移动到其他格
 
@@ -131,16 +131,16 @@ if (FE-OptionId -Key "ForceEncounter.GuardInterceptContinue") { FE-GuardContinue
 ## 端到端验证一条分支（与 UiBridge 配合）
 
 ```
-1. 确认游戏在地图：Invoke-StateBridge -Path "/ping"  → tickAlive=true
-2. 造 NPC：       $p = Invoke-StateBridge -Path "/preset" -Body @{ name="spouse" }
+1. 确认游戏在地图：Invoke-StateEasyBridge -Path "/ping"  → tickAlive=true
+2. 造 NPC：       $p = Invoke-StateEasyBridge -Path "/preset" -Body @{ name="spouse" }
                   $id = $p.id; $name = $p.snapshot.name; $expect = $p.expectedRoute
-3. 记录初值：     $before = Invoke-StateBridge -Path "/char/$id"
+3. 记录初值：     $before = Invoke-StateEasyBridge -Path "/char/$id"
 4. UiBridge：重读 MapBlockCharList → 按 $name 找到该 NPC → 点击 → EventWindow
 5. UiBridge：切“敌对”标签 → 点“（情难自已……）”
 6. 内层：读出所有选项文本与说明，按 $expect 选择（语义判断，不要机械选位置）：
    - accepted 路线 → 选“（半推半就……）”→ 进入“亲密反馈”，读文案确认成功/未成年/村民
    - forced 路线   → 选“（更进一步……）”→ 走战斗/护卫/直接结算；或选“其他话题”验证放弃无副作用
-7. 断言：$after = Invoke-StateBridge -Path "/char/$id"
+7. 断言：$after = Invoke-StateEasyBridge -Path "/char/$id"
    - 比较 favorability/favorabilityType、关系位（hasSpouse/hasAdored）、kidnapperId、组织等
    - 配合 UI 反馈文案，核对与 README 预期一致
 ```

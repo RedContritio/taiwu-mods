@@ -2,7 +2,7 @@ using GameData.Common;
 using GameData.Domains.Global;
 using HarmonyLib;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 通过 Harmony 给后端主循环装一个每帧钩子。GlobalDomain.OnUpdate 由后端主循环

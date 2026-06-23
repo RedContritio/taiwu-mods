@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using UnityEngine;
 
-namespace Bridge.Frontend
+namespace EasyBridge.Frontend
 {
     /// <summary>
     /// 把后台 HTTP 线程的工作封送到 Unity 主线程执行。
@@ -27,7 +27,7 @@ namespace Bridge.Frontend
         public static MainThreadDispatcher Create()
         {
             if (_instance != null) return _instance;
-            var go = new GameObject("Bridge.MainThreadDispatcher");
+            var go = new GameObject("EasyBridge.MainThreadDispatcher");
             UnityEngine.Object.DontDestroyOnLoad(go);
             _instance = go.AddComponent<MainThreadDispatcher>();
             return _instance;

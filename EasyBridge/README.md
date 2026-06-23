@@ -1,15 +1,15 @@
-# Bridge
+# EasyBridge
 
 自动化测试桥（开发/调试工具，非创意工坊发布目标）。**一个 mod、两个插件、两条命名管道**，供 LL/自动化 agent
 端到端验证其它 mod（如 ForceEncounter）的各分支路径：
 
 | 插件 | 进程 | 命名管道 | 作用 | 技能 |
 |------|------|---------|------|------|
-| `Bridge.Frontend` | 前端 Unity（Mono/net48） | `taiwu-uibridge` | 语义化检视/操控游戏 **UI**（click/toggle/set/select、等待窗口） | `skills/taiwu-ui.md` |
-| `Bridge.Backend` | 后端 GameData（.NET 8） | `taiwu-testbridge` | 读取/构造**角色与关系状态**（生成符合条件的 NPC）、瞬移、伤势、捕绳，以及 **`/eval` 动态执行任意 C#** | `skills/taiwu-statebridge.md` |
+| `EasyBridge.Frontend` | 前端 Unity（Mono/net48） | `taiwu-uibridge` | 语义化检视/操控游戏 **UI**（click/toggle/set/select、等待窗口） | `skills/taiwu-ui.md` |
+| `EasyBridge.Backend` | 后端 GameData（.NET 8） | `taiwu-testbridge` | 读取/构造**角色与关系状态**（生成符合条件的 NPC）、瞬移、伤势、捕绳，以及 **`/eval` 动态执行任意 C#** | `skills/taiwu-statebridge.md` |
 
 > 前后端是两个进程：UI 在 Unity 前端，角色数据在 .NET 8 后端，一个插件 DLL 只能跑在一个进程里，所以需要两个插件；
-> 这里把它们打包成**同一个 mod「Bridge」**（参照 ExampleMod 的双插件模式），游戏里只显示一个条目。
+> 这里把它们打包成**同一个 mod「EasyBridge」**（参照 ExampleMod 的双插件模式），游戏里只显示一个条目。
 
 协议：每条管道单行 JSON 请求 → 单行 JSON 响应。连接函数见对应技能文件。
 
@@ -36,15 +36,15 @@ SB -Path "/eval" -Obj @{ code = "return GameOps.Taiwu();" }                     
 ## 构建 / 部署
 
 ```powershell
-# 构建（前端 net48 + 后端 net8，输出到 Bridge/Plugins）
-dotnet build Bridge/Bridge.Backend/Bridge.Backend.csproj -c Release
-dotnet build Bridge/Bridge.Frontend/Bridge.Frontend.csproj -c Release
+# 构建（前端 net48 + 后端 net8，输出到 EasyBridge/Plugins）
+dotnet build EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj -c Release
+dotnet build EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj -c Release
 # 部署到游戏（同时带上后端捆绑的 Roslyn DLL）
-pwsh ./deploy.ps1 -ModName Bridge -IncludeDrafts
+pwsh ./deploy.ps1 -ModName EasyBridge -IncludeDrafts
 ```
 
 要点：
-- 后端 `Bridge.Backend.csproj` 用 `CopyLocalLockFileAssemblies=true` 把 4 个 `Microsoft.CodeAnalysis*.dll` 拷进 `Plugins`
+- 后端 `EasyBridge.Backend.csproj` 用 `CopyLocalLockFileAssemblies=true` 把 4 个 `Microsoft.CodeAnalysis*.dll` 拷进 `Plugins`
   （net8 的 `System.*` 在框架内、不拷）；`SatelliteResourceLanguages=en` 去掉本地化卫星目录。
 - `Copy-ModFiles` 会把 `Plugins` 里非声明插件的依赖 DLL（即 Roslyn）一并带到部署目录。
 - 游戏后端插件加载器把插件及其直接引用按字节加载、且其依赖解析是死代码，所以 `BackendPlugin` 自己挂了

@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using GameData.Common;
 
-namespace Bridge.Backend
+namespace EasyBridge.Backend
 {
     /// <summary>
     /// 把管道请求映射到 GameOps/Presets。涉及域读写的部分通过 MainThreadPump 在后端主线程执行。
     /// </summary>
     internal static class Router
     {
-        public const string ModName = "Bridge";
+        public const string ModName = "EasyBridge";
         public const string Version = BackendPlugin.Version;
         public static int PumpTimeoutMs = 8000;
 
