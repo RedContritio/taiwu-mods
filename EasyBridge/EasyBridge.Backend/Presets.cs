@@ -172,7 +172,7 @@ namespace EasyBridge.Backend
         }
 
         private static Dictionary<string, object> Spawn(DataContext ctx, sbyte gender, short age)
-            => GameOps.Spawn(ctx, gender, age, settlementId: -1, grade: 4, baseAttraction: 500);
+            => GameOps.Spawn(ctx, gender, age, settlementId: -1, grade: 4, baseAttraction: 500, villager: true);
 
         private static Dictionary<string, object> SpawnCloseFriend(DataContext ctx, sbyte gender)
             => GameOps.SpawnCloseFriend(ctx, gender);

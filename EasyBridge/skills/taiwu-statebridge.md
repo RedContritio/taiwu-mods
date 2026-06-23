@@ -43,7 +43,11 @@ function Invoke-StateEasyBridge {
 - `Invoke-StateEasyBridge -Path "/whereami"` → 太吾当前格 `{areaId, blockId, blockType, blockTypeName}`（护卫判定看 blockType）
 - `Invoke-StateEasyBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
 - `Invoke-StateEasyBridge -Path "/preset" -Body @{ name="spouse" }` → 一键造 NPC，返回 `{id, name, expectedRoute, snapshot}`
-- `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25 }`
+- `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25; grade=4; baseAttraction=500; villager=$false }`
+  → 默认生成**非村民散人**（落在太吾格，但会随月度游走/被门派招募）。
+  **`villager=$true` 才转入太吾村**（村民文案分支用），但太吾村村民缺村民角色数据，**过月会让游戏
+  `TaiwuDomain.UpdateVillagerFixedActions` 空引用崩溃、卡死过月**——验证过月类 mod（如 DreamLover）
+  务必用 `villager=$false`，并配合 DreamLover 设 `IgnoreDistance` 以免散人游走出格被 sameLocation 过滤。
 - `Invoke-StateEasyBridge -Path "/sects" -Body @{ count=8 }` → 门派据点格位列表 `{orgTemplate, areaId, blockId, blockTypeName}`
 - `Invoke-StateEasyBridge -Path "/settlements" -Body @{ civilianOnly=$true; max=80 }` → 城镇/城市据点列表（含 blockType），找弱平民格触发护卫拦截
 - `Invoke-StateEasyBridge -Path "/move/taiwu" -Body @{ areaId=..; blockId=.. }` → 瞬移太吾（跨区自动 QuickTravel）

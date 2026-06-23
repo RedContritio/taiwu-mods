@@ -76,7 +76,8 @@ namespace EasyBridge.Backend
                 short settlementId = (short)Json.GetInt(body, "settlementId", -1);
                 sbyte grade = (sbyte)Json.GetInt(body, "grade", 4);
                 short baseAttraction = (short)Json.GetInt(body, "baseAttraction", 500);
-                return Pump(ctx => GameOps.Spawn(ctx, gender, age, settlementId, grade, baseAttraction));
+                bool villager = Json.GetBool(body, "villager", false);
+                return Pump(ctx => GameOps.Spawn(ctx, gender, age, settlementId, grade, baseAttraction, villager));
             }
 
             if (path == "/spawn/closefriend")

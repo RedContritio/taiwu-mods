@@ -111,7 +111,7 @@ namespace EasyBridge.Backend
         // ---------- 构造（生成 NPC） ----------
 
         /// <summary>在太吾所在格生成一个普通智能 NPC。</summary>
-        public static Dictionary<string, object> Spawn(DataContext ctx, sbyte gender, short age, short settlementId, sbyte grade, short baseAttraction)
+        public static Dictionary<string, object> Spawn(DataContext ctx, sbyte gender, short age, short settlementId, sbyte grade, short baseAttraction, bool villager)
         {
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.TryGetElement_Objects(taiwuId, out var taiwu))
@@ -129,8 +129,21 @@ namespace EasyBridge.Backend
             int id = ch.GetId();
             // 落位到太吾所在格，确保出现在同一张地图角色列表里供 UI 交互。
             ch.SetLocation(loc, ctx);
+
+            // 默认转为非村民（org 0 散人）。太吾村村民缺少村民角色固定行为数据，过月时
+            // TaiwuDomain.UpdateVillagerFixedActions 会空引用崩溃、卡死整个过月流程（验证过月类 mod
+            // 如 DreamLover 必须用非村民）。需要村民身份（如 ForceEncounter 村民文案分支）时显式传
+            // villager=true，但不要在这种 NPC 上过月。
+            if (!villager)
+            {
+                var outsider = new OrganizationInfo(0, 0, true, DomainManager.Organization.GetSettlementIdByOrgTemplateId(0));
+                DomainManager.Organization.ChangeOrganization(ctx, ch, outsider);
+                ch.SetLocation(loc, ctx);
+            }
+
             var res = Snapshot(id);
             res["spawned"] = true;
+            res["villager"] = villager;
             return res;
         }
 
