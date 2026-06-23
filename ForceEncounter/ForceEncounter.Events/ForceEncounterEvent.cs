@@ -84,18 +84,6 @@ namespace ForceEncounter.Events
             return string.Empty;
         }
 
-        private bool IsEnabled()
-        {
-            string modId = GetRuntimeModId();
-            bool enabled = TaiwuModSettings.GetBool(modId, ForceEncounterConstants.Settings.Enabled, true);
-            DebugLogOnce(
-                "enabled:" + modId + ":" + enabled,
-                "IsEnabled packageSet=" + (Package != null) +
-                ", modId='" + modId +
-                ", enabled=" + enabled);
-            return enabled;
-        }
-
         private bool CanExecute()
         {
             int previewCostDays = RefreshPreviewCosts();
@@ -113,19 +101,15 @@ namespace ForceEncounter.Events
         private bool IsVisible()
         {
             int previewCostDays = RefreshPreviewCosts();
-            bool enabled = IsEnabled();
             bool 未成年可见 = 未成年选项可见(out string 未成年原因, out int actorId, out int targetId);
-            bool visible = enabled && 未成年可见;
             DebugLogOnce(
-                "visible:" + actorId + ":" + targetId + ":" + enabled + ":" + 未成年原因,
+                "visible:" + actorId + ":" + targetId + ":" + 未成年原因,
                 "IsVisible actor=" + actorId +
                 ", target=" + targetId +
-                ", result=" + visible +
-                ", enabled=" + enabled +
-                ", minorVisible=" + 未成年可见 +
+                ", result=" + 未成年可见 +
                 ", minorReason=" + 未成年原因 +
                 ", previewCostDays=" + previewCostDays);
-            return visible;
+            return 未成年可见;
         }
 
         private int RefreshPreviewCosts()
@@ -164,11 +148,6 @@ namespace ForceEncounter.Events
         {
             actorId = -1;
             targetId = -1;
-
-            if (!IsEnabled())
-            {
-                return ForceEncounterConstants.Reasons.Disabled;
-            }
 
             if (ArgBox == null)
             {

@@ -1,4 +1,4 @@
-﻿using GameData.Common;
+using GameData.Common;
 using GameData.Domains;
 using GameData.Domains.Character;
 using GameData.Domains.Mod;
@@ -10,7 +10,7 @@ using TaiwuModdingLib.Core.Plugin;
 
 namespace ForceEncounter.Backend
 {
-    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "1.0.0.2")]
+    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "1.0.0.3")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
         internal static string ModId;
@@ -43,11 +43,6 @@ namespace ForceEncounter.Backend
         private static SerializableModData ExecuteForcedAction(DataContext context, SerializableModData parameter)
         {
             var result = new SerializableModData();
-            if (!GetBoolSetting(ForceEncounterConstants.Settings.Enabled, true))
-            {
-                return Fail(result, ForceEncounterConstants.Reasons.ModDisabled, actorId: -1, targetId: -1, resolutionMode: 0);
-            }
-
             if (!TryGetInt(parameter, ForceEncounterConstants.Backend.ActorId, out int actorId))
             {
                 actorId = DomainManager.Taiwu.GetTaiwuCharId();

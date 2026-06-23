@@ -11,7 +11,6 @@ namespace ForceEncounter.Shared
 
         public static class Settings
         {
-            public const string Enabled = "Enabled";
             public const string DebugMode = "DebugMode";
             public const string ActionTimeCostDays = "ActionTimeCostDays";
             public const string ForcedFavorabilityPenalty = "ForcedFavorabilityPenalty";
@@ -177,8 +176,6 @@ namespace ForceEncounter.Shared
         public static class Reasons
         {
             public const string Ok = "Ok";
-            public const string Disabled = "Disabled";
-            public const string ModDisabled = "ModDisabled";
             public const string Accepted = "Accepted";
             public const string NeedCombatChoice = "NeedCombatChoice";
             public const string Succeed = "Succeed";

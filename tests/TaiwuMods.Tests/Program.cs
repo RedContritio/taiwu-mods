@@ -343,7 +343,7 @@ sealed class ContractTests
         Assert(optionTips.Contains("ConfigName = \"EventOptionTipsInfo\"", StringComparison.Ordinal), "ForceEncounter should add native event option help metadata");
         Assert(optionTips.Contains("SrcConfigRefName = \"袭击\"", StringComparison.Ordinal), "ForceEncounter option help should clone an existing formal hostile tips row");
         Assert(optionTips.Contains($"Guid = {{ \"{optionGuid}\" }}", StringComparison.Ordinal), "ForceEncounter option help should map to the executing option guid");
-        Assert(optionTips.Contains("放弃不会消耗行动力", StringComparison.Ordinal), "ForceEncounter option help should explain that abandon does not consume action time");
+        Assert(optionTips.Contains("作罢不消耗行动力", StringComparison.Ordinal), "ForceEncounter option help should explain that abandon does not consume action time");
 
         string package = ReadProjectDirectorySource(mod.Name, "ForceEncounter.Events");
         string eventIdsSource = ReadModFile(mod.Name, "ForceEncounter.Events", "ForceEncounterEventIds.cs");
