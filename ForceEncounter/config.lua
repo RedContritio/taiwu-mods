@@ -26,7 +26,7 @@ return {
         { SettingType = "Toggle", Key = "DebugMode", DisplayName = "调试模式", DefaultValue = false },
     },
     TagList = { "Extensions" },
-    HasArchive = true,
+    HasArchive = false,
     ChangeConfig = false,
     NeedRestartWhenSettingChanged = false,
     Visibility = 0,
