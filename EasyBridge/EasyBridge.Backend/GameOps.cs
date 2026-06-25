@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using GameData.Common;
 using GameData.Domains;
 using GameData.Domains.Character;
@@ -59,6 +60,9 @@ namespace EasyBridge.Backend
                 ["ok"] = true,
                 ["status"] = SafeCombatStatus(),
                 ["inCombat"] = inCombat,
+                ["pause"] = SafePause(),
+                ["frame"] = SafeCombatFrame(),
+                ["timeScale"] = SafeTimeScale(),
                 ["autoCombat"] = SafeAutoCombat(),
                 ["autoMove"] = SafeAutoMove(),
             };
@@ -79,9 +83,50 @@ namespace EasyBridge.Backend
             return result;
         }
 
+        public static Dictionary<string, object> CombatControl(DataContext ctx, bool? pause, bool? autoCombat, bool? autoMove, float? timeScale)
+        {
+            if (pause.HasValue)
+                SetCombatPause(pause.Value);
+            if (autoCombat.HasValue)
+                DomainManager.Combat.SetPlayerAutoCombat(ctx, autoCombat.Value);
+            if (autoMove.HasValue && DomainManager.Combat.AiOptions != null)
+                DomainManager.Combat.AiOptions.AutoMove = autoMove.Value;
+            if (timeScale.HasValue)
+                DomainManager.Combat.SetTimeScale(ctx, timeScale.Value);
+
+            var result = Combat(ctx);
+            result["controlled"] = true;
+            return result;
+        }
+
         private static int? SafeCombatStatus()
         {
             try { return (int)DomainManager.Combat.GetCombatStatus(); }
+            catch { return null; }
+        }
+
+        private static bool? SafePause()
+        {
+            try { return DomainManager.Combat.Pause; }
+            catch { return null; }
+        }
+
+        private static void SetCombatPause(bool pause)
+        {
+            var method = DomainManager.Combat.GetType().GetMethod("set_Pause",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            method?.Invoke(DomainManager.Combat, new object[] { pause });
+        }
+
+        private static ulong? SafeCombatFrame()
+        {
+            try { return DomainManager.Combat.GetCombatFrame(); }
+            catch { return null; }
+        }
+
+        private static float? SafeTimeScale()
+        {
+            try { return DomainManager.Combat.GetTimeScale(); }
             catch { return null; }
         }
 
@@ -112,10 +157,71 @@ namespace EasyBridge.Backend
         private static Dictionary<string, object> CombatCharInfo(GameData.Domains.Combat.CombatCharacter ch)
         {
             if (ch == null) return null;
+            var reserve = ch.GetCombatReserveData();
             return new Dictionary<string, object>
             {
                 ["id"] = ch.GetId(),
+                ["isAlly"] = ch.IsAlly,
+                ["isTaiwu"] = ch.IsTaiwu,
+                ["state"] = SafeStateName(ch),
                 ["targetDistance"] = ch.GetTargetDistance(),
+                ["currentPosition"] = SafeInt(() => ch.GetCurrentPosition()),
+                ["displayPosition"] = SafeInt(() => ch.GetDisplayPosition()),
+                ["mobility"] = SafeInt(() => ch.GetMobilityValue()),
+                ["jumpPrepareProgress"] = SafeInt(() => ch.GetJumpPrepareProgress()),
+                ["jumpPreparedDistance"] = SafeInt(() => ch.GetJumpPreparedDistance()),
+                ["preparingSkillId"] = SafeInt(() => ch.GetPreparingSkillId()),
+                ["skillPreparePercent"] = SafeInt(() => ch.GetSkillPreparePercent()),
+                ["skillPrepareCurrProgress"] = ch.SkillPrepareCurrProgress,
+                ["skillPrepareTotalProgress"] = ch.SkillPrepareTotalProgress,
+                ["preparingOtherAction"] = SafeInt(() => ch.GetPreparingOtherAction()),
+                ["otherActionPreparePercent"] = SafeInt(() => ch.GetOtherActionPreparePercent()),
+                ["preparingItem"] = ItemKeyInfo(SafeItemKey(() => ch.GetPreparingItem())),
+                ["useItemPreparePercent"] = SafeInt(() => ch.GetUseItemPreparePercent()),
+                ["needNormalAttack"] = SafeBool(() => ch.NeedNormalAttack),
+                ["needUseSkillId"] = SafeInt(() => ch.NeedUseSkillId),
+                ["needUseOtherAction"] = SafeInt(() => ch.NeedUseOtherAction),
+                ["needUseItem"] = ItemKeyInfo(SafeItemKey(() => ch.NeedUseItem)),
+                ["reserveAny"] = reserve.AnyReserve,
+                ["reserveNeedUseSkillId"] = (int)reserve.NeedUseSkillId,
+                ["reserveNeedUseOtherAction"] = (int)reserve.NeedUseOtherAction,
+                ["reserveNeedUseItem"] = ItemKeyInfo(reserve.NeedUseItem),
+            };
+        }
+
+        private static string SafeStateName(GameData.Domains.Combat.CombatCharacter ch)
+        {
+            try { return ch.StateMachine.GetCurrentStateType().ToString(); }
+            catch { return null; }
+        }
+
+        private static int? SafeInt(System.Func<int> fn)
+        {
+            try { return fn(); }
+            catch { return null; }
+        }
+
+        private static bool? SafeBool(System.Func<bool> fn)
+        {
+            try { return fn(); }
+            catch { return null; }
+        }
+
+        private static ItemKey SafeItemKey(System.Func<ItemKey> fn)
+        {
+            try { return fn(); }
+            catch { return ItemKey.Invalid; }
+        }
+
+        private static Dictionary<string, object> ItemKeyInfo(ItemKey key)
+        {
+            return new Dictionary<string, object>
+            {
+                ["valid"] = key.IsValid(),
+                ["itemType"] = (int)key.ItemType,
+                ["templateId"] = (int)key.TemplateId,
+                ["modState"] = (int)key.ModificationState,
+                ["id"] = key.Id,
             };
         }
 

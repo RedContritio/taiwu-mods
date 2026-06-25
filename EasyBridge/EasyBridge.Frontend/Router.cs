@@ -70,6 +70,15 @@ namespace EasyBridge.Frontend
                     return MainStatus(() => ReflectionInspector.Inspect(element, id, maxMembers));
                 }
 
+                if (method == "GET" && path == "/pointer")
+                {
+                    float? x = TryGetFloat(query, "x");
+                    float? y = TryGetFloat(query, "y");
+                    var origin = GetStr(query, "origin") ?? "bottom-left";
+                    var max = GetInt(query, "max", 20);
+                    return Main(() => PointerInspector.Snapshot(x, y, origin, max));
+                }
+
                 if (method == "GET" && path == "/reflect")
                 {
                     var element = GetStr(query, "element") ?? "";
@@ -90,6 +99,14 @@ namespace EasyBridge.Frontend
                     object value = GetRawValue(parsed);
                     var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
                         () => UiActuator.Perform(element, id, action, value), MainThreadTimeoutMs);
+                    bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+                    return (ok ? 200 : 400, result);
+                }
+
+                if (method == "POST" && path == "/wait/actions")
+                {
+                    var parsed = Json.Parse(requestBody);
+                    var result = WaitForActions(parsed, query);
                     bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
                     return (ok ? 200 : 400, result);
                 }
@@ -181,6 +198,78 @@ namespace EasyBridge.Frontend
             return (408, new Dictionary<string, object> { ["ok"] = false, ["element"] = target, ["error"] = "timeout" });
         }
 
+        private static Dictionary<string, object> WaitForActions(object parsed, Dictionary<string, string> query)
+        {
+            var waitElement = Json.GetString(parsed, "waitElement") ?? Json.GetString(parsed, "element") ?? "";
+            if (string.IsNullOrEmpty(waitElement))
+                return new Dictionary<string, object> { ["ok"] = false, ["error"] = "missing waitElement" };
+
+            int timeoutSec = GetInt(query, "timeout", GetBodyInt(parsed, "timeout", 30));
+            timeoutSec = Math.Max(1, Math.Min(timeoutSec, 120));
+            var deadline = DateTime.UtcNow.AddSeconds(timeoutSec);
+            string lastError = null;
+
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    var result = (Dictionary<string, object>)MainThreadDispatcher.Run(() =>
+                    {
+                        UiElementCatalog.EnsureBuilt();
+                        var elem = UiElementCatalog.ElementByName(waitElement);
+                        if (elem == null || !UiElementCatalog.IsShowing(elem))
+                            return new Dictionary<string, object> { ["ok"] = false, ["error"] = "waiting for element" };
+
+                        var actionResults = new List<object>();
+                        foreach (var action in ActionsOf(parsed))
+                        {
+                            string element = ActionString(action, "element") ?? waitElement;
+                            string id = ActionString(action, "id") ?? "";
+                            string kind = ActionString(action, "action");
+                            object value = ActionValue(action);
+                            var actionResult = UiActuator.Perform(element, id, kind, value);
+                            actionResults.Add(actionResult);
+                            if (!actionResult.TryGetValue("ok", out var okv) || !(okv is bool b) || !b)
+                            {
+                                return new Dictionary<string, object>
+                                {
+                                    ["ok"] = false,
+                                    ["element"] = waitElement,
+                                    ["error"] = "action failed",
+                                    ["actions"] = actionResults,
+                                };
+                            }
+                        }
+
+                        return new Dictionary<string, object>
+                        {
+                            ["ok"] = true,
+                            ["element"] = waitElement,
+                            ["actions"] = actionResults,
+                        };
+                    }, MainThreadTimeoutMs);
+
+                    if (result.TryGetValue("ok", out var okv) && okv is bool ok && ok)
+                        return result;
+                    if (result.TryGetValue("error", out var err) && err != null)
+                        lastError = err.ToString();
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex.GetType().Name + ": " + ex.Message;
+                }
+                System.Threading.Thread.Sleep(100);
+            }
+
+            return new Dictionary<string, object>
+            {
+                ["ok"] = false,
+                ["element"] = waitElement,
+                ["error"] = "timeout",
+                ["lastError"] = lastError,
+            };
+        }
+
         private static object Elements(bool onlyActive)
         {
             UiElementCatalog.EnsureBuilt();
@@ -207,11 +296,54 @@ namespace EasyBridge.Frontend
             return null;
         }
 
+        private static List<object> ActionsOf(object parsed)
+        {
+            if (parsed is IDictionary<string, object> m &&
+                m.TryGetValue("actions", out var actionsObj) &&
+                actionsObj is System.Collections.IEnumerable seq &&
+                !(actionsObj is string))
+            {
+                var result = new List<object>();
+                foreach (var item in seq) result.Add(item);
+                if (result.Count > 0) return result;
+            }
+
+            return new List<object> { parsed };
+        }
+
+        private static string ActionString(object action, string key)
+        {
+            if (action is IDictionary<string, object> m && m.TryGetValue(key, out var v) && v != null)
+                return v as string ?? v.ToString();
+            return null;
+        }
+
+        private static object ActionValue(object action)
+        {
+            if (action is IDictionary<string, object> m && m.TryGetValue("value", out var v))
+                return v;
+            return null;
+        }
+
+        private static int GetBodyInt(object parsed, string key, int fallback)
+        {
+            if (parsed is IDictionary<string, object> m && m.TryGetValue(key, out var v) && v != null)
+            {
+                if (v is double d) return (int)Math.Round(d);
+                if (int.TryParse(v.ToString(), out var parsedInt)) return parsedInt;
+            }
+            return fallback;
+        }
+
         private static string GetStr(Dictionary<string, string> q, string key)
             => q != null && q.TryGetValue(key, out var v) ? v : null;
 
         private static int GetInt(Dictionary<string, string> q, string key, int fallback)
             => int.TryParse(GetStr(q, key), out var v) ? v : fallback;
+
+        private static float? TryGetFloat(Dictionary<string, string> q, string key)
+            => float.TryParse(GetStr(q, key), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : (float?)null;
 
         private static int Clamp(int value, int min, int max)
             => Math.Max(min, Math.Min(max, value));

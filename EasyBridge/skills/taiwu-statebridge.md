@@ -41,7 +41,11 @@ function Invoke-StateEasyBridge {
 - `Invoke-StateEasyBridge -Path "/ping"` → `{ok, tickAlive}`
 - `Invoke-StateEasyBridge -Path "/taiwu"` → `{taiwuId, closeFriendId, areaId, blockId, behaviorType, ...}`
 - `Invoke-StateEasyBridge -Path "/whereami"` → 太吾当前格 `{areaId, blockId, blockType, blockTypeName}`（护卫判定看 blockType）
-- `Invoke-StateEasyBridge -Path "/combat"` → 只读战斗快照 `{inCombat, autoCombat, autoMove, currentDistance, lastTargetDistance, self, enemy}`
+- `Invoke-StateEasyBridge -Path "/combat"` → 只读战斗快照 `{inCombat, pause, frame, timeScale, autoCombat, autoMove, currentDistance, lastTargetDistance, self, enemy}`；`self/enemy` 含状态机状态、技能/其他动作/道具准备进度、reserve、移动蓄势
+- `Invoke-StateEasyBridge -Path "/combat/control" -Body @{ timeScale=0; autoCombat=$false; autoMove=$false }` → 设置并读回战斗节奏；实时战斗冻结优先用 `timeScale=0` + 连续 `frame` 不变作为证据
+- `Invoke-StateEasyBridge -Path "/combat/watch" -Body @{ mode="anyReady"; autoCombat=$false; autoMove=$false; freezeBy="timeScale0" }` → 注册后端 tick 内的战斗断点；命中后自动把 `timeScale` 置 0
+- `Invoke-StateEasyBridge -Path "/combat/resume"` → 从当前断点继续运行，并自动重设同一个 watch 等下一次命中
+- `Invoke-StateEasyBridge -Path "/combat/watch/cancel" -Body @{ restore=$true }` → 取消 watch，并恢复 arm 时保存的 `timeScale/autoCombat/autoMove`
 - `Invoke-StateEasyBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
 - `Invoke-StateEasyBridge -Path "/preset" -Body @{ name="spouse" }` → 一键造 NPC，返回 `{id, name, expectedRoute, snapshot}`
 - `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25; grade=4; baseAttraction=500; villager=$false }`
@@ -85,12 +89,60 @@ SB -Path "/eval" -Body @{ code = "return GameOps.Spawn(ctx, (sbyte)0, (short)20,
 ## /combat：只读战斗状态
 
 `/combat` 在后端主线程读取当前战斗状态，不修改存档或战斗命令；适合验证距离、自动战斗/自动移动接管、
-双方角色目标距离等断言。没有进入战斗时返回 `inCombat=false`，距离字段为空。
+双方角色目标距离等断言。返回中包含 `pause`、`frame`、`timeScale`，以及双方状态机状态、技能/其他动作/道具准备百分比、
+移动蓄势和 reserve。`pause` 是战斗状态机内部字段，不能单独当作冻结证据；确认冻结时优先看 `timeScale=0`
+以及连续多次 `/combat` 的 `frame` 不变。
+没有进入战斗时返回 `inCombat=false`，距离字段为空。
 
 ```powershell
 . D:\TaiwuMods\_scratch\bridge.ps1
 SB -Path "/combat"
+SB -Path "/combat/control" -Body @{ timeScale=0; autoCombat=$false; autoMove=$false }
 ```
+
+`/combat/control` 是通用节奏控制端点：只设置请求体里给出的字段，然后返回完整 `/combat` 快照。`pause` 参数保留给低层诊断；
+常规实时战斗测试不要靠反射写 `Pause` 抢时序。
+
+## /combat/watch：后端 tick 内断点与步进
+
+战斗是实时系统，不要依赖外部 sleep 或“动作够快”。`/combat/watch` 会在后端主线程注册一个一次性 watch；实际判断发生在
+`GlobalDomain.OnUpdate` tick 内。它可以在尚未进入 Combat 时预先 arm，等战斗开始后自动设置节奏、运行到命中条件，再把
+`timeScale` 置 0。命中和超时都会 latch 一份 `/combat` 快照，便于证明断点发生在哪一帧、哪一方、哪种动作状态。
+
+推荐启动战斗前先 arm：
+
+```powershell
+SB -Path "/combat/watch" -Body @{
+  mode="anyReady"
+  side="any"
+  threshold=100
+  freezeBy="timeScale0"
+  autoCombat=$false
+  autoMove=$false
+  runTimeScale=1
+  maxFrames=600
+  maxMs=0
+}
+# 然后用 UI 桥点击 CombatBegin 的 StartCombatBtn
+SB -Path "/combat/watch"     # GET 语义：查看 watch 状态
+SB -Path "/combat/resume"    # 从断点继续，到下一次任意一方准备完成/进入执行态再断住
+SB -Path "/combat/watch/cancel" -Body @{ restore=$true }
+```
+
+`mode`：
+- `anyReady`：任意匹配方满足下列条件即命中：技能准备百分比 >= `threshold`、其他动作准备百分比 >= `threshold`、
+  道具准备百分比 >= `threshold`，或状态机进入 `Attack`/`CastSkill`/`UseItem`/`UnlockAttack`/`AnimalAttack`。
+- `frames`：从 arm/resume 后推进 `frames` 个战斗帧后断住，适合精确脉冲步进。
+- `beforeCommit`：在技能、普通攻击、其他动作、道具使用的 Prepare 状态即将提交到 `CastSkill`/`Attack`/`UseItem`
+  或执行动作前断住。这个模式通过 Harmony prefix 跳过当前这一次原生 `OnUpdate`，`/combat/resume` 会对刚命中的同一签名放行一次，
+  让游戏原生逻辑继续提交动作；用于精确调试“蓄势好了但还没放出去”的实时战斗场景。
+
+`side` 可取 `any`/`self`/`enemy`。`maxMs=0` 表示不按墙钟时间自动超时，适合手动或 Computer Use 配合的调试节奏。
+`resume` 默认会沿用同一个 watch，并只在当前动作状态未离开时抑制刚刚命中的同一状态签名，避免恢复后立刻打在
+同一个 `CastSkill`/`Attack` 状态上。
+
+`beforeCommit` 比普通 tick watch 更贴近状态机提交点，但也更侵入：它不复刻原生 100% 进度事件或清理逻辑，只暂停并跳过当前
+`OnUpdate`；恢复时必须用 `/combat/resume`，不要手动只改 `timeScale`，否则可能再次命中同一个提交点。
 
 > 下文配方用 `SB`/`UI`/`FE-Open`/`Drive-Combat` 等简写助手——它们在 `_scratch/bridge.ps1`，每次调用前先
 > `. D:\TaiwuMods\_scratch\bridge.ps1` 点进来（`SB`=本桥、`UI`=UiBridge）。`SB -Path P -Obj @{...}` 等价于

@@ -157,6 +157,18 @@ namespace EasyBridge.Backend
         public static bool GetBool(object obj, string key, bool fallback)
             => TryGetBool(obj, key, out var v) ? v : fallback;
 
+        public static bool TryGetDouble(object obj, string key, out double val)
+        {
+            val = 0;
+            if (obj is IDictionary<string, object> m && m.TryGetValue(key, out var v))
+            {
+                if (v is double d) { val = d; return true; }
+                if (v is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var p)) { val = p; return true; }
+                if (v is bool b) { val = b ? 1 : 0; return true; }
+            }
+            return false;
+        }
+
         private static void SkipWs(string s, ref int i)
         {
             while (i < s.Length && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) i++;

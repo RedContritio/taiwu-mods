@@ -47,8 +47,10 @@ function Invoke-UiBridge {
 | `/find?q=关键词` | GET | 跨窗口文本搜索 |
 | `/elements` | GET | 已知窗口目录 |
 | `/inspect?element=Name&id=Path` | GET | 通用 UI 对象检查：组件、RectTransform、屏幕坐标、UI camera |
+| `/pointer?x=900&y=995&origin=top-left` | GET | 只读指针诊断：当前鼠标坐标和 UI raycast 命中栈；可验证 Computer Use 坐标 |
 | `/reflect?element=Name&component=Type&member=path` | GET | 通用只读反射：读取组件字段，支持私有字段和点号路径 |
 | `/action` | POST | 动作注入（click/toggle/set/select） |
+| `/wait/actions?timeout=30` | POST | 等待指定窗口出现后，在同一主线程调度中执行一组动作 |
 | `/reflect/invoke` | POST | 反射调用实例方法；默认禁用，需临时开启 `EnableReflectInvoke` |
 | `/wait?element=Name&timeout=60` | GET | 阻塞等待指定窗口出现 |
 | `/quit` | POST | 退出游戏（不保存） |
@@ -75,6 +77,7 @@ query 参数：`detail=full` 全量模式，`max=200` 条目上限。
 
 ```powershell
 Invoke-UiBridge -Path "/inspect" -Query @{ element="Combat"; id=""; max="40" }
+Invoke-UiBridge -Path "/pointer" -Query @{ x="900"; y="995"; origin="top-left"; max="20" }
 Invoke-UiBridge -Path "/reflect" -Query @{
     element="Combat"
     component="ViewCombat"
@@ -102,6 +105,23 @@ Invoke-UiBridge -Path "/reflect" -Query @{
 - `set`：input 设文本、slider 设数值
 - `select`：dropdown 按索引选择
 
+### `/wait/actions` 请求体
+
+```json
+{
+  "waitElement": "Combat",
+  "actions": [
+    {"id": "Top@21/CombatTimeRoot@0/PauseToggle@0", "action": "click"},
+    {"id": "Top@21/CombatTimeRoot@0/AutoFight@1", "action": "toggle", "value": false}
+  ]
+}
+```
+
+用于实时界面：先发起这个等待请求，再由另一个管道请求触发界面变化；目标窗口出现后，动作序列会在 Unity
+主线程调度中立即执行，避免靠外部轮询速度抢 UI。实时战斗节奏本身不要靠这里抢暂停；使用后端
+`easybridge-state` 的 `/combat/watch` 和 `/combat/resume` 在游戏进程内步进。普通节奏控制用 `mode=frames`/`anyReady`；
+如果需要停在技能、普攻、道具或其他动作的 Prepare 状态提交前，用 `mode=beforeCommit`。
+
 ## 启用新部署的本地 mod（重要，否则后端插件不加载）
 
 新拷到 `<游戏>\Mod\` 的本地 mod **不会自动加载**，必须在主菜单的「模组管理」里启用并重启：
@@ -120,9 +140,9 @@ $m = Invoke-UiBridge -Path "/ui/Mod" -Query @{ detail="full"; max="300" }
 
 ## 驱动战斗
 
-`敌对→袭击/情难自已(强制)` 会进 `CombatBegin`（点 `StartCombatBtn` 开战）。战斗是手动的，但游戏**内置 AutoFight 默认开**
-（Combat 窗 `Top.../AutoFight` toggle=True），弱目标会自动打完，~20-95s 后出 `CombatResult`（点 `ConfirmButton` 确认）。
-用 `/wait?element=CombatResult&timeout=120` 阻塞等待即可，无需手动操作技能。
+`敌对→袭击/情难自已(强制)` 会进 `CombatBegin`（点 `StartCombatBtn` 开战）。若只需要完整结算，战斗可交给游戏
+内置 AutoFight，完成后等 `CombatResult`。若需要验证战斗中的 UI 交互或距离条，必须先用后端 `/combat/watch`
+预先 arm，并用 `/combat/resume` 步进；Computer Use 的点击/拖拽只在 `timeScale=0` 且 `/combat.frame` 连续不变后执行。
 
 ## 常用模式
 

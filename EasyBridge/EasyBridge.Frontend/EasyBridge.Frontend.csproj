@@ -33,6 +33,10 @@
       <HintPath>$(TaiwuManagedDir)\UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(TaiwuManagedDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>$(TaiwuManagedDir)\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>

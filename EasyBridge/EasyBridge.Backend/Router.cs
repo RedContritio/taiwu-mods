@@ -39,6 +39,32 @@ namespace EasyBridge.Backend
             if (path == "/combat")
                 return Pump(ctx => GameOps.Combat(ctx));
 
+            if (path == "/combat/control")
+            {
+                bool hasPause = Json.TryGetBool(body, "pause", out bool pause);
+                bool hasAutoCombat = Json.TryGetBool(body, "autoCombat", out bool autoCombat);
+                bool hasAutoMove = Json.TryGetBool(body, "autoMove", out bool autoMove);
+                bool hasTimeScale = Json.TryGetDouble(body, "timeScale", out double timeScale);
+                return Pump(ctx => GameOps.CombatControl(ctx,
+                    hasPause ? (bool?)pause : null,
+                    hasAutoCombat ? (bool?)autoCombat : null,
+                    hasAutoMove ? (bool?)autoMove : null,
+                    hasTimeScale ? (float?)timeScale : null));
+            }
+
+            if (path == "/combat/watch")
+            {
+                if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
+                    return Pump(ctx => CombatStepper.Status(ctx));
+                return Pump(ctx => CombatStepper.Arm(ctx, body));
+            }
+
+            if (path == "/combat/resume")
+                return Pump(ctx => CombatStepper.Resume(ctx, body));
+
+            if (path == "/combat/watch/cancel")
+                return Pump(ctx => CombatStepper.Cancel(ctx, body));
+
             if (path == "/sects")
             {
                 int count = Json.GetInt(body, "count", 6);

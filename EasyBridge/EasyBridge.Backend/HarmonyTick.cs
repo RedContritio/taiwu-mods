@@ -15,6 +15,7 @@ namespace EasyBridge.Backend
         public static void Postfix(DataContext context)
         {
             MainThreadPump.Drain(context);
+            CombatStepper.Tick(context);
         }
     }
 }

@@ -15,16 +15,19 @@
 
 ## 后端状态桥端点（`easybridge-state`）
 
-读：`/ping`（含 `tickAlive`）、`/taiwu`、`/whereami`、`/combat`、`/char/{id}`、`/block/chars`、`/sects`、`/settlements`。
+读：`/ping`（含 `tickAlive`）、`/taiwu`、`/whereami`、`/combat`（含 `pause/frame/timeScale` 和双方准备状态）、`/char/{id}`、`/block/chars`、`/sects`、`/settlements`。
 构造/改写（均在后端主线程、用主线程写上下文执行）：`/spawn`、`/spawn/closefriend`、`/preset`、`/relation`、`/favor`、
 `/favor/exact`、`/villager`、`/nonvillager`、`/prisoner`、`/injure`、`/heal`、`/cripple`、`/giverope`、`/throwrope`、
-`/move/taiwu`。详细参数与预设见 `skills/taiwu-statebridge.md`。
+`/move/taiwu`、`/combat/control`（设置 `pause/autoCombat/autoMove/timeScale` 并读回）、`/combat/watch`、
+`/combat/resume`、`/combat/watch/cancel`（在后端 tick 内断住和步进实时战斗）。详细参数与预设见 `skills/taiwu-statebridge.md`。
 
 ## 前端 UI 桥端点（`easybridge-ui`）
 
 语义树：`/ping`、`/ui`、`/ui/{name}`、`/find`、`/elements`、`/wait`。
-动作：`/action`（click/toggle/set/select）、`/quit`。
+动作：`/action`（click/toggle/set/select）、`/wait/actions`（等待窗口后在同一主线程调度中执行动作序列）、`/quit`。
 通用诊断：`/inspect` 返回指定 UI 对象的组件、RectTransform 屏幕坐标和 UI camera；`/reflect` 只读反射组件字段。
+`/pointer` 返回 Unity 当前鼠标坐标、屏幕尺寸和 EventSystem raycast 命中栈；也可传 `x/y/origin=top-left`
+验证某个 Computer Use 截图坐标实际会命中哪些 UI 对象。
 `/reflect/invoke` 默认由 `EnableReflectInvoke=false` 禁用，只有临时调试时显式开启才允许调用实例方法。字段快照深度和成员数由
 `MaxReflectDepth` / `MaxReflectMembers` 设置硬限制。
 
