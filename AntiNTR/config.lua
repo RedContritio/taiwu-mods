@@ -10,7 +10,6 @@ return {
         "AntiNTR.Backend.dll",
     },
     DefaultSettings = {
-        { SettingType = "Toggle", Key = "Enabled", DisplayName = "启用防绿", DefaultValue = true },
         { SettingType = "Toggle", Key = "AllowCouple", DisplayName = "能与配偶发生关系", Description = "被保护者的配偶仍可与其合法配偶发生关系", DefaultValue = true },
         { SettingType = "Toggle", Key = "Rel_Friend", DisplayName = "知心之交", DefaultValue = false },
         { SettingType = "Toggle", Key = "Rel_BloodBrotherOrSister", DisplayName = "亲生兄妹", DefaultValue = false },

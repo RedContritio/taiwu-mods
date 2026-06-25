@@ -44,7 +44,7 @@ namespace AntiNTR.Backend
         public static bool Prefix(Character father, Character mother, ref bool __result)
         {
             var plugin = BackendPlugin.Instance;
-            if (plugin == null || !plugin.GetBoolSetting("Enabled"))
+            if (plugin == null)
                 return true;
 
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
@@ -66,7 +66,7 @@ namespace AntiNTR.Backend
         internal static bool ShouldBlockPair(BackendPlugin plugin, int taiwuId, int charAId, int charBId)
         {
             if (plugin == null ||
-                !AntiNtrRules.CanEvaluatePair(plugin.GetBoolSetting("Enabled"), taiwuId, charAId, charBId))
+                !AntiNtrRules.CanEvaluatePair(taiwuId, charAId, charBId))
                 return false;
 
             if (AntiNtrRules.ShouldPreventAll(plugin.GetBoolSetting("Rel_PreventAll")))
@@ -138,7 +138,7 @@ namespace AntiNTR.Backend
         public static void Prefix(PeriAdvanceMonthFixedActionModification mod)
         {
             var plugin = BackendPlugin.Instance;
-            if (plugin == null || !plugin.GetBoolSetting("Enabled"))
+            if (plugin == null)
                 return;
             if (mod.MakeLoveTargetList == null || mod.MakeLoveTargetList.Count == 0)
                 return;

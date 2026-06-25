@@ -70,6 +70,15 @@ namespace DreamLover.Backend
             return true;
         }
 
+        // 只对【普通生成的凡人 NPC】生效，排除游戏为剧情机制生成的特殊角色：
+        //  - creatingType != 1：固定/剧情角色(CreateFixedCharacter, type 0)、敌人模板(type 3) 等非普通生成角色；
+        //  - isTemporary：临时智能角色(奇遇/事件临时生成, IsTemporaryIntelligentCharacter)。
+        // 与引擎自身「受保护角色」判定(Character.IsNaturalDeathForbidden 的前两条)一致——即只认会自然老死的普通人口。
+        public static bool IsOrdinaryRelationshipTarget(int creatingType, bool isTemporary)
+        {
+            return creatingType == 1 && !isTemporary;
+        }
+
         public static bool ShouldForgetUnreciprocatedAdoration(
             bool forgetMe,
             bool enableEnamor,

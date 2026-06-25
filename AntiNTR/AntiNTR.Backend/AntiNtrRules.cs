@@ -2,10 +2,9 @@ namespace AntiNTR.Backend
 {
     internal static class AntiNtrRules
     {
-        public static bool CanEvaluatePair(bool enabled, int taiwuId, int charAId, int charBId)
+        public static bool CanEvaluatePair(int taiwuId, int charAId, int charBId)
         {
-            return enabled &&
-                   taiwuId >= 0 &&
+            return taiwuId >= 0 &&
                    charAId != taiwuId &&
                    charBId != taiwuId;
         }

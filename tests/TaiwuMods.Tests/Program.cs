@@ -590,10 +590,9 @@ sealed class ContractTests
 
     private static void AntiNtrRules()
     {
-        Assert(AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(true, 1, 2, 3), "AntiNTR should evaluate enabled non-Taiwu pairs");
-        Assert(!AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(false, 1, 2, 3), "AntiNTR should ignore disabled mod");
-        Assert(!AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(true, -1, 2, 3), "AntiNTR should ignore missing Taiwu");
-        Assert(!AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(true, 1, 1, 3), "AntiNTR should ignore direct Taiwu pair");
+        Assert(AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(1, 2, 3), "AntiNTR should evaluate non-Taiwu pairs");
+        Assert(!AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(-1, 2, 3), "AntiNTR should ignore missing Taiwu");
+        Assert(!AntiNTR.Backend.AntiNtrRules.CanEvaluatePair(1, 1, 3), "AntiNTR should ignore direct Taiwu pair");
         Assert(AntiNTR.Backend.AntiNtrRules.ShouldPreventAll(true), "AntiNTR PreventAll should block immediately");
         Assert(!AntiNTR.Backend.AntiNtrRules.ShouldBlockProtectedSpouse(true, 10, 10), "AntiNTR should allow protected couple when AllowCouple is on");
         Assert(AntiNTR.Backend.AntiNtrRules.ShouldBlockProtectedSpouse(true, 11, 10), "AntiNTR should block non-spouse partner of protected spouse");
@@ -663,6 +662,13 @@ sealed class ContractTests
         Assert(DreamLover.Backend.DreamLoverRules.ShouldForgetUnreciprocatedAdoration(true, false, false, true, false, false), "DreamLover ForgetMe should queue unreciprocated adoration");
         Assert(!DreamLover.Backend.DreamLoverRules.ShouldForgetUnreciprocatedAdoration(true, true, false, true, false, false), "DreamLover ForgetMe should not run while enamor is enabled");
         Assert(!DreamLover.Backend.DreamLoverRules.ShouldForgetUnreciprocatedAdoration(true, false, false, true, false, true), "DreamLover ForgetMe should keep mutual adoration");
+
+        // Special/story NPC exclusion: only ordinary generated mortals (CreatingType==1, not temporary).
+        Assert(DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(1, false), "DreamLover should target ordinary generated characters (CreatingType 1)");
+        Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(0, false), "DreamLover should skip fixed/story characters (CreatingType 0)");
+        Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(2, false), "DreamLover should skip non-ordinary CreatingType 2 characters");
+        Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(3, false), "DreamLover should skip enemy-template characters (CreatingType 3)");
+        Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(1, true), "DreamLover should skip temporary event/adventure characters");
     }
 
     private static HashSet<string> ExtractHarmonyPatchMethods(string source)

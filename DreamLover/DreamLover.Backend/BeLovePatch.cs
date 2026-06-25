@@ -34,10 +34,11 @@ namespace DreamLover.Backend
     //   46 表白  → 8ce2db54-994d-4790-bfe3-6cedd7473277 (表露心事, 选项成两情相悦8192/回应)
     //   48 求婚  → 9c81352d-b715-4554-85fc-50322fe428f6 (头事件, 成功分支链入 e7b23d15 其条件恒真无需放行)
     //
-    // 心去难留(断情)：原生断情月报(47 → 63a3c0e9)的 OnCheckEventCondition 是 CanEndRelation(16384)，要求【双向】爱慕；
-    // 而本功能针对【单向】未被回应的爱慕(太吾不爱该 NPC)，原生断情事件条件恒 false，即便强行放行其两个选项也都不会真正
-    // 移除单向 16384(一个会按好感重新加回、一个因要求太吾也爱慕而提前返回)。故断情【不能】走原生月报，改为直接
-    // Character.ApplySeverAdore(移除 npc→太吾 16384 + 记 EndAdored 生平 + 好感/心情结算)。
+    // 心去难留(断情)：原生断情【交互月报事件】(47 → 63a3c0e9)的 OnCheckEventCondition 是 CanEndRelation(16384)，要求
+    // 【双向】爱慕；而本功能针对【单向】未被回应的爱慕(太吾不爱该 NPC)，该事件条件恒 false，即便强行放行其两个选项也都
+    // 不会真正移除单向 16384(一个会按好感重新加回、一个因要求太吾也爱慕而提前返回)。故断情【不走原生交互事件】，改为直接
+    // Character.ApplySeverAdore(移除 npc→太吾 16384 + 记 EndAdored 生平 + 好感/心情结算)，并补一条原生断情【月报通知】
+    // (MonthlyNotificationCollection.AddSeverLove，recordType 28，与原生双向分手同款)让玩家在月报「人情往来」看到。
     //
     // 好感(及其它维度)在本 mod 里只作【筛选】，不作门槛——门槛由 hook 精确放行绕过。
     // ============================================================================================
@@ -70,6 +71,11 @@ namespace DreamLover.Backend
         {
             ResetForcedSetOnNewMonth();
 
+            // 【性能①】全功能关闭：整月对每个 NPC 直接返回，零额外开销。
+            bool anyEnabled = Settings.EnableEnamor || Settings.EnablePursued || Settings.EnableMarry;
+            if (!anyEnabled && !Settings.ForgetMe)
+                return true;
+
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (taiwuId < 0)
                 return true;
@@ -81,14 +87,35 @@ namespace DreamLover.Backend
             if (!DomainManager.Character.IsCharacterAlive(charId))
                 return true;
 
+            // 不对游戏为剧情机制生成的【特殊 NPC】生效（固定/剧情角色、敌人模板、临时奇遇/事件角色）——
+            // 这些连断情也不碰。只作用于普通生成的凡人 NPC(CreatingType==1 且非临时)。
+            if (!DreamLoverRules.IsOrdinaryRelationshipTarget(
+                    __instance.GetCreatingType(),
+                    DomainManager.Character.IsTemporaryIntelligentCharacter(charId)))
+            {
+                if (Settings.DebugMode)
+                    Log(charId + " skipped: special/story or temporary character (CreatingType=" + __instance.GetCreatingType() + ")");
+                return true;
+            }
+
             if (!DomainManager.Character.TryGetElement_Objects(taiwuId, out Character taiwu))
                 return true;
 
-            bool anyEnabled = Settings.EnableEnamor || Settings.EnablePursued || Settings.EnableMarry;
+            // 心去难留是【全局】清理(与性别/距离无关)，放在下面的廉价预门之前执行。
             if (Settings.ForgetMe && !Settings.EnableEnamor && !Settings.EnablePursued)
                 TryForgetMe(context, __instance, charId, taiwuId, taiwu);
 
             if (!anyEnabled)
+                return true;
+
+            // 【性能②】廉价预门：在做好感/关系等较重查询之前，先用纯字段比较挡掉绝大多数 NPC。
+            //  - 性别门：默认仅异性，先挡掉同性（IgnoreDistance 时可省约一半人口的好感查询）。
+            //  - 同格门：非「爱慕不受地理限制」时，离格 NPC 立即跳过——这正是原版的同格界限(月度模拟只把太吾
+            //    并入【太吾所在格】的 charSet，故原版从不为离格 NPC 生成对太吾的恋爱候选)。开启 IgnoreDistance
+            //    = 主动放弃此界限、改为遍历全体活人(O(全部)，每人仍只做一次好感/关系查询)。
+            if (!Settings.AcceptSameGender && __instance.GetGender() == taiwu.GetGender())
+                return true;
+            if (!Settings.IgnoreDistance && !CharacterUtils.IsAtSameLocation(__instance, taiwu))
                 return true;
 
             if (!PassFilters(__instance, charId, taiwuId, taiwu))
@@ -163,13 +190,13 @@ namespace DreamLover.Backend
                     Settings.InfectMin,
                     Settings.InfectMax))
             {
-                Log(charId + " filtered: basic filter");
+                if (Settings.DebugMode) Log(charId + " filtered: basic filter");
                 return false;
             }
 
             if (!PassRelationFilter(charId, taiwuId))
             {
-                Log(charId + " filtered: relation filter");
+                if (Settings.DebugMode) Log(charId + " filtered: relation filter");
                 return false;
             }
 
@@ -273,8 +300,10 @@ namespace DreamLover.Backend
             return true;
         }
 
-        // 心去难留：直接移除 NPC 对太吾的【单向】爱慕（原生断情月报无法处理单向，详见文件头说明）。
+        // 心去难留：直接移除 NPC 对太吾的【单向】爱慕（原生断情【交互月报事件】无法处理单向，详见文件头说明）。
         // ApplySeverAdore 内部会判定 HasRelation(npc,太吾,16384) 才动手，并记 EndAdored 生平 + 好感/心情结算。
+        // 另补一条原生「断情」月报【通知】(MonthlyNotificationCollection.AddSeverLove，recordType 28，与原生双向分手
+        // ApplyBreakupWithBoyOrGirlFriend 同款)，让玩家在月报「人情往来」看到，而非静默。
         private static void TryForgetMe(DataContext context, Character npc, int charId, int taiwuId, Character taiwu)
         {
             if (!DreamLoverRules.ShouldForgetUnreciprocatedAdoration(
@@ -286,9 +315,11 @@ namespace DreamLover.Backend
                     DomainManager.Character.HasRelation(taiwuId, charId, Adored)))
                 return;
 
-            Log(charId + " forget: severing unrequited adoration (direct ApplySeverAdore)");
+            Log(charId + " forget: severing unrequited adoration (direct ApplySeverAdore + 月报通知)");
             Character.ApplySeverAdore(context, npc, taiwu, npc.GetBehaviorType(),
                 DomainManager.Character.IsTaiwuPeople(charId));
+            DomainManager.World.GetMonthlyNotificationCollection()
+                .AddSeverLove(charId, npc.GetLocation(), taiwuId);
         }
 
         private static void RecordNewRegularRelation(DataContext context, Character npc, Character taiwu, ushort relationType, bool succeed)
