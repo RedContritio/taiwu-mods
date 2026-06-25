@@ -1,31 +1,63 @@
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using Config.EventConfig;
 using HarmonyLib;
 using GameData.Common;
 using GameData.Domains;
 using GameData.Domains.Character;
-using GameData.Domains.Character.Ai;
 using GameData.Domains.Character.ParallelModifications;
 using GameData.Domains.Character.Relation;
 using GameData.Utilities;
 
 namespace DreamLover.Backend
 {
+    // ============================================================================================
+    // 设计（2026-06-25 重构 + 探针定稿）：扩展原生月度恋爱流程，而非替代。
+    //
+    // 原版引擎：NPC 过月时若对【太吾】产生新意向，complement(Character.ComplementPeriAdvanceMonth_RelationsUpdate)
+    // 不直接写关系，而排队一条月报记录(AddAdore=45 / AddConfess=46 / AddProposeMarriage=48)，真正落关系/交互在月报
+    // 事件链里。但这些月报事件的 OnCheckEventCondition(=CanStartRelation_*) 是好感/资格门控，失败时 HandleMonthlyEvent
+    // 硬抛异常卡死过月。同格限制只在【候选收集】阶段(OfflineExecuteCharacterActionsInArea：太吾仅进入自身所在 block 的
+    // charSet)，complement 排队/校验/派发全链路都【无】block 判断（已反编译查实）。
+    //
+    // DreamLover 做法：
+    //  1) 前置遍历(本类 Prefix)：按本 mod 筛选条件命中后，【记录】对太吾的关系修改(与原版同一通道
+    //     RecordParameterClass(PeriAdvanceMonthRelationsUpdateModification))，并把 NPC + 其将触发的月报事件 GUID
+    //     记入 ForcedThisMonth。直接复用 complement 通道 → 绕过候选收集的同格门 → 离格(IgnoreDistance)NPC 同样会出月报。
+    //  2) LoveEventGatePatch(挂 TaiwuEventItem.CheckCondition)：仅当事件本不通过、且其 GUID 正是本 mod 为该 NPC 促成的
+    //     那一个恋爱事件(精确 GUID 匹配，不再按 EventGroup 放行)时才放行——既避免硬抛异常，又【不会】误放行同组的非恋爱
+    //     事件(如结友 a546e498/recordType49)或该 NPC 当月其它月报事件。原版自发事件本就通过门控，第一行直接返回，不受影响。
+    //
+    // 爱慕/表白/求婚 三条都有原生月报事件，按 recordType→GUID：
+    //   45 爱慕  → 11ce2ba2-5abc-4f9e-9fbc-8892f03cd8f6 (心生爱慕, OnEventEnter 直接落单向爱慕16384)
+    //   46 表白  → 8ce2db54-994d-4790-bfe3-6cedd7473277 (表露心事, 选项成两情相悦8192/回应)
+    //   48 求婚  → 9c81352d-b715-4554-85fc-50322fe428f6 (头事件, 成功分支链入 e7b23d15 其条件恒真无需放行)
+    //
+    // 心去难留(断情)：原生断情月报(47 → 63a3c0e9)的 OnCheckEventCondition 是 CanEndRelation(16384)，要求【双向】爱慕；
+    // 而本功能针对【单向】未被回应的爱慕(太吾不爱该 NPC)，原生断情事件条件恒 false，即便强行放行其两个选项也都不会真正
+    // 移除单向 16384(一个会按好感重新加回、一个因要求太吾也爱慕而提前返回)。故断情【不能】走原生月报，改为直接
+    // Character.ApplySeverAdore(移除 npc→太吾 16384 + 记 EndAdored 生平 + 好感/心情结算)。
+    //
+    // 好感(及其它维度)在本 mod 里只作【筛选】，不作门槛——门槛由 hook 精确放行绕过。
+    // ============================================================================================
     [HarmonyPatch(typeof(Character), "PeriAdvanceMonth_RelationsUpdate")]
     public static class BeLovePatch
     {
         private const ushort Adored = 16384;
         private const ushort Spouse = 1024;
 
-        // NPC 主动对【太吾】发起的关系，必须在月度补全阶段（单线程）直接 Apply。
-        // 原因：游戏的 ComplementPeriAdvanceMonth_RelationsUpdate 在“新关系目标是太吾”时，
-        // 只会把它转成月报事件（AddAdore/AddConfess/AddProposeMarriage），并【不】真正建立关系；
-        // 只有目标非太吾时才直接调用 Apply*。所以记录 NewRegularRelations(target=太吾) 无效，
-        // 必须自己在补全阶段直接调用 Character.Apply* 把关系落到太吾身上（与 ForgetMe 的处理方式一致）。
-        private enum LoveAction { Enamor, Confession, Marriage }
+        // 本 mod 促成的三条月报恋爱事件 GUID（与 recordType 45/46/48 一一对应）。
+        internal static readonly Guid AdoreGuid = new Guid("11ce2ba2-5abc-4f9e-9fbc-8892f03cd8f6");
+        internal static readonly Guid ConfessGuid = new Guid("8ce2db54-994d-4790-bfe3-6cedd7473277");
+        internal static readonly Guid MarryGuid = new Guid("9c81352d-b715-4554-85fc-50322fe428f6");
 
-        private static readonly ConcurrentQueue<(int CharId, LoveAction Action)> ActionQueue
-            = new ConcurrentQueue<(int, LoveAction)>();
-        private static readonly ConcurrentQueue<int> ForgetMeQueue = new ConcurrentQueue<int>();
+        // 本月「DreamLover 促成」的 NPC → 它将触发的恋爱事件 GUID。Prefix 填充，LoveEventGatePatch 精确匹配后放行。
+        internal static readonly ConcurrentDictionary<int, Guid> ForcedThisMonth =
+            new ConcurrentDictionary<int, Guid>();
+
+        private static volatile int _lastStamp = int.MinValue;
+        private static readonly object _stampLock = new object();
 
         private static void Log(string message)
         {
@@ -36,6 +68,8 @@ namespace DreamLover.Backend
         [HarmonyPrefix]
         public static bool Prefix(Character __instance, DataContext context)
         {
+            ResetForcedSetOnNewMonth();
+
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (taiwuId < 0)
                 return true;
@@ -52,7 +86,7 @@ namespace DreamLover.Backend
 
             bool anyEnabled = Settings.EnableEnamor || Settings.EnablePursued || Settings.EnableMarry;
             if (Settings.ForgetMe && !Settings.EnableEnamor && !Settings.EnablePursued)
-                TryForgetMe(context, __instance, charId, taiwuId);
+                TryForgetMe(context, __instance, charId, taiwuId, taiwu);
 
             if (!anyEnabled)
                 return true;
@@ -60,53 +94,41 @@ namespace DreamLover.Backend
             if (!PassFilters(__instance, charId, taiwuId, taiwu))
                 return true;
 
-            // 决策顺序：双向爱慕→求婚；单向(npc爱慕)→表白；尚未爱慕→爱慕。
-            // 仅做决策与入队，真正的关系变更在补全阶段（DrainQueues）单线程执行。
-            if (Settings.EnableMarry && ShouldMarry(charId, __instance, taiwu, taiwuId))
-            {
-                Enqueue(context, __instance, charId, LoveAction.Marriage);
+            // 决策顺序：双向爱慕→求婚；单向爱慕→表白；尚未爱慕→爱慕。命中即记录 + 标记，交给原生月报事件处理。
+            if (Settings.EnableMarry && TryMarriage(context, charId, __instance, taiwu))
                 return true;
-            }
 
-            if (Settings.EnablePursued && ShouldConfess(charId, __instance, taiwu, taiwuId))
-            {
-                Enqueue(context, __instance, charId, LoveAction.Confession);
+            if (Settings.EnablePursued && TryConfession(context, charId, __instance, taiwu))
                 return true;
-            }
 
-            if (Settings.EnableEnamor && ShouldEnamor(charId, __instance, taiwu, taiwuId))
-            {
-                Enqueue(context, __instance, charId, LoveAction.Enamor);
+            if (Settings.EnableEnamor && TryEnamor(context, charId, __instance, taiwu))
                 return true;
-            }
 
             return true;
         }
 
-        private static void Enqueue(DataContext context, Character npc, int charId, LoveAction action)
+        // 每月初清空「本月促成」集合。Prefix 在并行 worker 线程上逐角色调用，用月度戳 + 锁保证整月清一次。
+        // 不能在 complement 后置里清——那时月报尚未处理，hook 还要读这个集合。
+        private static void ResetForcedSetOnNewMonth()
         {
-            Log(charId + " queued: " + action);
-            ActionQueue.Enqueue((charId, action));
-            // 记录一条空的关系更新，确保补全阶段（ComplementPeriAdvanceMonth_RelationsUpdate）会被调用，
-            // 从而 DrainQueues 得以执行。
-            RecordEmptyRelationsUpdate(context, npc);
-        }
-
-        private static void TryForgetMe(DataContext context, Character npc, int charId, int taiwuId)
-        {
-            if (!DreamLoverRules.ShouldForgetUnreciprocatedAdoration(
-                    Settings.ForgetMe,
-                    Settings.EnableEnamor,
-                    Settings.EnablePursued,
-                    DomainManager.Character.HasRelation(charId, taiwuId, Adored),
-                    DomainManager.Character.HasRelation(charId, taiwuId, Spouse),
-                    DomainManager.Character.HasRelation(taiwuId, charId, Adored)))
+            int stamp = DomainManager.World.GetCurrDate();
+            if (stamp == _lastStamp)
                 return;
-
-            Log(charId + " queued to forget adoration for Taiwu");
-            ForgetMeQueue.Enqueue(charId);
-            RecordEmptyRelationsUpdate(context, npc);
+            lock (_stampLock)
+            {
+                if (stamp == _lastStamp)
+                    return;
+                ForcedThisMonth.Clear();
+                _lastStamp = stamp;
+            }
         }
+
+        private static void Force(int charId, Guid eventGuid)
+        {
+            ForcedThisMonth[charId] = eventGuid;
+        }
+
+        // ---------- 筛选（本 mod 自己的选择条件，非门槛） ----------
 
         private static bool PassFilters(Character npc, int charId, int taiwuId, Character taiwu)
         {
@@ -126,15 +148,20 @@ namespace DreamLover.Backend
                     Settings.MinAge,
                     Settings.MaxAge,
                     favorType,
-                    Settings.Favor,
+                    Settings.FavorMin,
+                    Settings.FavorMax,
                     goodnessLevel,
-                    Settings.Good,
+                    Settings.GoodMin,
+                    Settings.GoodMax,
                     charmLevel,
-                    Settings.Charm,
+                    Settings.CharmMin,
+                    Settings.CharmMax,
                     rankLevel,
-                    Settings.Rank,
+                    Settings.RankMin,
+                    Settings.RankMax,
                     infectState,
-                    Settings.Infect))
+                    Settings.InfectMin,
+                    Settings.InfectMax))
             {
                 Log(charId + " filtered: basic filter");
                 return false;
@@ -161,30 +188,23 @@ namespace DreamLover.Backend
             return true;
         }
 
-        // ---------- 决策（worker 线程，只读状态 + 正式规则校验） ----------
+        // ---------- 决策 + 记录（不再做 CanStartRelation_* 好感门控——交给 hook 精确放行） ----------
 
-        private static bool ShouldMarry(int charId, Character npc, Character taiwu, int taiwuId)
+        private static bool TryMarriage(DataContext context, int charId, Character npc, Character taiwu)
         {
+            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
             if (!DomainManager.Character.HasRelation(taiwuId, charId, Adored))
                 return false;
             if (DomainManager.Character.HasRelation(charId, taiwuId, Spouse))
                 return false;
+            // 保留硬性婚姻规则（一夫一妻/血亲等），这不是好感门槛。
             if (!RelationTypeHelper.AllowAddingHusbandOrWifeRelation(charId, taiwuId))
             {
                 Log(charId + " marriage blocked: formal marriage rules reject it");
                 return false;
             }
-            if (!DomainManager.Character.TryGetRelation(charId, taiwuId, out RelatedCharacter npcToTaiwu) ||
-                !DomainManager.Character.TryGetRelation(taiwuId, charId, out RelatedCharacter taiwuToNpc) ||
-                !AiHelper.Relation.CanStartRelation_HusbandOrWife(charId, npcToTaiwu, npc.GetBehaviorType(),
-                    taiwuId, taiwuToNpc, taiwu.GetBehaviorType()))
-            {
-                Log(charId + " marriage blocked: formal relation rules reject it");
-                return false;
-            }
-
             if (!Settings.MarriedKiller && CharacterUtils.IsMarried(charId))
             {
                 Log(charId + " marriage blocked: NPC already married");
@@ -211,127 +231,109 @@ namespace DreamLover.Backend
                 return false;
             }
 
+            Log(charId + " marriage: recording 求婚(共结连理) monthly update");
+            RecordNewRegularRelation(context, npc, taiwu, Spouse, true);
+            Force(charId, MarryGuid);
             return true;
         }
 
-        private static bool ShouldConfess(int charId, Character npc, Character taiwu, int taiwuId)
+        private static bool TryConfession(DataContext context, int charId, Character npc, Character taiwu)
         {
+            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
             if (DomainManager.Character.HasRelation(taiwuId, charId, Adored))
                 return false;
-            if (!DomainManager.Character.TryGetRelation(charId, taiwuId, out RelatedCharacter npcToTaiwu) ||
-                !DomainManager.Character.TryGetRelation(taiwuId, charId, out RelatedCharacter taiwuToNpc) ||
-                !AiHelper.Relation.CanStartRelation_BoyOrGirlFriend(npcToTaiwu, npc.GetBehaviorType(),
-                    taiwuToNpc, taiwu.GetBehaviorType()))
-            {
-                Log(charId + " confession blocked: formal relation rules reject it");
-                return false;
-            }
 
+            Log(charId + " confession: recording 表白(表露心事) monthly update");
+            var mod = new PeriAdvanceMonthRelationsUpdateModification(npc)
+            {
+                NewBoyOrGirlFriend = (targetChar: taiwu, succeed: true)
+            };
+            RecordRelationsUpdate(context, mod);
+            Force(charId, ConfessGuid);
             return true;
         }
 
-        private static bool ShouldEnamor(int charId, Character npc, Character taiwu, int taiwuId)
+        private static bool TryEnamor(DataContext context, int charId, Character npc, Character taiwu)
         {
+            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
+            // 保留 740/741 特殊恋爱标记等硬约束（非好感门槛）。
             if (!RelationTypeHelper.AllowAddingAdoredRelation(charId, taiwuId))
             {
                 Log(charId + " enamor blocked: formal adore rules reject it");
                 return false;
             }
-            if (!DomainManager.Character.TryGetRelation(charId, taiwuId, out RelatedCharacter npcToTaiwu) ||
-                !AiHelper.Relation.CanStartRelation_Adored(npcToTaiwu, npc.GetBehaviorType()))
-            {
-                Log(charId + " enamor blocked: formal relation rules reject it");
-                return false;
-            }
 
+            Log(charId + " enamor: recording 爱慕(心生爱慕) monthly update");
+            RecordNewRegularRelation(context, npc, taiwu, Adored, false);
+            Force(charId, AdoreGuid);
             return true;
         }
 
-        private static void RecordEmptyRelationsUpdate(DataContext context, Character npc)
+        // 心去难留：直接移除 NPC 对太吾的【单向】爱慕（原生断情月报无法处理单向，详见文件头说明）。
+        // ApplySeverAdore 内部会判定 HasRelation(npc,太吾,16384) 才动手，并记 EndAdored 生平 + 好感/心情结算。
+        private static void TryForgetMe(DataContext context, Character npc, int charId, int taiwuId, Character taiwu)
         {
-            var mod = new PeriAdvanceMonthRelationsUpdateModification(npc);
+            if (!DreamLoverRules.ShouldForgetUnreciprocatedAdoration(
+                    Settings.ForgetMe,
+                    Settings.EnableEnamor,
+                    Settings.EnablePursued,
+                    DomainManager.Character.HasRelation(charId, taiwuId, Adored),
+                    DomainManager.Character.HasRelation(charId, taiwuId, Spouse),
+                    DomainManager.Character.HasRelation(taiwuId, charId, Adored)))
+                return;
+
+            Log(charId + " forget: severing unrequited adoration (direct ApplySeverAdore)");
+            Character.ApplySeverAdore(context, npc, taiwu, npc.GetBehaviorType(),
+                DomainManager.Character.IsTaiwuPeople(charId));
+        }
+
+        private static void RecordNewRegularRelation(DataContext context, Character npc, Character taiwu, ushort relationType, bool succeed)
+        {
+            var mod = new PeriAdvanceMonthRelationsUpdateModification(npc)
+            {
+                NewRegularRelations = new List<(Character targetChar, ushort relationType, bool succeed)>
+                {
+                    (taiwu, relationType, succeed)
+                }
+            };
+            RecordRelationsUpdate(context, mod);
+        }
+
+        private static void RecordRelationsUpdate(DataContext context, PeriAdvanceMonthRelationsUpdateModification mod)
+        {
             var recorder = context.ParallelModificationsRecorder;
             recorder.RecordType(ParallelModificationType.PeriAdvanceMonthRelationsUpdate);
             recorder.RecordParameterClass(mod);
         }
-
-        // ---------- 应用（补全阶段，单线程，直接落关系到太吾身上） ----------
-
-        internal static void DrainQueues(DataContext context)
-        {
-            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
-            if (taiwuId < 0 || !DomainManager.Character.TryGetElement_Objects(taiwuId, out Character taiwu))
-                return;
-
-            bool taiwuIsTaiwuPeople = DomainManager.Character.IsTaiwuPeople(taiwuId);
-
-            while (ActionQueue.TryDequeue(out var item))
-            {
-                if (!DomainManager.Character.TryGetElement_Objects(item.CharId, out Character npc))
-                    continue;
-
-                sbyte bt = npc.GetBehaviorType();
-                bool npcIsTaiwuPeople = DomainManager.Character.IsTaiwuPeople(item.CharId);
-
-                switch (item.Action)
-                {
-                    case LoveAction.Enamor:
-                        if (DomainManager.Character.HasRelation(item.CharId, taiwuId, Adored))
-                            break;
-                        Log(item.CharId + " enamor: applying adore for Taiwu");
-                        Character.ApplyAddRelation_Adore(context, npc, taiwu, bt, false, npcIsTaiwuPeople, taiwuIsTaiwuPeople);
-                        break;
-
-                    case LoveAction.Confession:
-                        if (DomainManager.Character.HasRelation(taiwuId, item.CharId, Adored))
-                            break;
-                        Log(item.CharId + " confession: applying mutual adoration with Taiwu");
-                        Character.ApplyBecomeBoyOrGirlFriend(context, npc, taiwu, bt, true, npcIsTaiwuPeople, taiwuIsTaiwuPeople);
-                        break;
-
-                    case LoveAction.Marriage:
-                        if (DomainManager.Character.HasRelation(item.CharId, taiwuId, Spouse))
-                            break;
-                        Log(item.CharId + " marriage: applying marriage with Taiwu");
-                        Character.ApplyBecomeHusbandOrWife(context, npc, taiwu, bt, true, npcIsTaiwuPeople, taiwuIsTaiwuPeople);
-                        break;
-                }
-            }
-
-            DrainForgetMeQueue(context, taiwuId, taiwu);
-        }
-
-        private static void DrainForgetMeQueue(DataContext context, int taiwuId, Character taiwu)
-        {
-            while (ForgetMeQueue.TryDequeue(out int charId))
-            {
-                if (!DomainManager.Character.TryGetElement_Objects(charId, out Character npc))
-                    continue;
-                if (!DomainManager.Character.HasRelation(charId, taiwuId, Adored))
-                    continue;
-                if (DomainManager.Character.HasRelation(charId, taiwuId, Spouse))
-                    continue;
-                if (DomainManager.Character.HasRelation(taiwuId, charId, Adored))
-                    continue;
-
-                Log(charId + " forgets adoration for Taiwu");
-                Character.ApplySeverAdore(context, npc, taiwu,
-                    npc.GetBehaviorType(), DomainManager.Character.IsTaiwuPeople(charId));
-            }
-        }
     }
 
-    [HarmonyPatch(typeof(Character), "ComplementPeriAdvanceMonth_RelationsUpdate")]
-    public static class BeLoveComplementPatch
+    // 月报事件门控放行：仅对【本 mod 本月为该 NPC 促成】的那一个恋爱事件(精确 GUID 匹配)、且事件本不通过时放行，
+    // 避免硬抛异常；不影响原版自发事件(本就通过，第一行返回)，也不会误放行同组非恋爱事件或该 NPC 当月其它事件。
+    [HarmonyPatch(typeof(TaiwuEventItem), "CheckCondition")]
+    public static class LoveEventGatePatch
     {
         [HarmonyPostfix]
-        public static void Postfix(DataContext context)
+        public static void Postfix(TaiwuEventItem __instance, ref bool __result)
         {
-            BeLovePatch.DrainQueues(context);
+            if (__result)
+                return; // 本就通过（原版自发/合格事件）→ 绝不插手
+            Guid guid = __instance.Guid;
+            if (guid != BeLovePatch.AdoreGuid && guid != BeLovePatch.ConfessGuid && guid != BeLovePatch.MarryGuid)
+                return; // 只关心本 mod 促成的三类恋爱事件
+            if (__instance.ArgBox == null)
+                return;
+
+            Character npc = __instance.ArgBox.GetCharacter("MonthlyEvent_arg0");
+            if (npc == null)
+                return;
+
+            // 仅当本 mod 本月确实为该 NPC 促成了【这一个】事件时才放行（GUID 精确匹配）。
+            if (BeLovePatch.ForcedThisMonth.TryGetValue(npc.GetId(), out Guid promoted) && promoted == guid)
+                __result = true;
         }
     }
 }

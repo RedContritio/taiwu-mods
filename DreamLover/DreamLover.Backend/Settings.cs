@@ -15,9 +15,13 @@ namespace DreamLover.Backend
         public static int MinAge;
         public static int MaxAge;
 
-        public static bool[] Favor = new bool[13];
-        public static bool[] Good = new bool[5];
-        public static bool[] Charm = new bool[9];
+        // 有序档位筛选：以 0 起始的档位索引表示 [下限, 上限] 闭区间（下拉框存索引，显示档位名）。
+        // 顺序与游戏取值一致：好感=好感档+6、立场=BehaviorType、魅力=GetAttractionType、阶层=GetInteractionGrade(0=九品..8=一品)、入魔=GetInfectionState。
+        public static int FavorMin, FavorMax;
+        public static int GoodMin, GoodMax;
+        public static int CharmMin, CharmMax;
+        public static int RankMin, RankMax;
+        public static int InfectMin, InfectMax;
 
         public static bool IgnoreGang;
         public static bool MarriedKiller;
@@ -25,8 +29,6 @@ namespace DreamLover.Backend
         public static bool MonkKiller;
         public static bool CharmingBonze;
 
-        public static bool[] Rank = new bool[9];
-        public static bool[] Infect = new bool[3];
         public static bool[] RelFilter = new bool[11];
 
         public static bool DebugMode;
@@ -53,7 +55,8 @@ namespace DreamLover.Backend
             return val;
         }
 
-        private static int GetSlider(string modId, string key)
+        // Slider 与 Dropdown 都以 int 存值（Dropdown 存的是 0 起始的选项索引）。
+        private static int GetInt(string modId, string key)
         {
             int val = 0;
             DomainManager.Mod.GetSetting(modId, key, ref val);
@@ -70,20 +73,19 @@ namespace DreamLover.Backend
             AcceptSameGender = GetToggle(modId, "AcceptSameGender");
             IgnoreDistance = GetToggle(modId, "IgnoreDistance");
 
-            MinAge = GetSlider(modId, "MinAge");
-            MaxAge = GetSlider(modId, "MaxAge");
+            MinAge = GetInt(modId, "MinAge");
+            MaxAge = GetInt(modId, "MaxAge");
 
-            for (int i = 0; i < 13; i++)
-                Favor[i] = GetToggle(modId, "Favor_" + i);
-            for (int i = 0; i < 5; i++)
-                Good[i] = GetToggle(modId, "Good_" + i);
-            for (int i = 0; i < 9; i++)
-                Charm[i] = GetToggle(modId, "Charm_" + i);
-
-            for (int i = 0; i < 9; i++)
-                Rank[i] = GetToggle(modId, "Rank_" + i);
-            for (int i = 0; i < 3; i++)
-                Infect[i] = GetToggle(modId, "Infect_" + i);
+            FavorMin = GetInt(modId, "FavorMin");
+            FavorMax = GetInt(modId, "FavorMax");
+            GoodMin = GetInt(modId, "GoodMin");
+            GoodMax = GetInt(modId, "GoodMax");
+            CharmMin = GetInt(modId, "CharmMin");
+            CharmMax = GetInt(modId, "CharmMax");
+            RankMin = GetInt(modId, "RankMin");
+            RankMax = GetInt(modId, "RankMax");
+            InfectMin = GetInt(modId, "InfectMin");
+            InfectMax = GetInt(modId, "InfectMax");
 
             IgnoreGang = GetToggle(modId, "IgnoreGang");
             MarriedKiller = GetToggle(modId, "MarriedKiller");

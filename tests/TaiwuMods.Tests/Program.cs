@@ -602,35 +602,58 @@ sealed class ContractTests
 
     private static void DreamLoverRules()
     {
-        bool[] favor = AllowOnly(13, 8);
-        bool[] good = AllowOnly(5, 2);
-        bool[] charm = AllowOnly(9, 4);
-        bool[] rank = AllowOnly(9, 3);
-        bool[] infect = AllowOnly(3, 0);
+        // Local wrapper: the band defaults mirror config.lua's default bands
+        // (favor 融洽–不渝 [8,12], 立场 仁善–中庸 [1,2], 魅力 出众–天人 [4,8],
+        //  阶层 七品–一品 [2,8] with 0=九品..8=一品, 入魔 未入邪 [0,0]).
+        bool Pass(
+            bool acceptSameGender = false, bool sameGender = false,
+            bool ignoreDistance = false, bool sameLocation = true,
+            int ageYears = 30, int minAge = 16, int maxAge = 60,
+            sbyte favorType = 2, int favorMin = 8, int favorMax = 12,
+            int goodnessLevel = 2, int goodMin = 1, int goodMax = 2,
+            sbyte charmLevel = 4, int charmMin = 4, int charmMax = 8,
+            sbyte rankLevel = 3, int rankMin = 2, int rankMax = 8,
+            int infectState = 0, int infectMin = 0, int infectMax = 0)
+            => DreamLover.Backend.DreamLoverRules.PassBasicFilters(
+                acceptSameGender, sameGender, ignoreDistance, sameLocation,
+                ageYears, minAge, maxAge,
+                favorType, favorMin, favorMax,
+                goodnessLevel, goodMin, goodMax,
+                charmLevel, charmMin, charmMax,
+                rankLevel, rankMin, rankMax,
+                infectState, infectMin, infectMax);
 
-        Assert(DreamLover.Backend.DreamLoverRules.PassBasicFilters(
-            acceptSameGender: false,
-            sameGender: false,
-            ignoreDistance: false,
-            sameLocation: true,
-            ageYears: 30,
-            minAge: 16,
-            maxAge: 60,
-            favorType: 2,
-            favor,
-            goodnessLevel: 2,
-            good,
-            charmLevel: 4,
-            charm,
-            rankLevel: 3,
-            rank,
-            infectState: 0,
-            infect), "DreamLover basic filters should allow a matching candidate");
+        Assert(Pass(), "DreamLover basic filters should allow a matching candidate at default bands");
 
-        Assert(!DreamLover.Backend.DreamLoverRules.PassBasicFilters(false, true, false, true, 30, 16, 60, 2, favor, 2, good, 4, charm, 3, rank, 0, infect), "DreamLover should block same gender by default");
-        Assert(!DreamLover.Backend.DreamLoverRules.PassBasicFilters(false, false, false, false, 30, 16, 60, 2, favor, 2, good, 4, charm, 3, rank, 0, infect), "DreamLover should block distance by default");
-        Assert(!DreamLover.Backend.DreamLoverRules.PassBasicFilters(false, false, true, false, 15, 16, 60, 2, favor, 2, good, 4, charm, 3, rank, 0, infect), "DreamLover should block below minimum age");
-        Assert(!DreamLover.Backend.DreamLoverRules.PassBasicFilters(false, false, true, false, 30, 16, 60, -6, favor, 2, good, 4, charm, 3, rank, 0, infect), "DreamLover should block disallowed favorability");
+        Assert(!Pass(sameGender: true), "DreamLover should block same gender by default");
+        Assert(Pass(acceptSameGender: true, sameGender: true), "DreamLover should allow same gender when enabled");
+        Assert(!Pass(sameLocation: false), "DreamLover should block distance by default");
+        Assert(Pass(ignoreDistance: true, sameLocation: false), "DreamLover should allow off-block when distance ignored");
+        Assert(!Pass(ageYears: 15), "DreamLover should block below minimum age");
+        Assert(!Pass(ageYears: 61), "DreamLover should block above maximum age");
+
+        // 好感 band: favorType+6 must lie in [favorMin,favorMax].
+        Assert(!Pass(favorType: -6), "DreamLover should block favor below band (血仇 < 融洽)");
+        Assert(!Pass(favorType: 1), "DreamLover should block favor just below band (冷淡 idx7 < 融洽 idx8)");
+        Assert(Pass(favorType: 2), "DreamLover should allow favor at lower bound (融洽 idx8)");
+        Assert(Pass(favorType: 6), "DreamLover should allow favor at upper bound (不渝 idx12)");
+        Assert(Pass(favorType: -6, favorMin: 0, favorMax: 12), "DreamLover full favor band ignores favor filter");
+        Assert(Pass(favorType: -6, favorMin: 12, favorMax: 0), "DreamLover favor band endpoints are order-independent");
+        Assert(!Pass(favorType: 2, favorMin: 9, favorMax: 9), "DreamLover exact favor tier blocks other tiers");
+        Assert(Pass(favorType: 3, favorMin: 9, favorMax: 9), "DreamLover exact favor tier allows that tier (热忱 idx9)");
+
+        // 阶层 band: GetInteractionGrade 0=九品..8=一品, default [2,8]=七品..一品.
+        Assert(!Pass(rankLevel: 0), "DreamLover should block 九品 below rank band");
+        Assert(!Pass(rankLevel: 1), "DreamLover should block 八品 below rank band");
+        Assert(Pass(rankLevel: 2), "DreamLover should allow 七品 at rank lower bound");
+        Assert(Pass(rankLevel: 8), "DreamLover should allow 一品 at rank upper bound");
+
+        // 立场 / 魅力 / 入魔 bands.
+        Assert(!Pass(goodnessLevel: 0), "DreamLover should block 立场 below band (刚正 < 仁善)");
+        Assert(!Pass(goodnessLevel: 3), "DreamLover should block 立场 above band (叛逆 > 中庸)");
+        Assert(!Pass(charmLevel: 3), "DreamLover should block charm below band (寻常 < 出众)");
+        Assert(!Pass(infectState: 1), "DreamLover should block infect above band (相枢入邪 > 未入邪)");
+        Assert(Pass(infectState: 2, infectMin: 0, infectMax: 2), "DreamLover full infect band allows 相枢化魔");
 
         var relationDefs = new[] { ("Rel_A", (ushort)1), ("Rel_B", (ushort)2) };
         Assert(DreamLover.Backend.DreamLoverRules.PassRelationFilter(0, relationDefs, new[] { false, false }), "DreamLover should allow candidates without configured relation flags");
@@ -640,13 +663,6 @@ sealed class ContractTests
         Assert(DreamLover.Backend.DreamLoverRules.ShouldForgetUnreciprocatedAdoration(true, false, false, true, false, false), "DreamLover ForgetMe should queue unreciprocated adoration");
         Assert(!DreamLover.Backend.DreamLoverRules.ShouldForgetUnreciprocatedAdoration(true, true, false, true, false, false), "DreamLover ForgetMe should not run while enamor is enabled");
         Assert(!DreamLover.Backend.DreamLoverRules.ShouldForgetUnreciprocatedAdoration(true, false, false, true, false, true), "DreamLover ForgetMe should keep mutual adoration");
-    }
-
-    private static bool[] AllowOnly(int length, int allowedIndex)
-    {
-        var values = new bool[length];
-        values[allowedIndex] = true;
-        return values;
     }
 
     private static HashSet<string> ExtractHarmonyPatchMethods(string source)
