@@ -1,6 +1,6 @@
 ---
 name: taiwu-ui
-description: Inspect and interact with the running Taiwu game UI via the EasyBridge mod's frontend named pipe (taiwu-uibridge). Use when you need to verify game UI state, find UI elements, or perform actions (click, toggle, set, select) during automated testing.
+description: Inspect and interact with the running Taiwu game UI via the EasyBridge mod's frontend named pipe (easybridge-ui). Use when you need to verify game UI state, find UI elements, or perform actions (click, toggle, set, select) during automated testing.
 ---
 
 # EasyBridge UI Skill
@@ -25,7 +25,7 @@ function Invoke-UiBridge {
     if ($Query) { $req.query = $Query }
     if ($Body) { $req.body = $Body }
     $json = $req | ConvertTo-Json -Compress
-    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "taiwu-uibridge", [System.IO.Pipes.PipeDirection]::InOut)
+    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "easybridge-ui", [System.IO.Pipes.PipeDirection]::InOut)
     try {
         $pipe.Connect(5000)
         $writer = New-Object System.IO.StreamWriter($pipe, [System.Text.Encoding]::UTF8, 4096, $true)
@@ -46,7 +46,10 @@ function Invoke-UiBridge {
 | `/ui/{name}` | GET | 单窗口语义树（控件 + 文本，按区域分组） |
 | `/find?q=关键词` | GET | 跨窗口文本搜索 |
 | `/elements` | GET | 已知窗口目录 |
+| `/inspect?element=Name&id=Path` | GET | 通用 UI 对象检查：组件、RectTransform、屏幕坐标、UI camera |
+| `/reflect?element=Name&component=Type&member=path` | GET | 通用只读反射：读取组件字段，支持私有字段和点号路径 |
 | `/action` | POST | 动作注入（click/toggle/set/select） |
+| `/reflect/invoke` | POST | 反射调用实例方法；默认禁用，需临时开启 `EnableReflectInvoke` |
 | `/wait?element=Name&timeout=60` | GET | 阻塞等待指定窗口出现 |
 | `/quit` | POST | 退出游戏（不保存） |
 
@@ -67,6 +70,26 @@ function Invoke-UiBridge {
 ```
 
 query 参数：`detail=full` 全量模式，`max=200` 条目上限。
+
+### `/inspect` 与 `/reflect`
+
+```powershell
+Invoke-UiBridge -Path "/inspect" -Query @{ element="Combat"; id=""; max="40" }
+Invoke-UiBridge -Path "/reflect" -Query @{
+    element="Combat"
+    component="ViewCombat"
+    member="targetDistanceBar._interactType"
+    depth="1"
+    max="40"
+}
+```
+
+`/inspect` 和 `/reflect` 是通用诊断接口，不绑定具体 mod。`id` 使用 `/ui/{name}` 返回的 UI path；留空表示窗口根对象。
+`component` 可传组件短名或全名；`member` 是字段点号路径。返回快照深度和成员数受 EasyBridge 设置
+`MaxReflectDepth` / `MaxReflectMembers` 硬限制。
+
+`/reflect/invoke` 默认由 `EnableReflectInvoke=false` 禁用；只在临时调试时开启，结束后关闭。常规验证优先使用只读
+`/inspect`/`/reflect` 加 `/action` 或真实鼠标输入。
 
 ### `/action` 请求体
 

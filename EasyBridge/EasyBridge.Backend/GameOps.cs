@@ -51,6 +51,74 @@ namespace EasyBridge.Backend
             return r;
         }
 
+        public static Dictionary<string, object> Combat(DataContext ctx)
+        {
+            bool inCombat = DomainManager.Combat.IsInCombat();
+            var result = new Dictionary<string, object>
+            {
+                ["ok"] = true,
+                ["status"] = SafeCombatStatus(),
+                ["inCombat"] = inCombat,
+                ["autoCombat"] = SafeAutoCombat(),
+                ["autoMove"] = SafeAutoMove(),
+            };
+
+            if (!inCombat)
+            {
+                result["currentDistance"] = null;
+                result["lastTargetDistance"] = null;
+                result["self"] = null;
+                result["enemy"] = null;
+                return result;
+            }
+
+            result["currentDistance"] = SafeCurrentDistance();
+            result["lastTargetDistance"] = SafeLastTargetDistance();
+            result["self"] = CombatCharInfo(DomainManager.Combat.GetCombatCharacter(isAlly: true));
+            result["enemy"] = CombatCharInfo(DomainManager.Combat.GetCombatCharacter(isAlly: false));
+            return result;
+        }
+
+        private static int? SafeCombatStatus()
+        {
+            try { return (int)DomainManager.Combat.GetCombatStatus(); }
+            catch { return null; }
+        }
+
+        private static bool? SafeAutoCombat()
+        {
+            try { return DomainManager.Combat.GetAutoCombat(); }
+            catch { return null; }
+        }
+
+        private static bool? SafeAutoMove()
+        {
+            try { return DomainManager.Combat.AiOptions != null ? DomainManager.Combat.AiOptions.AutoMove : (bool?)null; }
+            catch { return null; }
+        }
+
+        private static int? SafeCurrentDistance()
+        {
+            try { return DomainManager.Combat.GetCurrentDistance(); }
+            catch { return null; }
+        }
+
+        private static int? SafeLastTargetDistance()
+        {
+            try { return DomainManager.Combat.GetLastTargetDistance(); }
+            catch { return null; }
+        }
+
+        private static Dictionary<string, object> CombatCharInfo(GameData.Domains.Combat.CombatCharacter ch)
+        {
+            if (ch == null) return null;
+            return new Dictionary<string, object>
+            {
+                ["id"] = ch.GetId(),
+                ["targetDistance"] = ch.GetTargetDistance(),
+            };
+        }
+
         public static Dictionary<string, object> Snapshot(int id)
         {
             if (!DomainManager.Character.TryGetElement_Objects(id, out var ch))

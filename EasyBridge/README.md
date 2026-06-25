@@ -5,20 +5,28 @@
 
 | 插件 | 进程 | 命名管道 | 作用 | 技能 |
 |------|------|---------|------|------|
-| `EasyBridge.Frontend` | 前端 Unity（Mono/net48） | `taiwu-uibridge` | 语义化检视/操控游戏 **UI**（click/toggle/set/select、等待窗口） | `skills/taiwu-ui.md` |
-| `EasyBridge.Backend` | 后端 GameData（.NET 8） | `taiwu-testbridge` | 读取/构造**角色与关系状态**（生成符合条件的 NPC）、瞬移、伤势、捕绳，以及 **`/eval` 动态执行任意 C#** | `skills/taiwu-statebridge.md` |
+| `EasyBridge.Frontend` | 前端 Unity（Mono/net48） | `easybridge-ui` | 语义化检视/操控游戏 **UI**（click/toggle/set/select、等待窗口） | `skills/taiwu-ui.md` |
+| `EasyBridge.Backend` | 后端 GameData（.NET 8） | `easybridge-state` | 读取/构造**角色与关系状态**（生成符合条件的 NPC）、瞬移、伤势、捕绳，以及 **`/eval` 动态执行任意 C#** | `skills/taiwu-statebridge.md` |
 
 > 前后端是两个进程：UI 在 Unity 前端，角色数据在 .NET 8 后端，一个插件 DLL 只能跑在一个进程里，所以需要两个插件；
 > 这里把它们打包成**同一个 mod「EasyBridge」**（参照 ExampleMod 的双插件模式），游戏里只显示一个条目。
 
 协议：每条管道单行 JSON 请求 → 单行 JSON 响应。连接函数见对应技能文件。
 
-## 后端状态桥端点（`taiwu-testbridge`）
+## 后端状态桥端点（`easybridge-state`）
 
-读：`/ping`（含 `tickAlive`）、`/taiwu`、`/whereami`、`/char/{id}`、`/block/chars`、`/sects`、`/settlements`。
+读：`/ping`（含 `tickAlive`）、`/taiwu`、`/whereami`、`/combat`、`/char/{id}`、`/block/chars`、`/sects`、`/settlements`。
 构造/改写（均在后端主线程、用主线程写上下文执行）：`/spawn`、`/spawn/closefriend`、`/preset`、`/relation`、`/favor`、
 `/favor/exact`、`/villager`、`/nonvillager`、`/prisoner`、`/injure`、`/heal`、`/cripple`、`/giverope`、`/throwrope`、
 `/move/taiwu`。详细参数与预设见 `skills/taiwu-statebridge.md`。
+
+## 前端 UI 桥端点（`easybridge-ui`）
+
+语义树：`/ping`、`/ui`、`/ui/{name}`、`/find`、`/elements`、`/wait`。
+动作：`/action`（click/toggle/set/select）、`/quit`。
+通用诊断：`/inspect` 返回指定 UI 对象的组件、RectTransform 屏幕坐标和 UI camera；`/reflect` 只读反射组件字段。
+`/reflect/invoke` 默认由 `EnableReflectInvoke=false` 禁用，只有临时调试时显式开启才允许调用实例方法。字段快照深度和成员数由
+`MaxReflectDepth` / `MaxReflectMembers` 设置硬限制。
 
 ### `/eval`：动态执行任意 C#
 

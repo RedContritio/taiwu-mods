@@ -1,11 +1,11 @@
 ---
 name: taiwu-statebridge
-description: Use to construct in-game character/relationship state (generate condition-meeting NPCs), read it back for assertions, and run arbitrary C# via /eval — over the EasyBridge mod's backend pipe (taiwu-testbridge). Pair with the taiwu-ui skill (same EasyBridge mod's frontend pipe taiwu-uibridge) to drive and verify ForceEncounter event paths end-to-end.
+description: Use to construct in-game character/relationship state (generate condition-meeting NPCs), read it back for assertions, and run arbitrary C# via /eval — over the EasyBridge mod's backend pipe (easybridge-state). Pair with the taiwu-ui skill (same EasyBridge mod's frontend pipe easybridge-ui) to drive and verify ForceEncounter event paths end-to-end.
 ---
 
 # EasyBridge State Skill
 
-后端状态桥 `taiwu-testbridge`：生成/改造 NPC、读取角色状态。与前端 `taiwu-uibridge`（UI 驱动）配合，
+后端状态桥 `easybridge-state`：生成/改造 NPC、读取角色状态。与前端 `easybridge-ui`（UI 驱动）配合，
 端到端验证 `ForceEncounter`（情难自已）各分支。
 
 ## 关键规则
@@ -25,7 +25,7 @@ function Invoke-StateEasyBridge {
     $req = @{ path = $Path }
     if ($Body) { $req.body = ($Body | ConvertTo-Json -Compress) }
     $json = $req | ConvertTo-Json -Compress
-    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "taiwu-testbridge", [System.IO.Pipes.PipeDirection]::InOut)
+    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "easybridge-state", [System.IO.Pipes.PipeDirection]::InOut)
     try {
         $pipe.Connect(5000)
         $w = New-Object System.IO.StreamWriter($pipe, [System.Text.Encoding]::UTF8, 4096, $true)
@@ -41,6 +41,7 @@ function Invoke-StateEasyBridge {
 - `Invoke-StateEasyBridge -Path "/ping"` → `{ok, tickAlive}`
 - `Invoke-StateEasyBridge -Path "/taiwu"` → `{taiwuId, closeFriendId, areaId, blockId, behaviorType, ...}`
 - `Invoke-StateEasyBridge -Path "/whereami"` → 太吾当前格 `{areaId, blockId, blockType, blockTypeName}`（护卫判定看 blockType）
+- `Invoke-StateEasyBridge -Path "/combat"` → 只读战斗快照 `{inCombat, autoCombat, autoMove, currentDistance, lastTargetDistance, self, enemy}`
 - `Invoke-StateEasyBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
 - `Invoke-StateEasyBridge -Path "/preset" -Body @{ name="spouse" }` → 一键造 NPC，返回 `{id, name, expectedRoute, snapshot}`
 - `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25; grade=4; baseAttraction=500; villager=$false }`
@@ -64,7 +65,7 @@ function Invoke-StateEasyBridge {
 - `Invoke-StateEasyBridge -Path "/throwrope"` → 战斗中向敌扔绳（重试至命中 → 擒获）
 - `Invoke-StateEasyBridge -Path "/eval" -Body @{ code="return DomainManager.Taiwu.GetTaiwuCharId();" }` → **动态执行任意 C#**（见下「/eval」节）
 
-> 自 EasyBridge 合并版起，前端 UI 桥 + 后端状态桥同属**一个 mod「EasyBridge」**（管道名不变：`taiwu-uibridge` / `taiwu-testbridge`）。
+> 自 EasyBridge 合并版起，前端 UI 桥 + 后端状态桥同属**一个 mod「EasyBridge」**（管道名不变：`easybridge-ui` / `easybridge-state`）。
 
 ## /eval：动态执行任意 C#（无需为每个新操作重编译重启）
 
@@ -80,6 +81,16 @@ SB -Path "/eval" -Body @{ code = "DomainManager.Character.AddRelation(ctx, taiwu
 SB -Path "/eval" -Body @{ code = "return GameOps.Spawn(ctx, (sbyte)0, (short)20, (short)-1, (sbyte)2, (short)300);" }
 ```
 用 `/eval` 做一次性/临时状态操作（不必再为每个新操作加端点重启）；常用、文档化的流程仍走上面的命名端点。
+
+## /combat：只读战斗状态
+
+`/combat` 在后端主线程读取当前战斗状态，不修改存档或战斗命令；适合验证距离、自动战斗/自动移动接管、
+双方角色目标距离等断言。没有进入战斗时返回 `inCombat=false`，距离字段为空。
+
+```powershell
+. D:\TaiwuMods\_scratch\bridge.ps1
+SB -Path "/combat"
+```
 
 > 下文配方用 `SB`/`UI`/`FE-Open`/`Drive-Combat` 等简写助手——它们在 `_scratch/bridge.ps1`，每次调用前先
 > `. D:\TaiwuMods\_scratch\bridge.ps1` 点进来（`SB`=本桥、`UI`=UiBridge）。`SB -Path P -Obj @{...}` 等价于

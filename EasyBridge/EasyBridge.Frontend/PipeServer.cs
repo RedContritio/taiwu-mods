@@ -8,14 +8,14 @@ using System.Threading;
 namespace EasyBridge.Frontend
 {
     /// <summary>
-    /// 命名管道服务器。管道名固定为 "taiwu-uibridge"，即连接地址。
+    /// 命名管道服务器。管道名固定为 "easybridge-ui"，即连接地址。
     /// 协议：客户端写一行 JSON 请求，服务端写一行 JSON 响应，然后关闭连接。
     /// 请求格式：{"path":"/ui","query":{"detail":"full"},"body":"..."}
     /// method 由 path 隐含：有 body 则 POST，否则 GET。
     /// </summary>
     internal sealed class PipeServer
     {
-        public const string PipeName = "taiwu-uibridge";
+        public const string PipeName = "easybridge-ui";
 
         private volatile bool _running;
         private Thread _acceptThread;

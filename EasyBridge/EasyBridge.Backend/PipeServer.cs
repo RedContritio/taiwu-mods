@@ -8,13 +8,13 @@ using System.Threading;
 namespace EasyBridge.Backend
 {
     /// <summary>
-    /// 命名管道服务器（后端进程）。管道名固定为 "taiwu-testbridge"。
+    /// 命名管道服务器（后端进程）。管道名固定为 "easybridge-state"。
     /// 协议与 UiBridge 一致：客户端写一行 JSON 请求，服务端写一行 JSON 响应。
     /// 请求格式：{"path":"/spawn","query":{...},"body":"{...}"}；有 body 则 POST。
     /// </summary>
     internal sealed class PipeServer
     {
-        public const string PipeName = "taiwu-testbridge";
+        public const string PipeName = "easybridge-state";
 
         private volatile bool _running;
         private Thread _acceptThread;

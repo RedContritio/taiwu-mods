@@ -36,6 +36,9 @@ namespace EasyBridge.Backend
             if (path == "/whereami")
                 return Pump(_ => GameOps.WhereAmI());
 
+            if (path == "/combat")
+                return Pump(ctx => GameOps.Combat(ctx));
+
             if (path == "/sects")
             {
                 int count = Json.GetInt(body, "count", 6);

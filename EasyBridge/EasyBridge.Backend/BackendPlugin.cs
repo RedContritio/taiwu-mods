@@ -10,7 +10,7 @@ using TaiwuModdingLib.Core.Plugin;
 namespace EasyBridge.Backend
 {
     /// <summary>
-    /// EasyBridge 后端插件：在后端进程内开一个命名管道（taiwu-testbridge），
+    /// EasyBridge 后端插件：在后端进程内开一个命名管道（easybridge-state），
     /// 让自动化测试 agent 读取/构造游戏内角色与关系状态，用于验证 ForceEncounter 等 mod 的各分支。
     /// 仅供开发/测试使用，不随正式 mod 发布。
     /// </summary>

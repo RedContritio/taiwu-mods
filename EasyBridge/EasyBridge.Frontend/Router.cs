@@ -12,6 +12,9 @@ namespace EasyBridge.Frontend
         public const string ModName = "EasyBridge";
         public const string Version = "0.0.1";
         public static int DefaultMax = 60;
+        public static int MaxReflectDepth = 2;
+        public static int MaxReflectMembers = 80;
+        public static bool EnableReflectInvoke = false;
         public static int MainThreadTimeoutMs = 5000;
 
         public static (int status, object body) Handle(string method, string path,
@@ -59,6 +62,25 @@ namespace EasyBridge.Frontend
                     return Main(() => Elements(onlyActive));
                 }
 
+                if (method == "GET" && path == "/inspect")
+                {
+                    var element = GetStr(query, "element") ?? "";
+                    var id = GetStr(query, "id") ?? "";
+                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    return MainStatus(() => ReflectionInspector.Inspect(element, id, maxMembers));
+                }
+
+                if (method == "GET" && path == "/reflect")
+                {
+                    var element = GetStr(query, "element") ?? "";
+                    var id = GetStr(query, "id") ?? "";
+                    var component = GetStr(query, "component") ?? "";
+                    var member = GetStr(query, "member") ?? "";
+                    var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
+                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    return MainStatus(() => ReflectionInspector.Reflect(element, id, component, member, depth, maxMembers));
+                }
+
                 if (method == "POST" && path == "/action")
                 {
                     var parsed = Json.Parse(requestBody);
@@ -68,6 +90,24 @@ namespace EasyBridge.Frontend
                     object value = GetRawValue(parsed);
                     var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
                         () => UiActuator.Perform(element, id, action, value), MainThreadTimeoutMs);
+                    bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+                    return (ok ? 200 : 400, result);
+                }
+
+                if (method == "POST" && path == "/reflect/invoke")
+                {
+                    if (!EnableReflectInvoke)
+                    {
+                        return (403, new Dictionary<string, object>
+                        {
+                            ["ok"] = false,
+                            ["error"] = "reflect invoke disabled by setting",
+                        });
+                    }
+                    var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
+                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
+                        () => ReflectionInspector.Invoke(requestBody, depth, maxMembers), MainThreadTimeoutMs);
                     bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
                     return (ok ? 200 : 400, result);
                 }
@@ -109,6 +149,13 @@ namespace EasyBridge.Frontend
         {
             var r = MainThreadDispatcher.Run(fn, MainThreadTimeoutMs);
             return (200, r);
+        }
+
+        private static (int, object) MainStatus(Func<Dictionary<string, object>> fn)
+        {
+            var result = (Dictionary<string, object>)MainThreadDispatcher.Run(fn, MainThreadTimeoutMs);
+            bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+            return (ok ? 200 : 400, result);
         }
 
         private static (int, object) WaitForElement(string target, int timeoutSec)
@@ -165,5 +212,8 @@ namespace EasyBridge.Frontend
 
         private static int GetInt(Dictionary<string, string> q, string key, int fallback)
             => int.TryParse(GetStr(q, key), out var v) ? v : fallback;
+
+        private static int Clamp(int value, int min, int max)
+            => Math.Max(min, Math.Min(max, value));
     }
 }
