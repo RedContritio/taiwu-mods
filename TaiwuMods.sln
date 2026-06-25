@@ -31,6 +31,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaiwuMods.Tests", "tests\TaiwuMods.Tests\TaiwuMods.Tests.csproj", "{EE8E286F-DBA8-4BCA-94E8-C0A3144BCFB0}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CombatTargetDistanceFix", "CombatTargetDistanceFix", "{481B22E9-82AB-B4A9-CE43-0A6281039AF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CombatTargetDistanceFix.Frontend", "CombatTargetDistanceFix\CombatTargetDistanceFix.Frontend\CombatTargetDistanceFix.Frontend.csproj", "{D21D1062-F080-4D6F-997F-106AC31C2DBD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -137,6 +141,18 @@ Global
 		{EE8E286F-DBA8-4BCA-94E8-C0A3144BCFB0}.Release|x64.Build.0 = Release|Any CPU
 		{EE8E286F-DBA8-4BCA-94E8-C0A3144BCFB0}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE8E286F-DBA8-4BCA-94E8-C0A3144BCFB0}.Release|x86.Build.0 = Release|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Debug|x64.Build.0 = Debug|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Debug|x86.Build.0 = Debug|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Release|x64.ActiveCfg = Release|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Release|x64.Build.0 = Release|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Release|x86.ActiveCfg = Release|Any CPU
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -150,5 +166,6 @@ Global
 		{AFA20413-BCDF-4CC8-83AA-A1B8257C9463} = {D61E0CA4-E8A6-11ED-673A-A9447B781FD8}
 		{C7750334-3426-4D44-82D4-ADFE12CAA1F3} = {90CE7834-8E14-1597-22FB-8AF30DF94BF7}
 		{EE8E286F-DBA8-4BCA-94E8-C0A3144BCFB0} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{D21D1062-F080-4D6F-997F-106AC31C2DBD} = {481B22E9-82AB-B4A9-CE43-0A6281039AF6}
 	EndGlobalSection
 EndGlobal
