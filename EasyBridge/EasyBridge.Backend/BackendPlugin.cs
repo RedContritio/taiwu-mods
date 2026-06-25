@@ -95,12 +95,6 @@ namespace EasyBridge.Backend
 
         private void StartFromSettings()
         {
-            if (!TaiwuModSettings.GetBool(RuntimeModId, "Enabled", true))
-            {
-                AdaptableLog.Info("[EasyBridge] disabled by setting");
-                return;
-            }
-
             _server = new PipeServer();
             _server.Start();
             AdaptableLog.Info("[EasyBridge] listening on \\\\.\\pipe\\" + PipeServer.PipeName);

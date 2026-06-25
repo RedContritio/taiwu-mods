@@ -39,17 +39,10 @@ namespace EasyBridge.Frontend
 
         private void StartServerFromSettings()
         {
-            bool enabled = GetBoolSetting("Enabled", true);
             Router.DefaultMax = Math.Max(10, GetIntSetting("DefaultMax", 60));
             Router.MaxReflectDepth = Math.Max(0, Math.Min(3, GetIntSetting("MaxReflectDepth", 2)));
             Router.MaxReflectMembers = Math.Max(1, Math.Min(200, GetIntSetting("MaxReflectMembers", 80)));
             Router.EnableReflectInvoke = GetBoolSetting("EnableReflectInvoke", false);
-
-            if (!enabled)
-            {
-                Debug.Log("[EasyBridge] disabled by setting; pipe bridge not started.");
-                return;
-            }
 
             _server = new PipeServer();
             try
