@@ -48,15 +48,29 @@ description: 太吾绘卷（The Scroll of Taiwu）游戏本身的内部性质与
 
 - `CreatingType`：**0=固定剧情NPC / 1=凡人(随机生成) / 2=奇遇 / 3=敌对**。排除剧情人物常用 `CreatingType==1` 之类判断（见 DreamLover）。
 - 关键 id 经后端 `/taiwu`：`TaiwuCharId`（太吾本人）、`closeFriendId`、`villageSettlementId` 等。
-- 蛐蛐：`(colorId,partId).CalcCricketGrade()` 返回**内部 0~8**；斗蛐蛐对手按对手 org 品级**现生成**（`CricketGenerator`）。
+- 蛐蛐：`(colorId,partId).CalcCricketGrade()` 返回**内部 0~8**；斗蛐蛐对手按对手 org 品级**现生成**（`CricketGenerator`）。蛐蛐**品名与品级反直觉**：`八败`=templateId 21=内部 Level 8=**1品(最强)**；`呆物`=templateId 0=Level 0=**9品(最弱)**。品名只是品种,不是品级。
 
-## 7. 改 mod 的坑（都很贵、实机踩出来的）
+## 7. 斗蛐蛐 = 预模拟 + 事件队列回放（要卡特定事件，**纯反射够用、无需编译**）
+
+斗蛐蛐**不是实时算的**：开局 `CricketCombatKit.Board.StartCombat()` 里 `_matchContext.Simulate()` **一次性预算整局**，产出事件队列 `_matchContext.Logs`（`Queue<CricketCombatLog>`）；之后 `Board.NextLog()` 逐条**出队** + DOTween/协程**回放动画**。
+
+**要"停在第 N 次某事件"，读这条事件队列、别读 Spine 动画**（动画名是糊弄信号，和"播到第几条 log"不对齐，实测会停早/停错）。整套用**现有桥反射**即可，零编译：
+
+- **静态根**：`Board` = `Game.Views.Cricket.Combat.CricketCombatKit.Board`，是**静态 readonly 字段**（非属性，故 `/static get_Board` 行不通）。
+- **读到队列**：`POST /reflect/invoke` 用 `{"$ref":{"type":"…CricketCombatKit","member":"Board._matchContext.Logs…"}}` —— **`$ref` 能解析静态字段并沿点号 `Traverse` 读私有实例字段**（`_matchContext` 私有→`Logs` 公有）。`Queue<T>` 不可索引，但内部数组可：`Logs._array`、`Logs._head`、`Logs._size`（出队 slot 置 null/读 0）。
+- **回显字段值的技巧**（`/static` 只 snapshot **方法返回值**、读不到字段本身）：把目标值传进一个"原样返回"的静态方法当返回值读出 —— int 用 `CricketCombatKit.WrapProperty(int,int)`（唯一签名，回显 `returnValue`）；long（如 `RuntimeId`，int 转换会抛）用 `System.TimeSpan.FromTicks(long)` → 读返回值 `_ticks`。
+- **定位事件**：`CricketCombatLog.Type` = `ECricketCombatLogEventType`（攻击/撕咬是 `Damage=4`，`CricketCombatLogDamage` 带 `Attacker/Defender.RuntimeId` + `DamageType=Bite`）；`Board.SelfCricket`/`EnemyCricket` 是双方当前出战蛐蛐（`.Data.RuntimeId`），`Board.IsAlly(id)` 判我方，`CurrentMatch`=第几局(0=先锋)。扫队列找第一条 `Type==Damage && Attacker.RuntimeId==我方` = "我方首次攻击"。
+- **精确冻结**：回放掺了**实时协程**（`DelayCallRealTime`），`/time step` 不稳；改用 **resume + 高频轮询 `_size`（出队进度）+ 命中即 `/time {pause}`（`timeScale=0`）**。要细到接触帧就把命中后的微调步长收到 ~50–80ms（整条 Bite 约 0.5–0.7s，期间 `_size` 不变、可安全细调）。
+
+> **通用范式**：凡"预模拟→事件队列→回放"的子系统，都能用 `$ref` 读静态+私有字段、轮询队列出队、卡在目标事件冻结 —— 不必为它写专用端点。（实机验证：用此法精确停在"八败首次撕咬"帧。）
+
+## 8. 改 mod 的坑（都很贵、实机踩出来的）
 
 1. **runtime uGUI Canvas 在本游戏内不合成！** mod 新加一个 `ScreenSpaceOverlay` Canvas+Image+Text，GameObject active、无异常、Update 在跑——但**屏上什么都不画**。做屏幕浮层**用 IMGUI `OnGUI`**（立即模式，永远画在相机之上），别赌 runtime Canvas。
 2. **别禁用游戏 EventSystem！** 为挡 IMGUI 点击穿透而 `EventSystem.current.enabled=false`，会让**游戏自己的每帧热键检查 `HotKeyCommand.Check`（经 `UIManager.CheckQuickHide`/`UI_PermanentTips.Update`）空指针刷屏**（`EventSystem.current` 失效，游戏 UI 代码没料到）。要挡穿透用**透明 uGUI 射线拦截图**，别动整个 EventSystem。读代码看不出的因果，用**对照实验**（有/无某段各跑一次数 NRE）定性。
 3. **诊断游戏侧报错**：grep 前端 `Player.log`（`%USERPROFILE%\AppData\LocalLow\ConchShip\The Scroll Of Taiwu\Player.log`）的 `Exception`/`NullReference` 看调用栈；后端日志另在 `Backend` 侧。
 4. **截游戏内浮层**：`PrintWindow(h,hdc,2)` 抓得到游戏自身 UI 但**抓不到 mod 的 IMGUI/overlay 层**；用 `Graphics.CopyFromScreen`（真实合成帧）+ 把游戏提到最前（`keybd_event` 点 ALT 解锁 `SetForegroundWindow` + `SetWindowPos` TOPMOST）。**且必须 `SetProcessDPIAware()`**：4K(150%)下 DPI-unaware 只拿到降采样 2560×1440，深色半透明面板几乎看不见、会误判「没渲染」。`System.Drawing.Bitmap` 用 **Windows PowerShell 5.1**（pwsh7 缺 System.Drawing.Common）。
 
-## 8. 不想手写反射？用 EasyBridge
+## 9. 不想手写反射？用 EasyBridge
 
 游戏内任意类/对象的检视与改写，经 EasyBridge 通用反射端点（先 `POST /config {"enableInvoke":true}`）：`GET /reflect`、`GET /inspect`、`POST /static`（静态方法/读静态字段，`$ref` 可解析静态成员）、`POST /reflect/invoke`、`POST /reflect/set`。前端见 **taiwu-ui**，后端见 **taiwu-statebridge**。例：读 `EventWindow.s_savedContentFontSize`、调 `GameObject.Find(...)` 都能 `/static` 搞定。
