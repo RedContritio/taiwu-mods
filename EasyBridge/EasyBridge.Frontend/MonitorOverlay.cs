@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 using UnityEngine;
 
@@ -25,6 +26,7 @@ namespace EasyBridge.Frontend
         private const int MaxEntries = 60;          // scrollable window, so show more than the old fixed panel
         private const KeyCode ToggleKey = KeyCode.F9;
         private const KeyCode PauseKey = KeyCode.F8;
+        private const string StateFile = "monitor-state.json";   // persisted window rect + visibility, kept in the mod folder
 
         private bool _visible = true;
         private bool _paused;
@@ -36,6 +38,7 @@ namespace EasyBridge.Frontend
 
         private Rect _win;
         private bool _winInit;
+        private WinState _saved;
         private Vector2 _scroll;
         private bool _dragging, _resizing;
         private Vector2 _grabMouse;
@@ -75,15 +78,17 @@ namespace EasyBridge.Frontend
             if (o == null) return "overlay: no instance (not created)";
             return string.Format(
                 "built={0} visible={1} paused={2} scale={3:F2} gameFont={4:F0} fontFieldFound={5} " +
-                "win=({6:F0},{7:F0} {8:F0}x{9:F0}) bodyLen={10} screen={11}x{12}",
+                "win=({6:F0},{7:F0} {8:F0}x{9:F0}) bodyLen={10} screen={11}x{12} state={13} exists={14}",
                 o._built, o._visible, o._paused, o._scale, ReadGameFontSize(), _gameFontField != null,
                 o._win.x, o._win.y, o._win.width, o._win.height, o._bodyStr != null ? o._bodyStr.Length : 0,
-                Screen.width, Screen.height);
+                Screen.width, Screen.height, StatePath(), File.Exists(StatePath()));
         }
 
         private void Awake()
         {
             _instance = this;
+            _saved = LoadState();
+            if (_saved != null) _visible = _saved.visible;   // restore last run's show/hide
             _font = GetFont(out _ownsFont);
             if (_font == null)
                 Debug.LogWarning("[EasyBridge] monitor: no usable CJK font found — overlay text may show as boxes.");
@@ -102,7 +107,7 @@ namespace EasyBridge.Frontend
         private void Update()
         {
             if (!_built) return;
-            if (Input.GetKeyDown(ToggleKey)) _visible = !_visible;
+            if (Input.GetKeyDown(ToggleKey)) { _visible = !_visible; SaveState(); }
             if (Input.GetKeyDown(PauseKey)) { _paused = !_paused; RebuildHeader(); }
 
             _timer += Time.unscaledDeltaTime;
@@ -144,9 +149,66 @@ namespace EasyBridge.Frontend
         {
             if (_winInit) return;
             _winInit = true;
-            float w = Mathf.Min(Screen.width * 0.5f, 460f * _scale);
-            float h = Screen.height * 0.55f;
-            _win = new Rect(Screen.width - w - 20f, 20f, w, h);
+            if (_saved != null && _saved.w > 1f && _saved.h > 1f)   // restore last run's position + size
+            {
+                _win = new Rect(_saved.x, _saved.y, _saved.w, _saved.h);
+                ClampWin();   // resolution may differ from last run — keep it grabbable on-screen
+            }
+            else
+            {
+                float w = Mathf.Min(Screen.width * 0.5f, 460f * _scale);
+                float h = Screen.height * 0.55f;
+                _win = new Rect(Screen.width - w - 20f, 20f, w, h);
+            }
+        }
+
+        private class WinState { public float x, y, w, h; public bool visible = true; }
+
+        // Mod-private state file: <game>/Mod/EasyBridge/monitor-state.json (next to the mod, not the registry).
+        private static string StatePath()
+        {
+            try
+            {
+                // Application.dataPath = <game>/The Scroll of Taiwu_Data → parent is <game>; mod lives at <game>/Mod/EasyBridge.
+                var gameRoot = Directory.GetParent(Application.dataPath)?.FullName;
+                if (!string.IsNullOrEmpty(gameRoot))
+                    return Path.Combine(gameRoot, "Mod", "EasyBridge", StateFile);
+            }
+            catch { }
+            return Path.Combine(Application.persistentDataPath, "EasyBridge." + StateFile);
+        }
+
+        private static WinState LoadState()
+        {
+            try
+            {
+                var p = StatePath();
+                if (!File.Exists(p)) return null;
+                var o = Json.Parse(File.ReadAllText(p));
+                if (!(o is System.Collections.Generic.IDictionary<string, object>)) return null;
+                var s = new WinState();
+                if (Json.TryGetDouble(o, "x", out var x)) s.x = (float)x;
+                if (Json.TryGetDouble(o, "y", out var y)) s.y = (float)y;
+                if (Json.TryGetDouble(o, "w", out var w)) s.w = (float)w;
+                if (Json.TryGetDouble(o, "h", out var h)) s.h = (float)h;
+                if (!Json.TryGetBool(o, "visible", out s.visible)) s.visible = true;
+                return s;
+            }
+            catch { }
+            return null;
+        }
+
+        private void SaveState()
+        {
+            try
+            {
+                var d = new System.Collections.Generic.Dictionary<string, object>
+                {
+                    ["x"] = _win.x, ["y"] = _win.y, ["w"] = _win.width, ["h"] = _win.height, ["visible"] = _visible,
+                };
+                File.WriteAllText(StatePath(), Json.Write(d));
+            }
+            catch { }
         }
 
         private void OnGUI()
@@ -186,12 +248,12 @@ namespace EasyBridge.Frontend
             }
             else if (e.type == EventType.MouseUp && e.button == 0)
             {
-                _dragging = _resizing = false;
+                if (_dragging || _resizing) { _dragging = _resizing = false; SaveState(); }   // persist new position/size
             }
             ClampWin();
 
             if (e.type == EventType.Repaint && (_dragging || _resizing) && !Input.GetMouseButton(0))
-                _dragging = _resizing = false; // safety: recover if a MouseUp was missed
+            { _dragging = _resizing = false; SaveState(); } // safety: recover if a MouseUp was missed
 
             titleRect = new Rect(_win.x, _win.y, _win.width, titleH);
             gripRect = new Rect(_win.xMax - grip, _win.yMax - grip, grip, grip);
