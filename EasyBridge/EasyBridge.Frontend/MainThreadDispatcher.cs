@@ -65,6 +65,9 @@ namespace EasyBridge.Frontend
 
         private void Update()
         {
+            TimeController.Tick();
+            PinController.Tick();
+
             int guard = 64; // 每帧最多处理这么多，避免长卡顿
             while (guard-- > 0 && _queue.TryDequeue(out var job))
             {

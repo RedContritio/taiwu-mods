@@ -15,15 +15,28 @@ description: Inspect and interact with the running Taiwu game UI via the EasyBri
 4. **用 `-match` 搜索标签** — 标签已去除富文本标签，可直接用中文匹配
 5. **不能发 ESC/键盘** — 只有 click/toggle/set/select。事件/交互窗口要靠**窗口内的“继续/确认/关闭”按钮**关闭；
    像 NPC 交互这种**模态窗**没关掉会挡住后续的地图角色点击（点新 NPC 无效，误触旧窗）。换目标前先 `/ui` 确认它已关。
+6. **每次调用都带 `-Note "<一句中文说明>"`** — 说明这步在做什么。它会显示在游戏内「桥监视」浮层（F9 展开/收起、F8 暂停），
+   方便用户实时看到 agent 的每个动作；不带说明的调用会在浮层上显红色「(无说明)」并被计数。回看完整历史用 `GET /log?since=&max=`。
+
+## 游戏品级约定（重要：读 grade 数据前必看）
+
+太吾**显示品级是「1 品最高、9 品最低」**（一品最强、九品垫底）。但代码/数据里的内部 `grade`/`Level` 多为 **0~8（0 最低、8 最高）**，与显示**正好相反**：
+
+- **显示品 = `9 − 内部grade`**（内部 0→9品，内部 8→1品，内部 3→6品）。
+- 颜色 `Colors.Instance.GradeColors[0..8]`：index 0=最低(灰)、8=最高(红)，与游戏里名字的品级色一致。
+- 蛐蛐：`(colorId,partId).CalcCricketGrade()` 返回**内部 0~8**；`ItemDisplayData.CricketColorId/PartId` 是真实 color/part，**不被「是否鉴定」遮挡**（鉴定只改名字显示，不改圈色/品级）。斗蛐蛐对手蛐蛐按对手 org 品级**现生成**（`CricketGenerator`：三只 = `[wagerGrade, orgGrade, orgGrade-3+绝学/150]`），故弱对手三只可能全是 0 品呆物、看起来一色。
+
+读到一个 grade 数字，**先确认它是「内部 0~8」还是「显示 1~9」**，别把内部 index 当显示品级念反。
 
 ## 函数定义（每次调用必须包含）
 
 ```powershell
 function Invoke-UiBridge {
-    param([string]$Path, [hashtable]$Query, [string]$Body)
+    param([string]$Path, [hashtable]$Query, [string]$Body, [string]$Note)
     $req = @{ path = $Path }
     if ($Query) { $req.query = $Query }
     if ($Body) { $req.body = $Body }
+    if ($Note) { $req.note = $Note }   # 一句中文说明，显示在游戏内「桥监视」浮层上
     $json = $req | ConvertTo-Json -Compress
     $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "easybridge-ui", [System.IO.Pipes.PipeDirection]::InOut)
     try {
@@ -54,6 +67,24 @@ function Invoke-UiBridge {
 | `/reflect/invoke` | POST | 反射调用实例方法；默认禁用，需临时开启 `EnableReflectInvoke` |
 | `/wait?element=Name&timeout=60` | GET | 阻塞等待指定窗口出现 |
 | `/quit` | POST | 退出游戏（不保存） |
+
+## 桥监视浮层 + 每次操作带说明（note）
+
+前端插件在游戏内弹出一个**原生 IMGUI 浮层「桥监视」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），实时显示 bridge 处理的**每一次请求**——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[界面]`/`[状态]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
+
+- 顶行（端点）：`[界面] GET /ui  ✓ 200  · 306ms`
+- 内层（说明）：`▸ 查看当前打开的界面窗口`；失败再加内层 `↳ 错误`
+
+> 用 IMGUI 画（非 runtime uGUI Canvas——后者在本游戏内不合成）。点击**可能穿透**到窗口下面的游戏：刻意**不禁用游戏 EventSystem**（禁用会让游戏自己的每帧热键检查 NRE）。这些游戏侧坑见 `taiwu-game` skill。
+
+**约定：每次调用都带一句中文说明 `-Note`**，让用户在浮层上看懂 agent 正在做什么。说明写**操作的实际目的**（如「点击确认关闭月报」「生成 4 品 NPC 测试关系分支」），**别写调试/流程性内容**（如「心跳」「重启验证」「对照实验」）。`/ping`、`/` 等连通性检查是基础设施、**不计入面板**。`bridge.ps1` 的 `UI`/`SB`/`Invoke-Pipe`（及 `taiwu-statebridge` 的 helper）都支持 `-Note`；不带时浮层显红色「(无说明)」督促。例：
+
+```powershell
+UI -Path "/action" -Body $clickJson -Note "点击「确认」关闭月报弹窗"
+SB -Path "/spawn"  -Obj @{grade=4}  -Note "生成一个 4 品 NPC 用于测试关系分支"
+```
+
+回看历史用 `GET /log?since=<seq>&max=<n>`（浮层滚动显最近若干条、最新在上；服务端缓冲 500 条。`/ping`、`/`、`mon=1` 等基础设施请求**不入日志**）。表头不显累计计数，仅在有「无说明」时红字提醒。
 
 ### `/ui/{name}` 返回结构
 

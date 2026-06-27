@@ -11,6 +11,7 @@ namespace EasyBridge.Frontend
         private static readonly Type ModManagerType = AccessTools.TypeByName("ModManager");
 
         private PipeServer _server;
+        private UnityEngine.GameObject _overlay;
 
         public override void Initialize()
         {
@@ -18,6 +19,8 @@ namespace EasyBridge.Frontend
             {
                 MainThreadDispatcher.Create();
                 StartServerFromSettings();
+                try { _overlay = MonitorOverlay.Create(); }
+                catch (Exception ex) { Debug.LogError("[EasyBridge] monitor overlay failed: " + ex.Message); }
             }
             catch (Exception ex)
             {
@@ -27,6 +30,8 @@ namespace EasyBridge.Frontend
 
         public override void Dispose()
         {
+            try { if (_overlay != null) UnityEngine.Object.Destroy(_overlay); } catch { }
+            _overlay = null;
             StopServer();
             MainThreadDispatcher.Destroy();
         }

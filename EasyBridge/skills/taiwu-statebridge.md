@@ -17,13 +17,25 @@ description: Use to construct in-game character/relationship state (generate con
    `name` 在 UI 角色列表里匹配；若同名多个，用 `/spawn` 逐个生成并立刻交互，避免歧义。
 4. 写操作有 ~8s 超时；若超时多半是没进存档（tick 不跑）。
 
+## 游戏品级约定（重要：读 grade 数据前必看）
+
+太吾**显示品级是「1 品最高、9 品最低」**（一品最强、九品垫底）。但代码/数据里的内部 `grade`/`Level` 多为 **0~8（0 最低、8 最高）**，与显示**正好相反**：
+
+- **显示品 = `9 − 内部grade`**（内部 0→9品，内部 8→1品，内部 3→6品）。
+- 颜色 `Colors.Instance.GradeColors[0..8]`：index 0=最低(灰)、8=最高(红)，与游戏里名字的品级色一致。
+- 蛐蛐：`(colorId,partId).CalcCricketGrade()` 返回**内部 0~8**；`ItemDisplayData.CricketColorId/PartId` 是真实 color/part，**不被「是否鉴定」遮挡**（鉴定只改名字显示，不改圈色/品级）。斗蛐蛐对手蛐蛐按对手 org 品级**现生成**（`CricketGenerator`：三只 = `[wagerGrade, orgGrade, orgGrade-3+绝学/150]`），故弱对手三只可能全是 0 品呆物、看起来一色；要造高品对手就把 enemy 的 `GetOrganizationInfo().Grade` 设高（**用 7=2品 稳妥**；grade 8=掌门/principal 有人数上限，`CreateIntelligentCharacter`/`ChangeOrganization` 到 grade 8 会抛 `principal members exceeds max limit`）。配方：`CreateIntelligentCharacter(loc,gender,age,attraction, GetSettlementIdByOrgTemplateId(sectOrg), grade:7)` → `GmCmd_StartCricketCombat(ctx, id)`。
+
+读到一个 grade 数字，**先确认它是「内部 0~8」还是「显示 1~9」**，别把内部 index 当显示品级念反。
+
 ## 连接函数（每次调用都要包含）
 
 ```powershell
 function Invoke-StateEasyBridge {
-    param([string]$Path, [hashtable]$Body)
+    param([string]$Path, [hashtable]$Body, [string]$Note)
+    # -Note: 一句中文说明，显示在游戏内「桥监视」浮层上（随游戏关闭自动消失）。每次调用都带上。
     $req = @{ path = $Path }
     if ($Body) { $req.body = ($Body | ConvertTo-Json -Compress) }
+    if ($Note) { $req.note = $Note }
     $json = $req | ConvertTo-Json -Compress
     $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "easybridge-state", [System.IO.Pipes.PipeDirection]::InOut)
     try {

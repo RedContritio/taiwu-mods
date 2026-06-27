@@ -34,6 +34,26 @@ namespace EasyBridge.Frontend
                         ["dispatcher"] = MainThreadDispatcher.Ready,
                     });
 
+                if (method == "GET" && path == "/log")
+                    return (200, RequestLog.Snapshot(GetInt(query, "since", 0), GetInt(query, "max", 200)));
+
+                // Backend pipe forwards its handled requests here so one overlay shows both pipes.
+                if (method == "POST" && path == "/monitor/push")
+                {
+                    var p = Json.Parse(requestBody);
+                    RequestLog.Add(
+                        Json.GetString(p, "source") ?? "backend",
+                        Json.GetString(p, "method") ?? "",
+                        Json.GetString(p, "path") ?? "",
+                        Json.GetString(p, "query") ?? "",
+                        Json.GetString(p, "body") ?? "",
+                        Json.GetString(p, "note") ?? "",
+                        GetBodyInt(p, "status", 200),
+                        Json.GetString(p, "result") ?? "",
+                        GetBodyInt(p, "ms", 0));
+                    return (200, new Dictionary<string, object> { ["ok"] = true });
+                }
+
                 if (method == "GET" && path == "/ui")
                     return Main(() => UiInspector.Snapshot());
 
@@ -129,6 +149,87 @@ namespace EasyBridge.Frontend
                     return (ok ? 200 : 400, result);
                 }
 
+                if (method == "POST" && path == "/reflect/set")
+                {
+                    if (!EnableReflectInvoke)
+                        return (403, new Dictionary<string, object>
+                        {
+                            ["ok"] = false,
+                            ["error"] = "set disabled; POST /config {\"enableInvoke\":true} first",
+                        });
+                    var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
+                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
+                        () => ReflectionInspector.Set(requestBody, depth, maxMembers), MainThreadTimeoutMs);
+                    bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+                    return (ok ? 200 : 400, result);
+                }
+
+                if (method == "POST" && path == "/pin")
+                {
+                    if (!EnableReflectInvoke)
+                        return (403, new Dictionary<string, object>
+                        {
+                            ["ok"] = false,
+                            ["error"] = "pin disabled; POST /config {\"enableInvoke\":true} first",
+                        });
+                    var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
+                        () => PinController.Add(requestBody), MainThreadTimeoutMs);
+                    bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+                    return (ok ? 200 : 400, result);
+                }
+
+                if (method == "POST" && path == "/unpin")
+                    return (200, MainThreadDispatcher.Run(() => PinController.Clear(), MainThreadTimeoutMs));
+
+                if (method == "GET" && path == "/pins")
+                    return (200, MainThreadDispatcher.Run(() => PinController.List(), MainThreadTimeoutMs));
+
+                if (method == "POST" && path == "/time")
+                {
+                    var parsed = Json.Parse(requestBody);
+                    var op = (Json.GetString(parsed, "op") ?? "").ToLowerInvariant();
+                    if (op == "pause")
+                        return (200, MainThreadDispatcher.Run(() => TimeController.Pause(), MainThreadTimeoutMs));
+                    if (op == "resume" || op == "play")
+                        return (200, MainThreadDispatcher.Run(() => TimeController.Resume(), MainThreadTimeoutMs));
+                    if (op == "step")
+                    {
+                        float seconds = (float)GetBodyDouble(parsed, "seconds", 1.0);
+                        MainThreadDispatcher.Run(() => TimeController.BeginStep(seconds), MainThreadTimeoutMs);
+                        // The step ends on game-time accounting; bound the real-time wait generously.
+                        var deadline = DateTime.UtcNow.AddMilliseconds(Math.Max(2000, (int)(seconds * 1000) + 5000));
+                        while (TimeController.IsStepping && DateTime.UtcNow < deadline)
+                            System.Threading.Thread.Sleep(16);
+                        return (200, MainThreadDispatcher.Run(() => TimeController.State(), MainThreadTimeoutMs));
+                    }
+                    return (400, new Dictionary<string, object> { ["ok"] = false, ["error"] = "op must be pause|resume|step" });
+                }
+
+                if (method == "POST" && path == "/config")
+                {
+                    var parsed = Json.Parse(requestBody);
+                    if (parsed is IDictionary<string, object> m && m.TryGetValue("enableInvoke", out var ev) && ev != null)
+                        EnableReflectInvoke = ev is bool b ? b : (bool.TryParse(ev.ToString(), out var bb) && bb);
+                    return (200, new Dictionary<string, object> { ["ok"] = true, ["enableInvoke"] = EnableReflectInvoke });
+                }
+
+                if (method == "POST" && path == "/static")
+                {
+                    if (!EnableReflectInvoke)
+                        return (403, new Dictionary<string, object>
+                        {
+                            ["ok"] = false,
+                            ["error"] = "static invoke disabled; POST /config {\"enableInvoke\":true} first",
+                        });
+                    var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
+                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
+                        () => ReflectionInspector.InvokeStatic(requestBody, depth, maxMembers), MainThreadTimeoutMs);
+                    bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+                    return (ok ? 200 : 400, result);
+                }
+
                 if (method == "GET" && path == "/wait")
                 {
                     var target = GetStr(query, "element") ?? "";
@@ -136,6 +237,17 @@ namespace EasyBridge.Frontend
                     if (string.IsNullOrEmpty(target))
                         return (400, new Dictionary<string, object> { ["error"] = "missing 'element' param" });
                     return WaitForElement(target, timeoutSec);
+                }
+
+                if (method == "POST" && path == "/screenshot")
+                {
+                    var parsed = Json.Parse(requestBody);
+                    var shotPath = Json.GetString(parsed, "path");
+                    var superSize = GetBodyInt(parsed, "superSize", 1);
+                    var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
+                        () => Screenshotter.Capture(shotPath, superSize), MainThreadTimeoutMs);
+                    bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
+                    return (ok ? 200 : 400, result);
                 }
 
                 if (method == "POST" && path == "/quit")
@@ -331,6 +443,17 @@ namespace EasyBridge.Frontend
             {
                 if (v is double d) return (int)Math.Round(d);
                 if (int.TryParse(v.ToString(), out var parsedInt)) return parsedInt;
+            }
+            return fallback;
+        }
+
+        private static double GetBodyDouble(object parsed, string key, double fallback)
+        {
+            if (parsed is IDictionary<string, object> m && m.TryGetValue(key, out var v) && v != null)
+            {
+                if (v is double d) return d;
+                if (double.TryParse(v.ToString(), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsedDouble)) return parsedDouble;
             }
             return fallback;
         }

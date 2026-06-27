@@ -85,19 +85,33 @@ namespace EasyBridge.Backend
                     var body = Json.GetString(parsed, "body") ?? "";
                     var query = ExtractQuery(parsed);
                     var method = string.IsNullOrEmpty(body) ? "GET" : "POST";
+                    var note = Json.GetString(parsed, "note") ?? "";
 
+                    int status = 200;
                     object responseObj;
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
                     try
                     {
-                        var (_, b) = Router.Handle(method, path, query, body);
+                        var (st, b) = Router.Handle(method, path, query, body);
+                        status = st;
                         responseObj = b;
                     }
                     catch (Exception ex)
                     {
+                        status = 500;
                         responseObj = new Dictionary<string, object> { ["ok"] = false, ["error"] = ex.GetType().Name + ": " + ex.Message };
                     }
+                    sw.Stop();
 
-                    WriteResponse(pipe, responseObj);
+                    string json = Json.Write(responseObj);
+                    WriteRaw(pipe, json);
+
+                    // Forward to the in-game monitor (frontend easybridge-ui pipe) so one overlay shows both
+                    // pipes. Skip infrastructure noise: monitor polls (mon=1) and bare health-checks (/ping, /).
+                    bool skipFwd = (query != null && query.TryGetValue("mon", out var mv) && mv == "1")
+                        || path == "/ping" || path == "/";
+                    if (!skipFwd)
+                        MonitorForward.Push(method, path, QueryString(query), body, note, status, json, sw.ElapsedMilliseconds);
                 }
             }
             catch { }
@@ -119,12 +133,22 @@ namespace EasyBridge.Backend
         }
 
         private static void WriteResponse(NamedPipeServerStream pipe, object responseObj)
+            => WriteRaw(pipe, Json.Write(responseObj));
+
+        private static void WriteRaw(NamedPipeServerStream pipe, string json)
         {
-            var json = Json.Write(responseObj);
             var bytes = Encoding.UTF8.GetBytes(json + "\n");
             pipe.Write(bytes, 0, bytes.Length);
             pipe.Flush();
             pipe.WaitForPipeDrain();
+        }
+
+        private static string QueryString(Dictionary<string, string> q)
+        {
+            if (q == null || q.Count == 0) return "";
+            var parts = new List<string>();
+            foreach (var kv in q) { if (kv.Key == "mon") continue; parts.Add(kv.Key + "=" + kv.Value); }
+            return string.Join("&", parts);
         }
     }
 }
