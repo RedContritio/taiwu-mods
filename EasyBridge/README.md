@@ -30,8 +30,7 @@
 通用诊断：`/inspect` 返回指定 UI 对象的组件、RectTransform 屏幕坐标和 UI camera；`/reflect` 只读反射组件字段。
 `/pointer` 返回 Unity 当前鼠标坐标、屏幕尺寸和 EventSystem raycast 命中栈；也可传 `x/y/origin=top-left`
 验证某个 Computer Use 截图坐标实际会命中哪些 UI 对象。
-`/reflect/invoke` 默认由 `EnableReflectInvoke=false` 禁用，只有临时调试时显式开启才允许调用实例方法。字段快照深度和成员数由
-`MaxReflectDepth` / `MaxReflectMembers` 设置硬限制。
+写/调类端点（`/reflect/invoke`、`/reflect/set`、`/static`、`/pin`）**默认开启**（这是 agent 驱动的调试桥）；不需要时 `POST /config {"enableInvoke":false}` 可关。字段快照深度/成员数有代码默认上限，按请求传 `depth` / `max` 覆盖。
 
 ### `/eval`：动态执行任意 C#
 

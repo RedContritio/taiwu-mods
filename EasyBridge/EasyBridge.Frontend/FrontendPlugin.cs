@@ -1,5 +1,4 @@
 using System;
-using HarmonyLib;
 using TaiwuModdingLib.Core.Plugin;
 using UnityEngine;
 
@@ -8,8 +7,6 @@ namespace EasyBridge.Frontend
     [PluginConfig("EasyBridge", "RedContritio", "0.0.1")]
     public class FrontendPlugin : TaiwuRemakePlugin
     {
-        private static readonly Type ModManagerType = AccessTools.TypeByName("ModManager");
-
         private PipeServer _server;
         private UnityEngine.GameObject _overlay;
 
@@ -18,7 +15,7 @@ namespace EasyBridge.Frontend
             try
             {
                 MainThreadDispatcher.Create();
-                StartServerFromSettings();
+                StartServer();
                 try { _overlay = MonitorOverlay.Create(); }
                 catch (Exception ex) { Debug.LogError("[EasyBridge] monitor overlay failed: " + ex.Message); }
             }
@@ -39,16 +36,14 @@ namespace EasyBridge.Frontend
         public override void OnModSettingUpdate()
         {
             StopServer();
-            StartServerFromSettings();
+            StartServer();
         }
 
-        private void StartServerFromSettings()
+        // No user settings — this is an agent-driven debug bridge. Router behavior uses code defaults
+        // (DefaultMax / MaxReflectDepth / MaxReflectMembers / EnableReflectInvoke) and is tuned per-request
+        // via query params or at runtime via POST /config.
+        private void StartServer()
         {
-            Router.DefaultMax = Math.Max(10, GetIntSetting("DefaultMax", 60));
-            Router.MaxReflectDepth = Math.Max(0, Math.Min(3, GetIntSetting("MaxReflectDepth", 2)));
-            Router.MaxReflectMembers = Math.Max(1, Math.Min(200, GetIntSetting("MaxReflectMembers", 80)));
-            Router.EnableReflectInvoke = GetBoolSetting("EnableReflectInvoke", false);
-
             _server = new PipeServer();
             try
             {
@@ -66,26 +61,6 @@ namespace EasyBridge.Frontend
         {
             try { _server?.Stop(); } catch { }
             _server = null;
-        }
-
-        private int GetIntSetting(string key, int fallback)
-        {
-            var m = AccessTools.Method(ModManagerType, "GetSetting",
-                new[] { typeof(string), typeof(string), typeof(int).MakeByRefType() });
-            if (m == null) return fallback;
-            object[] args = { ModIdStr, key, fallback };
-            try { return (bool)m.Invoke(null, args) ? (int)args[2] : fallback; }
-            catch { return fallback; }
-        }
-
-        private bool GetBoolSetting(string key, bool fallback)
-        {
-            var m = AccessTools.Method(ModManagerType, "GetSetting",
-                new[] { typeof(string), typeof(string), typeof(bool).MakeByRefType() });
-            if (m == null) return fallback;
-            object[] args = { ModIdStr, key, fallback };
-            try { return (bool)m.Invoke(null, args) ? (bool)args[2] : fallback; }
-            catch { return fallback; }
         }
     }
 }

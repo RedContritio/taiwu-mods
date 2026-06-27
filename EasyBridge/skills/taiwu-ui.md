@@ -64,7 +64,7 @@ function Invoke-UiBridge {
 | `/reflect?element=Name&component=Type&member=path` | GET | 通用只读反射：读取组件字段，支持私有字段和点号路径 |
 | `/action` | POST | 动作注入（click/toggle/set/select） |
 | `/wait/actions?timeout=30` | POST | 等待指定窗口出现后，在同一主线程调度中执行一组动作 |
-| `/reflect/invoke` | POST | 反射调用实例方法；默认禁用，需临时开启 `EnableReflectInvoke` |
+| `/reflect/invoke` | POST | 反射调用实例方法（**默认开启**；`POST /config {"enableInvoke":false}` 可关）|
 | `/wait?element=Name&timeout=60` | GET | 阻塞等待指定窗口出现 |
 | `/quit` | POST | 退出游戏（不保存） |
 
@@ -122,7 +122,7 @@ Invoke-UiBridge -Path "/reflect" -Query @{
 `component` 可传组件短名或全名；`member` 是字段点号路径。返回快照深度和成员数受 EasyBridge 设置
 `MaxReflectDepth` / `MaxReflectMembers` 硬限制。
 
-`/reflect/invoke` 默认由 `EnableReflectInvoke=false` 禁用；只在临时调试时开启，结束后关闭。常规验证优先使用只读
+`/reflect/invoke`（及 `/reflect/set`/`/static`/`/pin`）**默认开启**；不需要时 `POST /config {"enableInvoke":false}` 可关。常规验证优先使用只读
 `/inspect`/`/reflect` 加 `/action` 或真实鼠标输入。
 
 ### `/action` 请求体

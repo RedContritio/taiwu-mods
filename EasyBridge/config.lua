@@ -12,12 +12,8 @@ return {
     BackendPlugins = {
         "EasyBridge.Backend.dll",
     },
-    DefaultSettings = {
-        { SettingType = "Slider", Key = "DefaultMax", DisplayName = "精简模式条目上限", Description = "前端单窗口默认返回的控件/文本上限", MinValue = 10, MaxValue = 500, StepSize = 10, DefaultValue = 60 },
-        { SettingType = "Slider", Key = "MaxReflectDepth", DisplayName = "反射快照深度", Description = "前端 /reflect 返回对象字段时递归展开的最大深度", MinValue = 0, MaxValue = 3, StepSize = 1, DefaultValue = 2 },
-        { SettingType = "Slider", Key = "MaxReflectMembers", DisplayName = "反射成员上限", Description = "前端 /inspect 与 /reflect 单次返回的最大组件/字段数量", MinValue = 1, MaxValue = 200, StepSize = 1, DefaultValue = 80 },
-        { SettingType = "Toggle", Key = "EnableReflectInvoke", DisplayName = "允许反射调用方法", Description = "仅临时调试时开启；开启后 /reflect/invoke 可调用前端实例方法", DefaultValue = false },
-    },
+    -- 无用户设置：这是 agent 驱动的调试桥，行为按请求传参 / 运行时 POST /config 控制。
+    DefaultSettings = {},
     TagList = {
         "Extensions",
     },

@@ -14,7 +14,7 @@ namespace EasyBridge.Frontend
         public static int DefaultMax = 60;
         public static int MaxReflectDepth = 2;
         public static int MaxReflectMembers = 80;
-        public static bool EnableReflectInvoke = false;
+        public static bool EnableReflectInvoke = true;   // agent-driven debug bridge; POST /config to toggle off
         public static int MainThreadTimeoutMs = 5000;
 
         public static (int status, object body) Handle(string method, string path,
