@@ -130,8 +130,8 @@ namespace EasyBridge.Frontend
         }
 
         private static string SourceTag(string s)
-            => s == "backend" ? "<color=#e0896a>[状态]</color>"
-             : s == "frontend" ? "<color=#7cc4e8>[界面]</color>"
+            => s == "backend" ? "<color=#e0896a>[state]</color>"
+             : s == "frontend" ? "<color=#7cc4e8>[ui]</color>"
              : "<color=#d07458>[" + Esc(s ?? "?") + "]</color>";
 
         private static string MethodColor(string m)

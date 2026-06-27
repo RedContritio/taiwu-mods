@@ -70,9 +70,9 @@ function Invoke-UiBridge {
 
 ## EasyBridge浮层 + 每次操作带说明（note）
 
-前端插件在游戏内弹出一个**原生 IMGUI 浮层「EasyBridge」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），实时显示 bridge 处理的**每一次请求**——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[界面]`/`[状态]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
+前端插件在游戏内弹出一个**原生 IMGUI 浮层「EasyBridge」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），实时显示 bridge 处理的**每一次请求**——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[ui]`/`[state]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
 
-- 顶行（端点）：`[界面] GET /ui  ✓ 200  · 306ms`
+- 顶行（端点）：`[ui] GET /ui  ✓ 200  · 306ms`
 - 内层（说明）：`▸ 查看当前打开的界面窗口`；失败再加内层 `↳ 错误`
 
 > 用 IMGUI 画（非 runtime uGUI Canvas——后者在本游戏内不合成）。点击**可能穿透**到窗口下面的游戏：刻意**不禁用游戏 EventSystem**（禁用会让游戏自己的每帧热键检查 NRE）。这些游戏侧坑见 `taiwu-game` skill。
