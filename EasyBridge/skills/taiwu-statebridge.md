@@ -106,8 +106,31 @@ SB -Path "/eval" -Body @{ code = "return GameOps.Spawn(ctx, (sbyte)0, (short)20,
 以及连续多次 `/combat` 的 `frame` 不变。
 没有进入战斗时返回 `inCombat=false`，距离字段为空。
 
+**`/combat` 返回字段**（顶层 + `self`/`enemy` 子对象；`status` 是 `CombatStatus` 枚举的 int）：
+
+```json
+{ "ok":true, "inCombat":true, "status":2, "pause":false, "frame":1234,
+  "timeScale":1.0, "autoCombat":true, "autoMove":true,
+  "currentDistance":3, "lastTargetDistance":3,
+  "self":  { "id":6818, "isAlly":true,  "isTaiwu":true,  "state":"Idle",
+             "targetDistance":3, "currentPosition":0, "displayPosition":0, "mobility":0,
+             "jumpPrepareProgress":0, "jumpPreparedDistance":0,
+             "preparingSkillId":-1, "skillPreparePercent":0,
+             "skillPrepareCurrProgress":0, "skillPrepareTotalProgress":0,
+             "preparingOtherAction":-1, "otherActionPreparePercent":0,
+             "preparingItem":{...}, "useItemPreparePercent":0,
+             "needNormalAttack":false, "needUseSkillId":-1, "needUseOtherAction":-1, "needUseItem":{...},
+             "reserveAny":false, "reserveNeedUseSkillId":-1, "reserveNeedUseOtherAction":-1, "reserveNeedUseItem":{...} },
+  "enemy": { ...同结构... } }
+```
+
+- `state` = 状态机当前状态名（`GetCurrentStateType().ToString()`）。**「就绪/执行」态**有 `Attack`/`CastSkill`/`UseItem`/`UnlockAttack`/`AnimalAttack`，其余为待机/移动等（写「停在 CastSkill」这类断言就比对这个）。
+- `skillPreparePercent`/`otherActionPreparePercent`/`useItemPreparePercent` = **0~100** 准备百分比（`/combat/watch` 的 `threshold` 比对这几个）。`preparingSkillId`/`preparingOtherAction` 为 `-1` 表示当前没在准备某动作。
+- `status` 是 `CombatStatus` 枚举的 int（日常判断进出战斗看 `inCombat`、动作态看 `state` 即可，无需记枚举值）。
+- 冻结判据：`timeScale=0` 且连续多次 `frame` 不变；**`pause` 是状态机内部位，不能单独当冻结证据**。
+
 ```powershell
-. D:\TaiwuMods\_scratch\bridge.ps1
+# SB = Invoke-StateEasyBridge（定义见本文件顶部，纯别名、无需 _scratch）
 SB -Path "/combat"
 SB -Path "/combat/control" -Body @{ timeScale=0; autoCombat=$false; autoMove=$false }
 ```
@@ -156,9 +179,71 @@ SB -Path "/combat/watch/cancel" -Body @{ restore=$true }
 `beforeCommit` 比普通 tick watch 更贴近状态机提交点，但也更侵入：它不复刻原生 100% 进度事件或清理逻辑，只暂停并跳过当前
 `OnUpdate`；恢复时必须用 `/combat/resume`，不要手动只改 `timeScale`，否则可能再次命中同一个提交点。
 
-> 下文配方用 `SB`/`UI`/`FE-Open`/`Drive-Combat` 等简写助手——它们在 `_scratch/bridge.ps1`，每次调用前先
-> `. D:\TaiwuMods\_scratch\bridge.ps1` 点进来（`SB`=本桥、`UI`=UiBridge）。`SB -Path P -Obj @{...}` 等价于
-> 上面的 `Invoke-StateEasyBridge -Path P -Body (...|ConvertTo-Json)`。
+**`/combat/watch` 请求字段**（缺省值来自 `CombatStepper.Arm`）：
+
+| 字段 | 取值 | 默认 | 说明 |
+|------|------|------|------|
+| `mode` | `anyReady` / `frames` / `beforeCommit` | `anyReady` | 见上 |
+| `side` | `any` / `self`(=ally/left) / `enemy`(=opponent/right) / `both` | `any` | 命中哪一方 |
+| `threshold` | 0~100 | 100 | `anyReady` 的准备百分比阈值 |
+| `frames` | ≥1 | 1 | `mode=frames` 推进的帧数 |
+| `maxFrames` | ≥0（0=关） | 600 | 帧超时 |
+| `maxMs` | ≥0（0=关） | 0 | 墙钟超时（0 适合手动调试节奏）|
+| `freezeBy` | `timeScale0` | `timeScale0` | 命中后冻结方式（目前仅此一种）|
+| `runTimeScale` | float | arm 前的 `timeScale`（>0）否则 1 | arm/resume 时设的运行速度 |
+| `autoCombat` / `autoMove` | bool（可选）| 不改 | arm 时一并设置 |
+| `waitForCombat` | bool | true | 允许未进战斗就预先 arm、等开战 |
+| `resume`（arm 时）/ `restoreOnCancel` | bool | true | resume 默认沿用同一 watch；cancel 默认恢复保存值 |
+
+命中/超时会 latch 一份快照到返回的 `watch.snapshot`，`watch.hit` = `{charId, side, kind(skillPrepare/otherActionPrepare/useItemPrepare/state/frames), state, value, percent, frame, signature}`。
+
+`GET /combat/watch`（`SB -Path "/combat/watch"`，不带 body）= 查看当前 watch：`{ok, active, watch:{started, done, reason, hit, snapshot, breakCount, elapsedMs, saved:{...}}, combat:{...}}`。**轮询 `watch.done=true` 即命中或超时**，`watch.reason`（`hit`/`frames`/`timeoutFrames`/`timeoutMs`/`notInCombat`…）+ `watch.hit`/`watch.snapshot` 告诉你停在哪一帧、哪一方、哪种动作。
+
+**`/combat/control` 字段**：`timeScale`(float)、`autoCombat`(bool)、`autoMove`(bool)、`pause`(bool，低层诊断、勿常用)。只设给出的字段，返回完整 `/combat` 快照 + `controlled:true`。
+
+> **两类简写助手，别混淆：**
+> - `SB` = `Invoke-StateEasyBridge`、`UI` = `Invoke-UiBridge` —— 就是两个 skill 顶部内联定义的连接函数，**纯别名、无外部依赖**（`SB -Body @{...}` 收 hashtable；`UI -Body '<json串>'` 收 JSON 字符串、`UI -Query @{...}` 收 hashtable）。
+> - 下文部分配方里的 `FE-Open`/`FE-ForceAndConfirm`/`FE-GuardContinue`/`FE-OptionId`/`Drive-Combat` 是 **`_scratch/bridge.ps1` 里的便捷封装**（把多步 UI 流程打包），**不随 mod 交付**。它们的**底层等价步骤见下面「调试战斗：端到端自包含配方」**——只想自包含、可复制粘贴就照那节走，不需要 `_scratch/bridge.ps1`。
+
+## 调试战斗：端到端自包含配方（只用 SB/UI 两个连接函数）
+
+> **边界**：后端**没有 `/combat/start` 或 `/combat/end`**。进入战斗只能走**前端 UI**（敌对→袭击/情难自已→`CombatBegin`→点 `StartCombatBtn`）；结算靠游戏**内置 AutoFight** 自然打完后等 `CombatResult`。后端只能**观察/冻结/单步/改伤势**，不能凭空开战或判胜负。`UI` 的逐窗写法（`/ui/{窗口}` 取控件 → 按 label 匹配 → `/action` click）见 taiwu-ui.md「袭击 NPC」步骤 5-12，全部用 `Invoke-UiBridge`、无外部 helper。
+
+```powershell
+# 0) 前置：已进存档（SB /ping 的 tickAlive=true；否则按 taiwu-ui.md 步骤1-4 加载存档回地图）
+$taiwu = (SB -Path "/taiwu").taiwuId          # 别硬编码 6818——那是某存档的太吾 id
+
+# 1) 造一个可开战目标（散人/村民通常无护卫、最易开战），记下 id/name
+$npc = SB -Path "/spawn" -Body @{ villager=$false }
+
+# 2) 开战前先 arm 后端断点（实时战斗不能靠 sleep；命中后自动 timeScale=0）
+SB -Path "/combat/watch" -Body @{ mode="anyReady"; side="any"; threshold=100;
+    freezeBy="timeScale0"; autoCombat=$false; autoMove=$false; runTimeScale=1; maxFrames=600; maxMs=0 }
+
+# 3) 用 UI 把目标打到 CombatBegin 并开战（每步 /ui→按 label 匹配控件→/action click，详见 taiwu-ui 步骤5-8）：
+#    /ui/MapBlockCharList 找 $npc.name → click；EventWindow 切「敌对」toggle → 点「袭击」(或情难自已) →
+#    若出 Dialog 点「确认」；CombatBegin 找 StartCombatBtn → click 开战
+
+# 4) 观察 / 冻结 / 单步（全后端）
+SB -Path "/combat"                                                  # 读快照（字段见上「/combat 返回」）
+SB -Path "/combat/control" -Body @{ timeScale=0; autoCombat=$false; autoMove=$false }   # 手动冻结
+SB -Path "/combat/resume"                                          # 命中后单步到下一次准备完成/进入执行态
+UI -Path "/inspect" -Query @{ element="Combat" }                  # 需要更深的前端战斗 UI 时
+
+# 5)（可选）改伤势造特定结果
+SB -Path "/injure" -Body @{ id=$npc.id; level=6 }                 # 直接成功(无力应战、不开战)：defeatMarks>=36
+# 或：SB -Path "/injure" -Body @{ id=$taiwu; level=4 }            # 削弱太吾→AutoFight 战败→失败结算
+
+# 6) 让 AutoFight 打完读结果（= Drive-Combat 的底层）
+SB -Path "/combat/control" -Body @{ autoCombat=$true; timeScale=1 }
+UI -Path "/wait" -Query @{ element="CombatResult"; timeout="120" }  # 阻塞等结算窗
+#    再 /ui/CombatResult 读文案 → 找 ConfirmButton → /action click
+
+# 7) 收尾：取消断点并恢复，复原被削的太吾，关掉残留模态窗（桥不能发 ESC）
+SB -Path "/combat/watch/cancel" -Body @{ restore=$true }
+SB -Path "/heal" -Body @{ id=$taiwu }
+#    逐个用窗口内「继续/确认/关闭」按钮关掉残留 EventWindow；换目标前 /ui 确认无残留窗口
+```
 
 ## 移动到其他格
 
@@ -176,8 +261,8 @@ SB -Path "/combat/watch/cancel" -Body @{ restore=$true }
 
 ```powershell
 . D:\TaiwuMods\_scratch\bridge.ps1
-$dest = (SB -Path "/settlements" -Obj @{civilianOnly=$true;max=80}).settlements | ? { $_.blockTypeName -in @("City","Town") } | Select -First 1
-SB -Path "/move/taiwu" -Obj @{ areaId=$dest.areaId; blockId=$dest.blockId } | Out-Null
+$dest = (SB -Path "/settlements" -Body @{civilianOnly=$true;max=80}).settlements | ? { $_.blockTypeName -in @("City","Town") } | Select -First 1
+SB -Path "/move/taiwu" -Body @{ areaId=$dest.areaId; blockId=$dest.blockId } | Out-Null
 $g = (SB -Path "/block/chars").chars | ? hasGuard | Select -First 1     # 城镇平民, hasGuard=True
 $o = FE-Open -Name $g.name                                              # 敌对 → 情难自已
 FE-ForceAndConfirm                                                      # 更进一步 + 重要选择确认
@@ -188,10 +273,10 @@ if (FE-OptionId -Key "ForceEncounter.GuardInterceptContinue") { FE-GuardContinue
 
 ## 战斗驱动要点
 
-- 战斗为手动但游戏内置 **AutoFight 默认开**，弱目标 ~20-95s 自动打完出 `CombatResult`。用 `Drive-Combat`（见 `_scratch/bridge.ps1`）。
-- **无力应战（直接成功）**：`/injure {id,level:6}` → 84≥36 标记 → 更进一步直接成功，不开战。
-- **强制失败（太吾战败）**：`/injure {id:6818,level:4}` 削弱太吾 → 对无护卫目标更进一步开战 → AutoFight 战败 → 失败结算；
-  测后 `/heal {id:6818}` 复原。
+- 战斗为手动但游戏内置 **AutoFight 默认开**，弱目标 ~20-95s 自动打完出 `CombatResult`。打完读结果的底层步骤见上「调试战斗」配方第 6 步（`Drive-Combat` 即其封装）。
+- `/injure {id,level}`：`level` 是每部位内外的伤势增量（**−6~6**，负值是治疗）；返回 `defeatMarks` 与 `directFallen`（`defeatMarks>=36` 即「无力应战」）。**别背具体标记数，看返回的 `defeatMarks`/`directFallen`**。
+  - **无力应战（直接成功、不开战）**：`level:6`（叠满，marks 远超 36）。
+  - **强制太吾战败**：先 `$taiwu=(SB -Path "/taiwu").taiwuId`（**`6818` 只是某存档的太吾 id，别硬编码**）→ `/injure {id:$taiwu, level:4}` 削弱 → 对无护卫目标更进一步开战 → AutoFight 战败 → 失败结算；测后 `/heal {id:$taiwu}` 复原。
 - **战斗擒获 → 擒获处置**（hack 战斗过程扔绳子；RNG 无妨，多扔几次）：
   1. `/giverope {template:90}` 给太吾高级捕绳（**必须在开战前**，战斗会快照背包 GetValidItems）；
   2. spawn 无护卫目标 → `/injure {id,level:2}`（~28 标记<36，开战且绳命中率高）→ 更进一步开战 → start；

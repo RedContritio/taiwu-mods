@@ -41,9 +41,9 @@
 用它做一次性/临时操作，**不必再为每个新操作加端点重编译重启**；常用流程仍走上面的命名端点。
 
 ```powershell
-SB -Path "/eval" -Obj @{ code = "return DomainManager.Taiwu.GetTaiwuCharId();" }            # → 6818
-SB -Path "/eval" -Obj @{ code = "DomainManager.Character.AddRelation(ctx, taiwuId, 7570, 1024); return DomainManager.Character.GetAliveSpouse(7570);" }
-SB -Path "/eval" -Obj @{ code = "return GameOps.Taiwu();" }                                  # → 完整快照字典
+SB -Path "/eval" -Body @{ code = "return DomainManager.Taiwu.GetTaiwuCharId();" }            # → 6818
+SB -Path "/eval" -Body @{ code = "DomainManager.Character.AddRelation(ctx, taiwuId, 7570, 1024); return DomainManager.Character.GetAliveSpouse(7570);" }
+SB -Path "/eval" -Body @{ code = "return GameOps.Taiwu();" }                                  # → 完整快照字典
 ```
 
 ## 构建 / 部署

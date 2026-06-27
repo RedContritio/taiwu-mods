@@ -81,7 +81,7 @@ function Invoke-UiBridge {
 
 ```powershell
 UI -Path "/action" -Body $clickJson -Note "点击「确认」关闭月报弹窗"
-SB -Path "/spawn"  -Obj @{grade=4}  -Note "生成一个 4 品 NPC 用于测试关系分支"
+SB -Path "/spawn"  -Body @{grade=4}  -Note "生成一个 4 品 NPC 用于测试关系分支"
 ```
 
 回看历史用 `GET /log?since=<seq>&max=<n>`（浮层滚动显最近若干条、最新在上；服务端缓冲 500 条。`/ping`、`/`、`mon=1` 等基础设施请求**不入日志**）。表头不显累计计数，仅在有「无说明」时红字提醒。
@@ -170,6 +170,8 @@ $m = Invoke-UiBridge -Path "/ui/Mod" -Query @{ detail="full"; max="300" }
 直接改 `Save\ModSettings.Lua` 会被安全策略拦截，用此 UI 流程。重启后按下面流程重新加载存档。
 
 ## 驱动战斗
+
+**边界**：进入战斗只能走这条**前端 UI 路径**（后端桥没有 `/combat/start`/`/combat/end`），结算只能靠游戏**内置 AutoFight** 打完后等 `CombatResult`，后端无强制开战/判胜负的手段。完整的端到端自包含配方见 `taiwu-statebridge.md`「调试战斗：端到端自包含配方」。
 
 `敌对→袭击/情难自已(强制)` 会进 `CombatBegin`（点 `StartCombatBtn` 开战）。若只需要完整结算，战斗可交给游戏
 内置 AutoFight，完成后等 `CombatResult`。若需要验证战斗中的 UI 交互或距离条，必须先用后端 `/combat/watch`
