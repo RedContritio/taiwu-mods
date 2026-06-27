@@ -84,16 +84,6 @@ namespace EasyBridge.Frontend
             };
         }
 
-        /// <summary>Header status for the overlay: just a warning when some of the currently-buffered entries
-        /// lack a note (the nudge to write one). Empty when everything has a note.</summary>
-        public static string Status()
-        {
-            int missing = 0;
-            lock (_lock)
-                foreach (var e in _entries) if (string.IsNullOrEmpty(e.Note)) missing++;
-            return missing > 0 ? "<color=#d07458>" + missing + " 条无说明</color>" : "";
-        }
-
         /// <summary>Last <paramref name="n"/> entries as Unity rich text, NEWEST FIRST (top). Lock held only
         /// to copy entry references; the string is built outside it. Newest-first means that when the text
         /// overflows the panel and the bottom is clipped, it's the OLDEST rows that drop — the latest activity

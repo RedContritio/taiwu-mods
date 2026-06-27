@@ -120,10 +120,10 @@ namespace EasyBridge.Frontend
 
         private void RebuildHeader()
         {
-            string status = RequestLog.Status();   // "" normally, or a red 无说明 warning
+            int hintSize = Mathf.Max(10, Mathf.RoundToInt(15 * _scale * 0.66f));
             string paused = _paused ? "  <color=#e0896a>已暂停</color>" : "";
-            _headerStr = "<b>EasyBridge</b>" + (status.Length > 0 ? "  " + status : "") + paused
-                + "   <color=#9a917a>F9 隐藏 · F8 暂停 · 拖标题移动 · ↘ 缩放</color>";
+            _headerStr = "<b>EasyBridge</b>" + paused
+                + "\n<size=" + hintSize + "><color=#9a917a>F9 隐藏 · F8 暂停 · 拖动标题栏移动</color></size>";
         }
 
         private void EnsureStyles()
@@ -133,7 +133,7 @@ namespace EasyBridge.Frontend
             _headSize = Mathf.RoundToInt(15 * _scale);
             int bodySize = Mathf.RoundToInt(14 * _scale);
 
-            _headerStyle = new GUIStyle { richText = true, wordWrap = false, alignment = TextAnchor.MiddleLeft, fontSize = _headSize, clipping = TextClipping.Clip };
+            _headerStyle = new GUIStyle { richText = true, wordWrap = false, alignment = TextAnchor.UpperLeft, fontSize = _headSize, clipping = TextClipping.Clip };
             _bodyStyle = new GUIStyle { richText = true, wordWrap = true, alignment = TextAnchor.UpperLeft, fontSize = bodySize };
             if (_font != null) { _headerStyle.font = _font; _bodyStyle.font = _font; }
             _headerStyle.normal.textColor = new Color(0.85f, 0.65f, 0.34f);
@@ -156,7 +156,7 @@ namespace EasyBridge.Frontend
             EnsureWinInit();
 
             float ui = _scale;
-            float titleH = _headSize * 1.7f + 8f;
+            float titleH = _headSize * 2.5f + 8f;   // two lines: title + dim hint
             float pad = 8f * ui;
             float grip = 18f * ui;
 
