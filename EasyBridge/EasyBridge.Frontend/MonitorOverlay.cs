@@ -31,7 +31,7 @@ namespace EasyBridge.Frontend
         private bool _built;
         private float _timer;
 
-        private string _headerStr = "桥监视";
+        private string _headerStr = "EasyBridge";
         private string _bodyStr = "";
 
         private Rect _win;
@@ -122,7 +122,7 @@ namespace EasyBridge.Frontend
         {
             string status = RequestLog.Status();   // "" normally, or a red 无说明 warning
             string paused = _paused ? "  <color=#e0896a>已暂停</color>" : "";
-            _headerStr = "<b>桥监视</b>" + (status.Length > 0 ? "  " + status : "") + paused
+            _headerStr = "<b>EasyBridge</b>" + (status.Length > 0 ? "  " + status : "") + paused
                 + "   <color=#9a917a>F9 隐藏 · F8 暂停 · 拖标题移动 · ↘ 缩放</color>";
         }
 

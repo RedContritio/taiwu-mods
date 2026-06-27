@@ -32,7 +32,7 @@ description: Use to construct in-game character/relationship state (generate con
 ```powershell
 function Invoke-StateEasyBridge {
     param([string]$Path, [hashtable]$Body, [string]$Note)
-    # -Note: 一句中文说明，显示在游戏内「桥监视」浮层上（随游戏关闭自动消失）。每次调用都带上。
+    # -Note: 一句中文说明，显示在游戏内「EasyBridge」浮层上（随游戏关闭自动消失）。每次调用都带上。
     $req = @{ path = $Path }
     if ($Body) { $req.body = ($Body | ConvertTo-Json -Compress) }
     if ($Note) { $req.note = $Note }

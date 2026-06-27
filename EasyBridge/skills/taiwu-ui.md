@@ -15,7 +15,7 @@ description: Inspect and interact with the running Taiwu game UI via the EasyBri
 4. **用 `-match` 搜索标签** — 标签已去除富文本标签，可直接用中文匹配
 5. **不能发 ESC/键盘** — 只有 click/toggle/set/select。事件/交互窗口要靠**窗口内的“继续/确认/关闭”按钮**关闭；
    像 NPC 交互这种**模态窗**没关掉会挡住后续的地图角色点击（点新 NPC 无效，误触旧窗）。换目标前先 `/ui` 确认它已关。
-6. **每次调用都带 `-Note "<一句中文说明>"`** — 说明这步在做什么。它会显示在游戏内「桥监视」浮层（F9 展开/收起、F8 暂停），
+6. **每次调用都带 `-Note "<一句中文说明>"`** — 说明这步在做什么。它会显示在游戏内「EasyBridge」浮层（F9 展开/收起、F8 暂停），
    方便用户实时看到 agent 的每个动作；不带说明的调用会在浮层上显红色「(无说明)」并被计数。回看完整历史用 `GET /log?since=&max=`。
 
 ## 游戏品级约定（重要：读 grade 数据前必看）
@@ -36,7 +36,7 @@ function Invoke-UiBridge {
     $req = @{ path = $Path }
     if ($Query) { $req.query = $Query }
     if ($Body) { $req.body = $Body }
-    if ($Note) { $req.note = $Note }   # 一句中文说明，显示在游戏内「桥监视」浮层上
+    if ($Note) { $req.note = $Note }   # 一句中文说明，显示在游戏内「EasyBridge」浮层上
     $json = $req | ConvertTo-Json -Compress
     $pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "easybridge-ui", [System.IO.Pipes.PipeDirection]::InOut)
     try {
@@ -68,9 +68,9 @@ function Invoke-UiBridge {
 | `/wait?element=Name&timeout=60` | GET | 阻塞等待指定窗口出现 |
 | `/quit` | POST | 退出游戏（不保存） |
 
-## 桥监视浮层 + 每次操作带说明（note）
+## EasyBridge浮层 + 每次操作带说明（note）
 
-前端插件在游戏内弹出一个**原生 IMGUI 浮层「桥监视」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），实时显示 bridge 处理的**每一次请求**——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[界面]`/`[状态]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
+前端插件在游戏内弹出一个**原生 IMGUI 浮层「EasyBridge」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），实时显示 bridge 处理的**每一次请求**——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[界面]`/`[状态]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
 
 - 顶行（端点）：`[界面] GET /ui  ✓ 200  · 306ms`
 - 内层（说明）：`▸ 查看当前打开的界面窗口`；失败再加内层 `↳ 错误`
