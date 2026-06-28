@@ -429,6 +429,20 @@ function Test-ModStructure {
             }
         }
 
+        foreach ($coverString in @("Cover", "WorkshopCover")) {
+            $value = Get-LuaQuotedValue -Text $configText -Key $coverString
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                if ([IO.Path]::IsPathRooted($value)) {
+                    $errors.Add("config.lua $coverString must be a relative path: $value")
+                } else {
+                    $coverPath = Join-Path $modDir $value
+                    if (-not (Test-Path $coverPath)) {
+                        $errors.Add("config.lua $coverString file is missing: $coverPath")
+                    }
+                }
+            }
+        }
+
         $gameVersion = Get-LuaQuotedValue -Text $configText -Key "GameVersion"
         if ($Entry.status -eq "release" -and [string]::IsNullOrWhiteSpace($gameVersion)) {
             $errors.Add("release config.lua must set GameVersion to the supported game version")
@@ -617,11 +631,38 @@ function Copy-ModFiles {
     Copy-Item $validation.ConfigPath $Destination -Force
     Copy-Item (Join-Path $validation.ModDir "Settings.Lua") $Destination -Force
 
-    foreach ($optionalFile in @("README.md", "cover.png")) {
+    foreach ($optionalFile in @("README.md")) {
         $path = Join-Path $validation.ModDir $optionalFile
         if (Test-Path $path) {
             Copy-Item $path $Destination -Force
         }
+    }
+
+    $configText = Get-Content $validation.ConfigPath -Raw -Encoding UTF8
+    $declaredCoverFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($coverKey in @("Cover", "WorkshopCover")) {
+        $coverFile = Get-LuaQuotedValue -Text $configText -Key $coverKey
+        if (-not [string]::IsNullOrWhiteSpace($coverFile)) {
+            [void]$declaredCoverFiles.Add($coverFile)
+        }
+    }
+
+    foreach ($coverFile in $declaredCoverFiles) {
+        if ([IO.Path]::IsPathRooted($coverFile)) {
+            throw "Declared cover path must be relative: $coverFile"
+        }
+
+        $path = Join-Path $validation.ModDir $coverFile
+        if (-not (Test-Path $path)) {
+            throw "Declared cover file is missing: $path"
+        }
+
+        $targetPath = Join-Path $Destination $coverFile
+        $targetDir = Split-Path $targetPath -Parent
+        if (-not [string]::IsNullOrWhiteSpace($targetDir)) {
+            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+        }
+        Copy-Item $path $targetPath -Force
     }
 
     $configDir = Join-Path $validation.ModDir "Config"

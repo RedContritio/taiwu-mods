@@ -38,6 +38,13 @@
       ]
     },
     {
+      "name": "CricketSingGradeColor",
+      "status": "release",
+      "projects": [
+        "CricketSingGradeColor/CricketSingGradeColor.Frontend/CricketSingGradeColor.Frontend.csproj"
+      ]
+    },
+    {
       "name": "ExampleMod",
       "status": "sample",
       "projects": [

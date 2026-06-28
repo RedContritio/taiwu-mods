@@ -44,6 +44,7 @@ sealed class ContractTests
         Run("Harmony manifest matches source patch surface", HarmonyManifestMatchesSourcePatchSurface);
         Run("ModBuild auto-increment version wiring is stable", ModBuildAutoIncrementVersionWiring);
         Run("ForceEncounter interaction contract is wired", ForceEncounterInteractionContract);
+        Run("CricketSingGradeColor contract is wired", CricketSingGradeColorContract);
         Run("pure mod rules", PureModRules);
 
         if (_failures.Count > 0)
@@ -533,6 +534,54 @@ sealed class ContractTests
         Assert(Regex.IsMatch(backend, @"ExecuteAcceptedEncounter[\s\S]*?!CanResolveAsIntimateAcceptance\(actor,\s*target,\s*""AcceptedCommitRecheck""\)[\s\S]*?ForceEncounterConstants\.Reasons\.NeedCombatChoice"), "ForceEncounter accepted commit should re-check intimate acceptance and refuse direct backend bypasses");
     }
 
+    private void CricketSingGradeColorContract()
+    {
+        ModEntry mod = _mods.Single(m => m.Name == "CricketSingGradeColor");
+        string config = ReadModFile(mod.Name, "config.lua");
+        string project = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "CricketSingGradeColor.Frontend.csproj");
+        string plugin = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "FrontendPlugin.cs");
+        string catchPatch = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "CricketSingColorPatch.cs");
+        string viewPatch = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "CricketViewColorPatch.cs");
+        string colorizer = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "RippleColorizer.cs");
+        string soundConfig = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "SoundGradeConfig.cs");
+        string calculator = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "SoundGradeCalculator.cs");
+        string version = ExtractLuaString(config, "Version");
+
+        Assert(config.Contains("Title = \"观音识蛐蛐\"", StringComparison.Ordinal), "CricketSingGradeColor title should stay aligned with the release name");
+        Assert(config.Contains("Cover = \"cover.jpg\"", StringComparison.Ordinal), "CricketSingGradeColor should declare its local cover");
+        Assert(config.Contains("WorkshopCover = \"cover.jpg\"", StringComparison.Ordinal), "CricketSingGradeColor should use the same cover for Workshop preview");
+        Assert(config.Contains("NeedRestartWhenSettingChanged = false", StringComparison.Ordinal), "CricketSingGradeColor setting changes should remain live without restart");
+        Assert(Regex.IsMatch(config, @"SettingType\s*=\s*""Dropdown"",\s*Key\s*=\s*""BlendMode""[\s\S]*?Options\s*=\s*\{\s*""音高优先"",\s*""均衡"",\s*""音量优先""\s*\}[\s\S]*?DefaultValue\s*=\s*2"), "CricketSingGradeColor should expose the three BlendMode presets and default to 音量优先");
+
+        Assert(project.Contains("<TargetFramework>net48</TargetFramework>", StringComparison.Ordinal), "CricketSingGradeColor frontend should target the Unity-compatible net48 framework");
+        Assert(project.Contains("<OutputPath>..\\Plugins</OutputPath>", StringComparison.Ordinal), "CricketSingGradeColor frontend should build into the mod Plugins directory");
+        Assert(project.Contains("$(TaiwuManagedDir)\\Assembly-CSharp.dll", StringComparison.Ordinal), "CricketSingGradeColor frontend should reference Assembly-CSharp through TaiwuManagedDir");
+        Assert(project.Contains("$(TaiwuManagedDir)\\GameData.Shared.dll", StringComparison.Ordinal), "CricketSingGradeColor frontend should reference GameData.Shared through TaiwuManagedDir");
+        Assert(plugin.Contains($"PluginConfig(\"CricketSingGradeColor\", \"RedContritio\", \"{version}\")", StringComparison.Ordinal), "CricketSingGradeColor PluginConfig version should match config.lua Version");
+
+        Assert(catchPatch.Contains("[HarmonyPatch(typeof(ViewCatchCricket), \"ShowCricketSingImage\")]", StringComparison.Ordinal), "CricketSingGradeColor should patch the catch-minigame ripple renderer");
+        Assert(catchPatch.Contains("RippleColorizer.Colorize(image, place.SingPitch, place.SingSize)", StringComparison.Ordinal), "CricketSingGradeColor catch patch should color only from SingPitch and SingSize");
+        Assert(plugin.Contains("PatchCricketViewSing(\"CricketView\")", StringComparison.Ordinal), "CricketSingGradeColor should patch CricketView card ripples");
+        Assert(plugin.Contains("PatchCricketViewSing(\"CricketViewNew\")", StringComparison.Ordinal), "CricketSingGradeColor should patch CricketViewNew card ripples");
+        Assert(plugin.Contains("AccessTools.Method(type, \"Sing\"", StringComparison.Ordinal), "CricketSingGradeColor card patch should resolve Sing by runtime type");
+        Assert(plugin.Contains("_harmony.Patch(method, postfix: new HarmonyMethod(postfix))", StringComparison.Ordinal), "CricketSingGradeColor card patch should attach the shared postfix");
+        Assert(viewPatch.Contains("GetProperty(\"SingPitch\"", StringComparison.Ordinal) &&
+               viewPatch.Contains("GetProperty(\"SingSize\"", StringComparison.Ordinal) &&
+               viewPatch.Contains("FindField(type, \"_singImage\")", StringComparison.Ordinal), "CricketSingGradeColor card patch should read SingPitch, SingSize, and _singImage");
+        Assert(viewPatch.Contains("RippleColorizer.Colorize(image, singPitch, singSize)", StringComparison.Ordinal), "CricketSingGradeColor card patch should color only from SingPitch and SingSize");
+
+        Assert(colorizer.Contains("new Color(vivid.r, vivid.g, vivid.b, current.a)", StringComparison.Ordinal), "CricketSingGradeColor should preserve the original ripple alpha while replacing RGB");
+        Assert(colorizer.Contains("GetComponent<Outline>() ?? graphic.gameObject.AddComponent<Outline>()", StringComparison.Ordinal), "CricketSingGradeColor should widen the thin ripple idempotently");
+        Assert(soundConfig.Contains("(1.0f, 2.0f)", StringComparison.Ordinal) &&
+               soundConfig.Contains("(1.0f, 2.5f)", StringComparison.Ordinal) &&
+               soundConfig.Contains("(1.0f, 3.0f)", StringComparison.Ordinal) &&
+               soundConfig.Contains("public const int DefaultBlendIndex = 2", StringComparison.Ordinal), "CricketSingGradeColor blend presets should stay in the documented 1:2..1:3 band with 音量优先 default");
+        Assert(Regex.IsMatch(calculator, @"Score\(int singPitch,\s*int singSize\)\s*=>\s*SoundGradeConfig\.PitchWeight\s*\*\s*singPitch\s*\+\s*SoundGradeConfig\.SizeWeight\s*\*\s*singSize"), "CricketSingGradeColor sound score should be based on SingPitch and SingSize only");
+        Assert(calculator.Contains("scores[scores.Count / 2]", StringComparison.Ordinal), "CricketSingGradeColor should use median grade anchors");
+        Assert(calculator.Contains("Colors.Instance.GradeColors", StringComparison.Ordinal), "CricketSingGradeColor should prefer the game's own grade palette");
+        Assert(calculator.Contains("SoundGradeConfig.FallbackTierColors", StringComparison.Ordinal), "CricketSingGradeColor should keep a fallback palette");
+    }
+
     private static void PureModRules()
     {
         ForceEncounterRules();
@@ -680,6 +729,11 @@ sealed class ContractTests
         }
 
         foreach (Match match in Regex.Matches(source, @"AccessTools\.Method\(typeof\([^)]*\),\s*""([^""]+)"""))
+        {
+            methods.Add(match.Groups[1].Value);
+        }
+
+        foreach (Match match in Regex.Matches(source, @"AccessTools\.Method\(\s*(?!typeof\()[^,\r\n]+,\s*""([^""]+)"""))
         {
             methods.Add(match.Groups[1].Value);
         }

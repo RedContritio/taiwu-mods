@@ -30,6 +30,13 @@
         "UpdateTargetDistanceInteract",
         "UpdateInteractType"
       ]
+    },
+    {
+      "mod": "CricketSingGradeColor",
+      "patterns": [
+        "ShowCricketSingImage",
+        "Sing"
+      ]
     }
   ]
 }
