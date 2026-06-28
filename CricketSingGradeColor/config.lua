@@ -6,7 +6,10 @@ return {
     Source = 0,
     Cover = "cover.jpg",
     WorkshopCover = "cover.jpg",
-    GameVersion = "1.0.20.0",
+    DetailImageList = {
+        "details_1.png",
+    },
+    GameVersion = "1.0.40.0",
     FrontendPlugins = {
         "CricketSingGradeColor.Frontend.dll",
     },

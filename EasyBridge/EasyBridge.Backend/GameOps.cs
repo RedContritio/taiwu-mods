@@ -493,7 +493,7 @@ namespace EasyBridge.Backend
                 short cur = DomainManager.Character.GetFavorability(from, to);
                 int delta = desired - cur;
                 if (System.Math.Abs(delta) <= 80) break;
-                DomainManager.Character.ChangeFavorability(ctx, fromCh, toCh, delta);
+                DomainManager.Character.ChangeFavorabilityOptional(ctx, fromCh, toCh, delta, -1);
                 short next = DomainManager.Character.GetFavorability(from, to);
                 if (System.Math.Abs(next - cur) < 20) break; // 已到上限，无法再逼近
             }

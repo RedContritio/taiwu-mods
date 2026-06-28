@@ -1,11 +1,12 @@
 return {
     Title = "EasyBridge",
-    Description = "自动化测试桥：前端 UI 桥（easybridge-ui，检视/操控游戏 UI）+ 后端状态桥（easybridge-state，读取/构造角色状态，含 /eval 动态执行任意 C#）。仅供开发调试使用。",
+    Description = "用于 LLM agent 的工具 Mod，可以让 ai 玩太吾绘卷。\n通过命名管道检视/操控界面、读写角色状态并执行临时 C#，辅助自动化验证。",
     Version = "0.0.1",
     Author = "RedContritio",
     Source = 0,
-    Cover = "",
-    GameVersion = "1.0.32",
+    Cover = "cover.jpg",
+    WorkshopCover = "cover.jpg",
+    GameVersion = "1.0.40",
     FrontendPlugins = {
         "EasyBridge.Frontend.dll",
     },
