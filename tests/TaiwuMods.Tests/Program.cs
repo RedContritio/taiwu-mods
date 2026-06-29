@@ -316,7 +316,7 @@ sealed class ContractTests
         string interaction = ReadModFile(mod.Name, "Config", "InteractionEventOption.lua");
         string forceEncounterConfig = ReadModFile(mod.Name, "config.lua");
         Assert(forceEncounterConfig.Contains("Key = \"DebugMode\"", StringComparison.Ordinal), "ForceEncounter should expose a debug mode setting");
-        Assert(forceEncounterConfig.Contains("Key = \"DebugMode\", DisplayName = \"调试模式\", DefaultValue = false", StringComparison.Ordinal), "ForceEncounter debug mode should default off for release");
+        Assert(Regex.IsMatch(forceEncounterConfig, @"Key\s*=\s*""DebugMode""[\s\S]*?DisplayName\s*=\s*""调试模式""[\s\S]*?DefaultValue\s*=\s*false"), "ForceEncounter debug mode should default off for release");
         Assert(Regex.IsMatch(forceEncounterConfig, @"SettingType\s*=\s*""Slider"",\s*Key\s*=\s*""ActionTimeCostDays""[\s\S]*?MinValue\s*=\s*0,\s*MaxValue\s*=\s*5[\s\S]*?DefaultValue\s*=\s*5"), "ForceEncounter should expose action time cost as a 0..5 slider defaulting to 5");
         Assert(Regex.IsMatch(forceEncounterConfig, @"SettingType\s*=\s*""Slider"",\s*Key\s*=\s*""ForcedFavorabilityPenalty""[\s\S]*?MinValue\s*=\s*0,\s*MaxValue\s*=\s*30000[\s\S]*?DefaultValue\s*=\s*30000"), "ForceEncounter should expose forced favorability penalty as a 0..30000 slider defaulting to 30000");
         Assert(Regex.IsMatch(forceEncounterConfig, @"SettingType\s*=\s*""Slider"",\s*Key\s*=\s*""TaiwuVillagerPenaltyPercent""[\s\S]*?MinValue\s*=\s*0,\s*MaxValue\s*=\s*100[\s\S]*?DefaultValue\s*=\s*30"), "ForceEncounter should expose Taiwu villager penalty ratio as a 0..100 slider defaulting to 30");
