@@ -670,6 +670,11 @@ function Copy-ModFiles {
         Copy-Item $configDir $Destination -Recurse -Force
     }
 
+    $skillsDir = Join-Path $validation.ModDir "skills"
+    if (Test-Path $skillsDir) {
+        Copy-Item $skillsDir $Destination -Recurse -Force
+    }
+
     $eventsDir = Join-Path $validation.ModDir "Events"
     if (Test-Path $eventsDir) {
         $destinationEvents = Join-Path $Destination "Events"

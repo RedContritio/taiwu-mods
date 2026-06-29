@@ -1,7 +1,8 @@
 # EasyBridge
 
-自动化测试桥（开发/调试工具，非创意工坊发布目标）。**一个 mod、两个插件、两条命名管道**，供 LLM/自动化 agent
-端到端验证其它 mod（如 ForceEncounter）的各分支路径：
+给 **LLM / 自动化 agent** 用的太吾绘卷调试桥 —— 让你（以及拿到这个 mod 的任何人）都能用 agent 端到端地
+检视/操控游戏、构造角色状态、跑临时 C#，从而验证**任意 mod**（如 ForceEncounter）的各分支路径。
+**一个 mod、两个插件、两条命名管道**：
 
 | 插件 | 进程 | 命名管道 | 作用 | 技能 |
 |------|------|---------|------|------|
@@ -12,6 +13,9 @@
 > 这里把它们打包成**同一个 mod「EasyBridge」**（参照 ExampleMod 的双插件模式），游戏里只显示一个条目。
 
 > 第三份技能 **`skills/taiwu-game.md`** 不绑插件 —— 是**太吾游戏本身的内部性质与约定**（架构、品级规则、UI 系统、本地化、角色数据语义、改 mod 的坑）。任何 Taiwu mod 开发或用本桥操控游戏前先读它。
+
+> **技能随 mod 一起部署**：`skills/` 会被打包进安装后的 Mod 目录（`Mod/EasyBridge/skills/`）。拿到这个 mod 的人
+> 把这个目录指给自己的 agent（或拷进 agent 的技能库），就能直接照着调用，无需再找仓库源码。
 
 协议：每条管道单行 JSON 请求 → 单行 JSON 响应。连接函数见对应技能文件。
 
@@ -45,20 +49,28 @@ SB -Path "/eval" -Body @{ code = "DomainManager.Character.AddRelation(ctx, taiwu
 SB -Path "/eval" -Body @{ code = "return GameOps.Taiwu();" }                                  # → 完整快照字典
 ```
 
-## 构建 / 部署
+## 使用（拿到现成 mod 的人）
+
+1. 把 `EasyBridge` 整个目录放进游戏的 `Mod/` 下（创意工坊订阅或手动拷贝皆可），在游戏「模组管理」里**启用并重启**。
+2. 进存档回到地图后，两条管道才开始工作（后端要 tick 才会响应，详见 `skills/taiwu-statebridge.md`）。
+3. 把随 mod 部署的 `skills/` 指给你的 agent —— 里面有连接函数、端点清单和踩坑约定，agent 照着调用即可。
+
+> 这个 mod 不改存档、不加内容，纯调试桥；写/调类端点默认开启（见下方端点说明），不需要时可 `POST /config {"enableInvoke":false}` 关。
+
+## 从源码构建 / 部署（开发本 mod）
 
 ```powershell
 # 构建（前端 net48 + 后端 net8，输出到 EasyBridge/Plugins）
 dotnet build EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj -c Release
 dotnet build EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj -c Release
-# 部署到游戏（同时带上后端捆绑的 Roslyn DLL）
+# 部署到游戏（带上后端捆绑的 Roslyn DLL，以及 skills/）
 pwsh ./deploy.ps1 -ModName EasyBridge -IncludeDrafts
 ```
 
 要点：
 - 后端 `EasyBridge.Backend.csproj` 用 `CopyLocalLockFileAssemblies=true` 把 4 个 `Microsoft.CodeAnalysis*.dll` 拷进 `Plugins`
   （net8 的 `System.*` 在框架内、不拷）；`SatelliteResourceLanguages=en` 去掉本地化卫星目录。
-- `Copy-ModFiles` 会把 `Plugins` 里非声明插件的依赖 DLL（即 Roslyn）一并带到部署目录。
+- `Copy-ModFiles` 会把 `Plugins` 里非声明插件的依赖 DLL（即 Roslyn）一并带到部署目录，并把 `skills/` 整目录递归拷进部署目录（供使用者的 agent 读取）。
 - 游戏后端插件加载器把插件及其直接引用按字节加载、且其依赖解析是死代码，所以 `BackendPlugin` 自己挂了
   `AssemblyLoadContext.Default.Resolving`，用 `LoadFromAssemblyPath` 从本 mod 的 Plugins 目录解析 Roslyn 的传递依赖；
   脚本对本 mod 程序集的引用用 `CreateFromImage`（仅编译期 metadata）+ 钩子返回已加载的那份，避免跨 ALC 的类型身份冲突。

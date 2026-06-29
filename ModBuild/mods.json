@@ -60,7 +60,7 @@
         "EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj",
         "EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj"
       ],
-      "note": "Dev/test tool: one mod with a frontend UI pipe (taiwu-uibridge) and a backend state pipe (taiwu-testbridge, incl. /eval dynamic C#) for verifying mods. Not a Workshop release target."
+      "note": "Agent debugging bridge shared for others to debug their own mods: one mod with a frontend UI pipe (easybridge-ui) and a backend state pipe (easybridge-state, incl. /eval dynamic C#) for inspecting/driving the game and verifying mods."
     }
   ]
 }

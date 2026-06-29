@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace EasyBridge.Frontend
 {
-    [PluginConfig("EasyBridge", "RedContritio", "0.0.1")]
+    [PluginConfig("EasyBridge", "RedContritio", "0.1.0")]
     public class FrontendPlugin : TaiwuRemakePlugin
     {
         private PipeServer _server;
