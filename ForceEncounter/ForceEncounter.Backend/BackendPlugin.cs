@@ -10,7 +10,7 @@ using TaiwuModdingLib.Core.Plugin;
 
 namespace ForceEncounter.Backend
 {
-    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "1.0.0.5")]
+    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "1.0.0.6")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
         internal static string ModId;
