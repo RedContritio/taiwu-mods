@@ -573,6 +573,8 @@ sealed class ContractTests
         Assert(events.Contains("return ForceEncounterEventIds.事件.关押亲密反馈", StringComparison.Ordinal), "ForceEncounter prisoner intimate route should route to the prisoner intimate feedback");
         Assert(events.Contains("class ForceEncounterPrisonerForcedResultEvent", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner forced feedback event");
         Assert(events.Contains("ForceEncounterPrisonerText.BuildForcedResultContent", StringComparison.Ordinal), "ForceEncounter prisoner forced feedback should use the prisoner text catalog");
+        Assert(events.Contains("class ForceEncounterPrisonerAcceptedResultEvent", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner intimate feedback event");
+        Assert(events.Contains("ForceEncounterPrisonerText.BuildAcceptedResultContent", StringComparison.Ordinal), "ForceEncounter prisoner intimate feedback should use the prisoner text catalog");
     }
 
     private void CricketSingGradeColorContract()
