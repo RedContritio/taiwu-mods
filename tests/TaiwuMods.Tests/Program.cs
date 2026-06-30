@@ -557,6 +557,12 @@ sealed class ContractTests
         string eventIdsSource = ReadModFile(mod.Name, "ForceEncounter.Events", "ForceEncounterEventIds.cs");
         Assert(eventIdsSource.Contains("原生关押菜单", StringComparison.Ordinal), "ForceEncounter event ids should expose the kidnapped-interaction menu guid");
         Assert(eventIdsSource.Contains("情难自已关押", StringComparison.Ordinal), "ForceEncounter event ids should expose the prisoner execute option");
+
+        string events = ReadProjectDirectorySource(mod.Name, "ForceEncounter.Events");
+        Assert(events.Contains("class ForceEncounterPrisonerText", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner text catalog");
+        Assert(events.Contains("BuildForcedResultContent", StringComparison.Ordinal), "ForceEncounter prisoner text should build forced-result feedback");
+        Assert(events.Contains("无从抗拒", StringComparison.Ordinal), "ForceEncounter prisoner inner description should read as a bound captive");
+        Assert(!Regex.IsMatch(events, @"ForceEncounterPrisonerText[\s\S]{0,4000}?护卫"), "ForceEncounter prisoner text should not mention guards");
     }
 
     private void CricketSingGradeColorContract()
