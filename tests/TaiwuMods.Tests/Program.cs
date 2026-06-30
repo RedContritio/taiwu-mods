@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using M = CricketSingGradeColor.Frontend.EBlindBoxMode;
 
 var repo = FindRepoRoot();
 var test = new ContractTests(repo);
@@ -45,6 +46,7 @@ sealed class ContractTests
         Run("ModBuild auto-increment version wiring is stable", ModBuildAutoIncrementVersionWiring);
         Run("ForceEncounter interaction contract is wired", ForceEncounterInteractionContract);
         Run("CricketSingGradeColor contract is wired", CricketSingGradeColorContract);
+        Run("FertilityControl contract is wired", FertilityControlContract);
         Run("pure mod rules", PureModRules);
 
         if (_failures.Count > 0)
@@ -582,12 +584,38 @@ sealed class ContractTests
         Assert(calculator.Contains("SoundGradeConfig.FallbackTierColors", StringComparison.Ordinal), "CricketSingGradeColor should keep a fallback palette");
     }
 
+    private void FertilityControlContract()
+    {
+        ModEntry mod = _mods.Single(m => m.Name == "FertilityControl");
+        string config = ReadModFile(mod.Name, "config.lua");
+        string plugin = ReadModFile(mod.Name, "FertilityControl.Backend", "BackendPlugin.cs");
+        string patch = ReadModFile(mod.Name, "FertilityControl.Backend", "FertilityPatch.cs");
+        string version = ExtractLuaString(config, "Version");
+
+        Assert(config.Contains("Title = \"太吾必孕妙法\"", StringComparison.Ordinal), "FertilityControl title should stay aligned with the release name");
+        Assert(version == "1.0.0.0", "FertilityControl release version should stay on the 1.0.0.0 line");
+        Assert(config.Contains("GameVersion = \"1.0.44.0\"", StringComparison.Ordinal), "FertilityControl should target the latest verified game version");
+        Assert(config.Contains("Cover = \"cover.jpg\"", StringComparison.Ordinal), "FertilityControl should declare its local cover");
+        Assert(config.Contains("WorkshopCover = \"cover.jpg\"", StringComparison.Ordinal), "FertilityControl should use the same cover for Workshop preview");
+        Assert(plugin.Contains($"PluginConfig(\"FertilityControl\", \"RedContritio\", \"{version}\")", StringComparison.Ordinal), "FertilityControl PluginConfig version should match config.lua Version");
+        Assert(!config.Contains("SetAllFertility", StringComparison.Ordinal) &&
+               !config.Contains("AllFertilityValue", StringComparison.Ordinal), "FertilityControl should not expose the removed total-fertility override");
+        Assert(Regex.IsMatch(config, @"SettingType\s*=\s*""Dropdown"",\s*Key\s*=\s*""PregnancyCarrierMode""[\s\S]*?Options\s*=\s*\{\s*""原生父方怀孕"",\s*""原生母方怀孕"",\s*""固定太吾怀孕"",\s*""固定对方怀孕""\s*\}[\s\S]*?DefaultValue\s*=\s*1"), "FertilityControl should expose the four mutually exclusive pregnancy-carrier modes and default to native mother pregnancy");
+        foreach (string key in new[] { "SetFatherFertility", "FatherFertilityValue", "SetMotherFertility", "MotherFertilityValue" })
+        {
+            Assert(Regex.IsMatch(config, $@"Key\s*=\s*""{key}""\s*,\s*GroupName\s*=\s*""进阶设置"""), $"FertilityControl should put {key} in the advanced settings group");
+        }
+
+        Assert(patch.Contains("ShouldSwapPregnancyCarrier(father, mother)", StringComparison.Ordinal), "FertilityControl should apply the configured pregnancy carrier after role assignment");
+    }
+
     private static void PureModRules()
     {
         ForceEncounterRules();
         FertilityRules();
         AntiNtrRules();
         DreamLoverRules();
+        CricketBlindBoxRules();
     }
 
     private static void ForceEncounterRules()
@@ -627,10 +655,42 @@ sealed class ContractTests
         Assert(FertilityControl.Backend.FertilityRules.PassChildLimit(5, 5, 100, 100), "Fertility child limit should allow children equal to fertility / 20");
         Assert(!FertilityControl.Backend.FertilityRules.PassChildLimit(6, 5, 100, 100), "Fertility child limit should block father over limit");
         Assert(!FertilityControl.Backend.FertilityRules.PassChildLimit(5, 6, 100, 100), "Fertility child limit should block mother over limit");
+        Assert(FertilityControl.Backend.FertilityRules.PassChildLimit(99, 99, 0, 0, true), "Configured child-limit bypass should ignore both parents' current child counts");
+        Assert(FertilityControl.Backend.FertilityRules.CanUseNativePregnancyRole(1, false, 0, false), "Native pregnancy role should accept male father and female mother");
+        Assert(!FertilityControl.Backend.FertilityRules.CanUseNativePregnancyRole(1, false, 1, false), "Native pregnancy role should reject two male-role characters without a flexible-role feature");
+        Assert(FertilityControl.Backend.FertilityRules.CanResolveNativeMakeLoveRole(1, false, 0, false), "Native make-love role assignment should resolve opposite genders");
+        Assert(!FertilityControl.Backend.FertilityRules.CanResolveNativeMakeLoveRole(1, false, 1, false), "Native make-love role assignment should reject same-gender characters without a flexible-role feature");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldBypassNativeRoleGate(true, true, false), "Configured nonstandard-role bypass should apply only when the native role-assignment gate fails for a Taiwu pair");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassNativeRoleGate(false, true, false), "Nonstandard-role bypass should default off");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassNativeRoleGate(true, false, false), "Role-assignment bypass should ignore non-Taiwu pairs");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassNativeRoleGate(true, true, true), "Role-assignment bypass should leave native-legal pairs on the native path");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldBypassPregnancyRoleCheck(false, true, false, true, FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeFather), "Native-father pregnancy should bypass the native mother/father role check after a native-resolvable role assignment");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassPregnancyRoleCheck(false, true, false, false, FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeFather), "Pregnancy carrier mode should not bypass a nonstandard role check when nonstandard combinations are disabled");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldBypassPregnancyRoleCheck(true, true, false, false, FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeMother), "Nonstandard-role setting should bypass the pregnancy role check");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassPregnancyRoleCheck(false, true, false, true, FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeMother), "Native-mother mode should keep the pregnancy role-check bypass default off");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassPregnancyRoleCheck(false, false, false, true, FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeFather), "Pregnancy role-check bypass should ignore non-Taiwu pairs");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBypassPregnancyRoleCheck(false, true, true, true, FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeFather), "Pregnancy role-check bypass should leave native-legal pairs on the native path");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldUseConfiguredCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeFather, true), "Native-father pregnancy should apply a configured carrier");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldUseConfiguredCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeMother, true), "Native-mother pregnancy should preserve native carrier order");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldUseConfiguredCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierTaiwu, false), "Pregnancy carrier mode should ignore non-Taiwu pairs");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldSwapForPregnancyCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeFather, 1, 2, 1), "Native-father pregnancy should swap the native father into the pregnant side");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldSwapForPregnancyCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeMother, 1, 2, 1), "Native-mother pregnancy should not swap roles");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldSwapForPregnancyCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierTaiwu, 1, 1, 2), "Fixed Taiwu pregnancy should swap when Taiwu is currently father");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldSwapForPregnancyCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierTaiwu, 1, 2, 1), "Fixed Taiwu pregnancy should not swap when Taiwu is already mother");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldSwapForPregnancyCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierPartner, 1, 2, 1), "Fixed partner pregnancy should swap when Taiwu is currently mother");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldSwapForPregnancyCarrier(FertilityControl.Backend.FertilityRules.PregnancyCarrierPartner, 1, 1, 2), "Fixed partner pregnancy should not swap when partner is already mother");
+        Assert(FertilityControl.Backend.FertilityRules.NormalizePregnancyCarrierMode(99) == FertilityControl.Backend.FertilityRules.PregnancyCarrierNativeMother, "Invalid pregnancy-carrier settings should fall back to native mother pregnancy");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldOverridePregnancyCheck(false, false, true), "Ignoring child limit alone should take over CheckPregnant instead of falling through to the native child-limit gate");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldOverridePregnancyCheck(false, false, false), "FertilityControl should leave native pregnancy math alone when no pregnancy check setting is active");
         Assert(FertilityControl.Backend.FertilityRules.CalculatePregnancyChance(false, 100, 100, false, 0) == 60, "Normal pregnancy chance should match native base chance");
         Assert(FertilityControl.Backend.FertilityRules.CalculatePregnancyChance(true, 100, 100, false, 0) == 20, "Rape pregnancy chance should match native base chance");
         Assert(FertilityControl.Backend.FertilityRules.CalculatePregnancyChance(false, 1, 1, true, 77) == 77, "Explicit pregnancy rate should override fertility math");
-        Assert(FertilityControl.Backend.FertilityRules.CalculateTotalFertilityChance(false, 7500) == 45, "Total fertility override should scale normal base chance");
+        Assert(FertilityControl.Backend.FertilityRules.CalculatePregnancyChance(false, 0, 0, true, 77) == 77, "Explicit pregnancy rate should ignore zero fertility in probability math");
+        Assert(FertilityControl.Backend.FertilityRules.ShouldBlockForZeroFertility(0, 100, false), "Fertility math should block zero father fertility");
+        Assert(!FertilityControl.Backend.FertilityRules.ShouldBlockForZeroFertility(0, 100, true), "Explicit pregnancy rate should bypass the zero-fertility shortcut");
+        Assert(FertilityControl.Backend.FertilityRules.IsTaiwuInvolved(1, 1, 2), "Taiwu involvement should match the first character");
+        Assert(FertilityControl.Backend.FertilityRules.IsTaiwuInvolved(1, 2, 1), "Taiwu involvement should match the second character");
+        Assert(!FertilityControl.Backend.FertilityRules.IsTaiwuInvolved(-1, 1, 2), "Taiwu involvement should be false when Taiwu is unavailable");
         Assert(FertilityControl.Backend.FertilityRules.ShouldOverrideInbreeding(true, true), "Inbreeding override should apply when enabled and Taiwu is involved");
         Assert(!FertilityControl.Backend.FertilityRules.ShouldOverrideInbreeding(true, false), "Inbreeding override should ignore non-Taiwu pairs");
         Assert(FertilityControl.Backend.FertilityRules.ShouldOverrideCricketRate(true, false, true), "Cricket override should apply to new Taiwu pregnancies");
@@ -762,6 +822,42 @@ sealed class ContractTests
         Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(2, false), "DreamLover should skip non-ordinary CreatingType 2 characters");
         Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(3, false), "DreamLover should skip enemy-template characters (CreatingType 3)");
         Assert(!DreamLover.Backend.DreamLoverRules.IsOrdinaryRelationshipTarget(1, true), "DreamLover should skip temporary event/adventure characters");
+    }
+
+    private static void CricketBlindBoxRules()
+    {
+        int Resolve(int trueGrade, int threshold, M mode, bool enabled = true, int seed = 12345, int gc = 9, int pitch = 3, int size = 40)
+            => CricketSingGradeColor.Frontend.BlindBox.ResolveDisplayGrade(trueGrade, pitch, size, enabled, threshold, mode, seed, gc);
+
+        // 未启用 → 显示真实品级
+        Assert(Resolve(8, 7, M.FixedTop, enabled: false) == 8, "BlindBox disabled should show the true grade");
+        // 真实品级低于门槛 → 显示真实品级
+        Assert(Resolve(5, 7, M.FixedTop) == 5, "BlindBox below threshold should show the true grade");
+        // 固定一品 / 九品 / 门槛 / 白色
+        Assert(Resolve(7, 7, M.FixedTop) == 8, "FixedTop should display the top grade");
+        Assert(Resolve(8, 7, M.FixedBottom) == 0, "FixedBottom should display the bottom grade");
+        Assert(Resolve(8, 7, M.FixedThreshold) == 7, "FixedThreshold should display the threshold grade");
+        Assert(Resolve(8, 7, M.VanillaWhite) == -1, "VanillaWhite should signal a reset to vanilla white");
+        // 随机高在 [门槛, 8]
+        int hi = Resolve(8, 7, M.RandomHigh);
+        Assert(hi >= 7 && hi <= 8, "RandomHigh should pick within the high partition");
+        // 随机低在 [0, 门槛-1]
+        int lo = Resolve(8, 7, M.RandomLow);
+        Assert(lo >= 0 && lo <= 6, "RandomLow should pick within the low partition");
+        // 确定性：相同输入相同输出
+        Assert(Resolve(8, 7, M.RandomLow, seed: 999) == Resolve(8, 7, M.RandomLow, seed: 999), "Random pick should be deterministic for the same seed");
+        // 盐不同结果可变（低区跨度大，至少两种取值）
+        var seen = new HashSet<int>();
+        for (int s = 0; s < 16; s++) seen.Add(Resolve(8, 7, M.RandomLow, seed: s));
+        Assert(seen.Count > 1, "Random pick should vary across session seeds");
+        // 空低区（门槛=九品）回退 grade 0
+        Assert(Resolve(8, 0, M.RandomLow) == 0, "RandomLow with empty low partition should fall back to grade 0");
+        // 场次盐：相同输入相同、不同输入不同
+        int seedA = CricketSingGradeColor.Frontend.BlindBox.ComputeSessionSeed(new[] { 1, 2, 3 }, new[] { 0, 0, 5 });
+        int seedB = CricketSingGradeColor.Frontend.BlindBox.ComputeSessionSeed(new[] { 1, 2, 3 }, new[] { 0, 0, 5 });
+        int seedC = CricketSingGradeColor.Frontend.BlindBox.ComputeSessionSeed(new[] { 1, 2, 4 }, new[] { 0, 0, 5 });
+        Assert(seedA == seedB, "ComputeSessionSeed should be deterministic for identical compositions");
+        Assert(seedA != seedC, "ComputeSessionSeed should differ for different compositions");
     }
 
     private static HashSet<string> ExtractHarmonyPatchMethods(string source)

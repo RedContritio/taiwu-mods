@@ -13,5 +13,6 @@
     <Compile Include="..\..\ForceEncounter\ForceEncounter.Shared\ForceEncounterConstants.cs" Link="Rules\ForceEncounterConstants.cs" />
     <Compile Include="..\..\ForceEncounter\ForceEncounter.Backend\ForceEncounterIntimateAcceptanceDecision.cs" Link="Rules\ForceEncounterIntimateAcceptanceDecision.cs" />
     <Compile Include="..\..\ForceEncounter\ForceEncounter.Backend\ForceEncounterRules.cs" Link="Rules\ForceEncounterRules.cs" />
+    <Compile Include="..\..\CricketSingGradeColor\CricketSingGradeColor.Frontend\BlindBox.cs" Link="Rules\BlindBox.cs" />
   </ItemGroup>
 </Project>
