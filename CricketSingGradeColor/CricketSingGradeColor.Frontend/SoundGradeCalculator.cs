@@ -47,16 +47,51 @@ namespace CricketSingGradeColor.Frontend
 
         public static bool TryGetTierColor(int singPitch, int singSize, out Color color)
         {
-            EnsureCalibrated();
             color = Color.white;
+            if (!TryGetGrade(singPitch, singSize, out int grade))
+            {
+                return false;
+            }
+
+            return TryGetColorForGrade(grade, out color);
+        }
+
+        /// <summary>声音 (音高,圈大小) 映射到的「声音品级」index（品级锚定，最近锚点）。</summary>
+        public static bool TryGetGrade(int singPitch, int singSize, out int grade)
+        {
+            EnsureCalibrated();
+            grade = 0;
             if (!_calibrated)
             {
                 return false;
             }
 
-            int grade = NearestGrade(Score(singPitch, singSize));
+            grade = NearestGrade(Score(singPitch, singSize));
+            return true;
+        }
+
+        /// <summary>品级 index 取调色板颜色（clamp 到合法范围）。</summary>
+        public static bool TryGetColorForGrade(int grade, out Color color)
+        {
+            EnsureCalibrated();
+            color = Color.white;
+            if (!_calibrated || _palette == null || _palette.Length == 0)
+            {
+                return false;
+            }
+
             color = _palette[Mathf.Clamp(grade, 0, _palette.Length - 1)];
             return true;
+        }
+
+        /// <summary>已校准调色板的品级档数（一般为 9）；未校准成功时为 0。</summary>
+        public static int GradeCount
+        {
+            get
+            {
+                EnsureCalibrated();
+                return (_calibrated && _palette != null) ? _palette.Length : 0;
+            }
         }
 
         /// <summary>The 品级 whose anchor score is closest to this call's score.</summary>
