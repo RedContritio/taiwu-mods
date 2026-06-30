@@ -591,6 +591,13 @@ sealed class ContractTests
         Assert(backendIds.Contains("NativeKidnappedInteractionEventGuid", StringComparison.Ordinal), "ForceEncounter backend ids should expose the kidnapped-interaction menu guid");
         Assert(backendIds.Contains("PrisonerEntryEventGuid", StringComparison.Ordinal), "ForceEncounter backend ids should expose the prisoner entry guid");
         Assert(backendIds.Contains("ExecutePrisonerOptionKey", StringComparison.Ordinal), "ForceEncounter backend ids should expose the prisoner execute option key");
+
+        string prisonerTip = ReadModFile(mod.Name, "Config", "EventOptionTipsInfoPrisoner.lua");
+        Assert(prisonerTip.Contains("ConfigName = \"EventOptionTipsInfo\"", StringComparison.Ordinal), "ForceEncounter prisoner tip should add native event option help metadata");
+        Assert(prisonerTip.Contains("SrcConfigRefName = \"袭击\"", StringComparison.Ordinal), "ForceEncounter prisoner tip should clone the formal hostile tips row");
+        Assert(prisonerTip.Contains("Guid = { \"7a1c2d3e-4f50-4617-8293-0a1b2c3d4e60\" }", StringComparison.Ordinal), "ForceEncounter prisoner tip should map to the prisoner execute option guid");
+        Assert(prisonerTip.Contains("作罢不消耗行动力", StringComparison.Ordinal), "ForceEncounter prisoner tip should explain that abandon does not consume action time");
+        Assert(!prisonerTip.Contains("开战", StringComparison.Ordinal), "ForceEncounter prisoner tip should not mention combat");
     }
 
     private void CricketSingGradeColorContract()
