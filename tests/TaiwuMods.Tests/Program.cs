@@ -589,6 +589,14 @@ sealed class ContractTests
         Assert(seedPatch.Contains("[HarmonyPatch(typeof(ViewCatchCricket), \"InitCatchPlace\")]", StringComparison.Ordinal), "CricketSingGradeColor should patch InitCatchPlace to derive a per-session seed");
         Assert(seedPatch.Contains("BlindBox.ComputeSessionSeed", StringComparison.Ordinal), "CricketSingGradeColor session seed should hash the grass cricket composition");
         Assert(seedPatch.Contains("BlindBoxConfig.SessionSeed", StringComparison.Ordinal), "CricketSingGradeColor session seed patch should store the seed for the colorizer");
+
+        Assert(version == "1.1.0.0", "CricketSingGradeColor should ship the blind-box feature on the 1.1.0.0 line");
+        Assert(config.Contains("SettingGroups = { \"声音品级\", \"高品盲盒\" }", StringComparison.Ordinal), "CricketSingGradeColor should declare the sound-grade and blind-box setting groups");
+        Assert(Regex.IsMatch(config, @"Key\s*=\s*""BlendMode""[\s\S]*?GroupName\s*=\s*""声音品级"""), "CricketSingGradeColor BlendMode should sit in the sound-grade group");
+        Assert(Regex.IsMatch(config, @"SettingType\s*=\s*""Toggle"",\s*Key\s*=\s*""EnableBlindBox""[\s\S]*?GroupName\s*=\s*""高品盲盒""[\s\S]*?DefaultValue\s*=\s*false"), "CricketSingGradeColor should expose a disabled-by-default blind-box toggle in the blind-box group");
+        Assert(Regex.IsMatch(config, @"SettingType\s*=\s*""Dropdown"",\s*Key\s*=\s*""BlindBoxThreshold""[\s\S]*?GroupName\s*=\s*""高品盲盒""[\s\S]*?DefaultValue\s*=\s*7"), "CricketSingGradeColor blind-box threshold should default to 二品 (index 7)");
+        Assert(Regex.IsMatch(config, @"SettingType\s*=\s*""Dropdown"",\s*Key\s*=\s*""BlindBoxMode""[\s\S]*?GroupName\s*=\s*""高品盲盒""[\s\S]*?DefaultValue\s*=\s*2"), "CricketSingGradeColor blind-box mode should default to 固定一品 (index 2)");
+        Assert(plugin.Contains("\"EnableBlindBox\"", StringComparison.Ordinal) && plugin.Contains("\"BlindBoxThreshold\"", StringComparison.Ordinal) && plugin.Contains("\"BlindBoxMode\"", StringComparison.Ordinal), "CricketSingGradeColor plugin should read all three blind-box settings");
     }
 
     private void FertilityControlContract()

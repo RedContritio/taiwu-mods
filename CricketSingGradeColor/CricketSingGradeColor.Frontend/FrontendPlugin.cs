@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace CricketSingGradeColor.Frontend
 {
-    [PluginConfig("CricketSingGradeColor", "RedContritio", "1.0.0.0")]
+    [PluginConfig("CricketSingGradeColor", "RedContritio", "1.1.0.0")]
     public sealed class FrontendPlugin : TaiwuRemakePlugin
     {
         private Harmony _harmony;
@@ -51,10 +51,36 @@ namespace CricketSingGradeColor.Frontend
                     ModManager.GetSetting(_modId, "BlendMode", ref index);
                 }
                 SoundGradeConfig.ApplyBlend(index);
+                ReadBlindBoxSettings();
             }
             catch (Exception ex)
             {
                 Debug.LogWarning("[CricketSingGradeColor] Could not read BlendMode setting, using default: " + ex);
+            }
+        }
+
+        /// <summary>读取「高品盲盒」三项设置写入 BlindBoxConfig（开关 / 门槛品级 / 盲盒形式）。</summary>
+        private void ReadBlindBoxSettings()
+        {
+            try
+            {
+                bool enabled = false;
+                int threshold = 7;
+                int mode = (int)EBlindBoxMode.FixedTop;
+                if (!string.IsNullOrEmpty(_modId))
+                {
+                    ModManager.GetSetting(_modId, "EnableBlindBox", ref enabled);
+                    ModManager.GetSetting(_modId, "BlindBoxThreshold", ref threshold);
+                    ModManager.GetSetting(_modId, "BlindBoxMode", ref mode);
+                }
+
+                BlindBoxConfig.Enabled = enabled;
+                BlindBoxConfig.ThresholdGrade = threshold;
+                BlindBoxConfig.Mode = (EBlindBoxMode)mode;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[CricketSingGradeColor] Could not read blind-box settings, using defaults: " + ex);
             }
         }
 
