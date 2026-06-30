@@ -77,11 +77,13 @@ SettingGroups = { "声音品级", "高品盲盒" },
 
 ### 随机的确定性与「场次盐」
 
-`pick([lo, hi])` 必须**稳定**，否则同一蛐蛐每次鸣叫会闪色。种子 = 确定性散列 `hash(SingPitch, SingSize, SessionToken)`：
+`pick([lo, hi])` 必须**稳定**，否则同一蛐蛐每次鸣叫会闪色。decoy 种子 = 确定性散列 `hash(place.SingPitch, place.SingSize, SessionSeed)`：
 
-- `(SingPitch, SingSize)`：该位置蛐蛐固定不变的声音签名（与现有「同位置颜色稳定」同源）。
-- `SessionToken`：本次小游戏场次号。`ViewCatchCricket.InitCatchPlace()`（无参，每进入一次捕蛐蛐场次调用一次、重建 21 个位置）挂 Postfix，每次自增 `SessionToken`。
-  - 效果：**同一场次内** token 不变 → 圈色稳定不闪；**换场次重刷** token 改变 → 同一只蛐蛐的盲盒色可能不同，强化盲盒感。
+- `(SingPitch, SingSize)`：该位置蛐蛐固定不变的声音签名（与现有「同位置颜色稳定」同源）——区分**同一场次内不同位置**的盲盒色。
+- `SessionSeed`：**本场全部草丛蛐蛐的内容散列**。捕蛐蛐开局时 `ViewCatchCricket.InitCatchPlace()`（无参）一次性确定全部 21 个位置的蛐蛐；其结束时 `_catchPlaceList[0..20]` 的 `CricketColorId`/`CricketPartsId`/`SingPitch`/`SingSize` 均已填好（反编译 70286-70287 行确认）。对其 Postfix，按**位置顺序**把 21 个 `(CricketColorId, CricketPartsId)`（蛐蛐根身份）散列成一个 int 存入 `BlindBoxConfig.SessionSeed`——区分**不同场次**。
+  - 效果：**同一场次内** seed 不变 → 圈色稳定不闪；**换场次重刷**（草丛组成不同）seed 改变 → 同一只蛐蛐的盲盒色可能不同，强化盲盒感。
+  - 由游戏状态直接决定、可复现（无可变计数器）；两场组成完全相同 → seed 相同，可接受。
+  - 反射读取 `_catchPlaceList` 失败时回退 `SessionSeed = 0`（仍确定性，仅丢失换场次变化），不抛错。
 - 散列用稳定整数运算（避免依赖 `Object.GetHashCode`），`((seed % range) + range) % range + lo` 落入 `[lo, hi]`。
 
 ### 「固定默认白色」=还原原版
@@ -90,7 +92,7 @@ SettingGroups = { "声音品级", "高品盲盒" },
 
 ## 代码结构（小单元、不污染卡片视图共享路径）
 
-1. **`BlindBoxConfig.cs`（新）**：`Enabled` / `ThresholdGrade`(int 0..8) / `Mode`(枚举) 静态字段；`EBlindBoxMode` 枚举；`SessionToken` 静态计数器。品级中文名与 hex 色表常量（供文档/校验，不强依赖）。
+1. **`BlindBoxConfig.cs`（新）**：`Enabled` / `ThresholdGrade`(int 0..8) / `Mode`(枚举) 静态字段；`EBlindBoxMode` 枚举；`SessionSeed` 静态字段。品级中文名与 hex 色表常量（供文档/校验，不强依赖）。
 2. **`SoundGradeCalculator.cs`**：拆出
    - `bool TryGetGrade(int pitch, int size, out int grade)`
    - `bool TryGetColorForGrade(int grade, out Color color)`（clamp 到 palette）
@@ -102,7 +104,7 @@ SettingGroups = { "声音品级", "高品盲盒" },
    - 原 `Colorize`（卡片视图用）**不变**。
 4. **`BlindBox.cs`（新，或并入 RippleColorizer）**：纯逻辑 `Resolve(int trueGrade, int pitch, int size, out int displayGrade, out bool vanillaWhite)`，无 Unity 依赖、易单测。
 5. **`CricketSingColorPatch.cs`**：catch 路径由 `Colorize` 改调 `ColorizeForCatch`。
-6. **`SessionTokenPatch.cs`（新）**：`[HarmonyPatch(typeof(ViewCatchCricket), "InitCatchPlace", new Type[0])]` Postfix → `BlindBoxConfig.SessionToken++`。
+6. **`SessionSeedPatch.cs`（新）**：`[HarmonyPatch(typeof(ViewCatchCricket), "InitCatchPlace", new Type[0])]` Postfix(`__instance`) → 反射读 `_catchPlaceList`，按位置顺序散列 21 个 `(CricketColorId, CricketPartsId)` 写入 `BlindBoxConfig.SessionSeed`（失败回退 0）。
 7. **`FrontendPlugin.cs`**：`ReloadSettings` 读取 `EnableBlindBox` / `BlindBoxThreshold` / `BlindBoxMode` 写入 `BlindBoxConfig`（沿用 `ModManager.GetSetting`）；`PluginConfig` 版本 → `1.1.0.0`。
 8. **`config.lua`**：加 `SettingGroups` 与三项设置；`Version` → `1.1.0.0`。
 9. **`README.md`**：新增「高品盲盒」一节（含 6 种盲盒形式、门槛、场次盐说明、仅捕捉小游戏生效）。
@@ -115,14 +117,14 @@ SettingGroups = { "声音品级", "高品盲盒" },
 - `BlindBoxThreshold` / `BlindBoxMode` index 读取后 clamp 到合法范围。
 - 随机区间为空：回退到边界 grade（见上）。
 - 盲盒逻辑只在 catch 路径生效，卡片视图零影响（回归点：斗蛐蛐/收藏罐仍显示真实计算色）。
-- `SessionToken` 仅做散列盐，溢出无害（按需取模）。
+- `SessionSeed` 仅做散列盐，溢出无害（按需取模）；反射失败回退 0。
 
 ## 测试与验证
 
 - 单元（`BlindBox.Resolve`，纯逻辑，可进 `tests/TaiwuMods.Tests`）：
   - `grade < 阈值` → 显示真实 grade，盲盒不触发。
   - 各模式映射正确（固定一品/九品/门槛；随机落在对应区间）。
-  - 随机确定性：相同 `(pitch,size,token)` 多次调用同结果；`token` 改变结果可变。
+  - 随机确定性：相同 `(pitch,size,SessionSeed)` 多次调用同结果；`SessionSeed` 改变结果可变。
   - 空区间回退正确（阈值=九品的随机低）。
 - 手动/在用（EasyBridge 或实机）：
   - 关闭开关 → 与旧版逐位置颜色一致（回归）。
