@@ -25,6 +25,11 @@ namespace ForceEncounter.Events
             public const string 战斗反馈 = ForceEncounterConstants.EventGuids.CombatResult;
             public const string 擒获处置 = ForceEncounterConstants.EventGuids.CapturedTargetDisposition;
             public const string 亲密反馈 = ForceEncounterConstants.EventGuids.AcceptedResult;
+            public const string 原生关押菜单 = ForceEncounterConstants.EventGuids.NativeKidnappedInteraction;
+            public const string 关押外层入口 = ForceEncounterConstants.EventGuids.PrisonerEntry;
+            public const string 关押内层选择 = ForceEncounterConstants.EventGuids.PrisonerConsentChoice;
+            public const string 关押强制反馈 = ForceEncounterConstants.EventGuids.PrisonerForcedResult;
+            public const string 关押亲密反馈 = ForceEncounterConstants.EventGuids.PrisonerAcceptedResult;
         }
 
         public static class 选项
@@ -40,6 +45,12 @@ namespace ForceEncounter.Events
             public static readonly EventOptionId 释放擒获目标 = new(ForceEncounterConstants.Options.ReleaseCapturedTargetKey, ForceEncounterConstants.Options.ReleaseCapturedTargetGuid);
             public static readonly EventOptionId 亲密反馈继续 = new(ForceEncounterConstants.Options.AcceptedResultContinueKey, ForceEncounterConstants.Options.AcceptedResultContinueGuid);
             public static readonly EventOptionId 护卫继续 = new(ForceEncounterConstants.Options.GuardContinueKey, ForceEncounterConstants.Options.GuardContinueGuid);
+            public static readonly EventOptionId 情难自已关押 = new(ForceEncounterConstants.Options.ExecutePrisonerKey, ForceEncounterConstants.Options.ExecutePrisonerGuid);
+            public static readonly EventOptionId 关押正常发生关系 = new(ForceEncounterConstants.Options.PrisonerNormalEncounterKey, ForceEncounterConstants.Options.PrisonerNormalEncounterGuid);
+            public static readonly EventOptionId 关押强制关系 = new(ForceEncounterConstants.Options.PrisonerForceCombatKey, ForceEncounterConstants.Options.PrisonerForceCombatGuid);
+            public static readonly EventOptionId 关押其他话题 = new(ForceEncounterConstants.Options.PrisonerAbandonKey, ForceEncounterConstants.Options.PrisonerAbandonGuid);
+            public static readonly EventOptionId 关押强制反馈继续 = new(ForceEncounterConstants.Options.PrisonerForcedContinueKey, ForceEncounterConstants.Options.PrisonerForcedContinueGuid);
+            public static readonly EventOptionId 关押亲密反馈继续 = new(ForceEncounterConstants.Options.PrisonerAcceptedContinueKey, ForceEncounterConstants.Options.PrisonerAcceptedContinueGuid);
         }
 
         public static class 等待确认

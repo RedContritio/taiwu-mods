@@ -45,6 +45,7 @@ sealed class ContractTests
         Run("Harmony manifest matches source patch surface", HarmonyManifestMatchesSourcePatchSurface);
         Run("ModBuild auto-increment version wiring is stable", ModBuildAutoIncrementVersionWiring);
         Run("ForceEncounter interaction contract is wired", ForceEncounterInteractionContract);
+        Run("ForceEncounter prisoner interaction contract is wired", ForceEncounterPrisonerInteractionContract);
         Run("CricketSingGradeColor contract is wired", CricketSingGradeColorContract);
         Run("FertilityControl contract is wired", FertilityControlContract);
         Run("pure mod rules", PureModRules);
@@ -534,6 +535,28 @@ sealed class ContractTests
         Assert(!backend.Contains("ChangeCurrMainAttribute(context, 4, -GlobalConfig.Instance.HarmfulActionCost)", StringComparison.Ordinal), "ForceEncounter backend should not double-consume costs handled by native option metadata");
         Assert(backend.Contains("CanResolveAsIntimateAcceptance", StringComparison.Ordinal), "ForceEncounter does not check intimate acceptance before combat");
         Assert(Regex.IsMatch(backend, @"ExecuteAcceptedEncounter[\s\S]*?!CanResolveAsIntimateAcceptance\(actor,\s*target,\s*""AcceptedCommitRecheck""\)[\s\S]*?ForceEncounterConstants\.Reasons\.NeedCombatChoice"), "ForceEncounter accepted commit should re-check intimate acceptance and refuse direct backend bypasses");
+    }
+
+    private void ForceEncounterPrisonerInteractionContract()
+    {
+        ModEntry mod = _mods.Single(m => m.Name == "ForceEncounter");
+        string sharedIds = ReadModFile(mod.Name, "ForceEncounter.Shared", "ForceEncounterConstants.cs");
+
+        Assert(ExtractNestedConst(sharedIds, "EventGuids", "NativeKidnappedInteraction") == "2e651ccb-3a77-447a-a74f-c9a24a1a32d1", "ForceEncounter native kidnapped-interaction menu guid changed unexpectedly");
+        foreach (string guidName in new[] { "PrisonerEntry", "PrisonerConsentChoice", "PrisonerForcedResult", "PrisonerAcceptedResult" })
+        {
+            Assert(!string.IsNullOrWhiteSpace(ExtractNestedConst(sharedIds, "EventGuids", guidName)), $"ForceEncounter prisoner event guid {guidName} is empty");
+        }
+
+        foreach (string optionName in new[] { "ExecutePrisoner", "PrisonerNormalEncounter", "PrisonerForceCombat", "PrisonerAbandon", "PrisonerForcedContinue", "PrisonerAcceptedContinue" })
+        {
+            Assert(!string.IsNullOrWhiteSpace(ExtractNestedConst(sharedIds, "Options", optionName + "Key")), $"ForceEncounter prisoner option key {optionName} is empty");
+            Assert(!string.IsNullOrWhiteSpace(ExtractNestedConst(sharedIds, "Options", optionName + "Guid")), $"ForceEncounter prisoner option guid {optionName} is empty");
+        }
+
+        string eventIdsSource = ReadModFile(mod.Name, "ForceEncounter.Events", "ForceEncounterEventIds.cs");
+        Assert(eventIdsSource.Contains("原生关押菜单", StringComparison.Ordinal), "ForceEncounter event ids should expose the kidnapped-interaction menu guid");
+        Assert(eventIdsSource.Contains("情难自已关押", StringComparison.Ordinal), "ForceEncounter event ids should expose the prisoner execute option");
     }
 
     private void CricketSingGradeColorContract()

@@ -72,6 +72,11 @@ namespace ForceEncounter.Shared
             public const string CombatResult = "ea75dd81-9054-4e54-9e6e-799669e2fb41";
             public const string CapturedTargetDisposition = "b607fb0e-411d-4ef3-b0b2-8ac9efde7dd4";
             public const string AcceptedResult = "5af48fa3-2fa8-44c5-8a04-8ad9805d3f47";
+            public const string NativeKidnappedInteraction = "2e651ccb-3a77-447a-a74f-c9a24a1a32d1";
+            public const string PrisonerEntry = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e50";
+            public const string PrisonerConsentChoice = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e51";
+            public const string PrisonerForcedResult = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e52";
+            public const string PrisonerAcceptedResult = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e53";
         }
 
         public static class Options
@@ -98,6 +103,18 @@ namespace ForceEncounter.Shared
             public const string AcceptedResultContinueGuid = "8d6c8b16-2eb7-46f4-b3f5-e7e9b7d5bf46";
             public const string GuardContinueKey = "ForceEncounter.GuardInterceptContinue";
             public const string GuardContinueGuid = "24d8d555-70c2-4c47-8518-1e74cfdbf2e9";
+            public const string ExecutePrisonerKey = "ForceEncounter.ExecutePrisoner";
+            public const string ExecutePrisonerGuid = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e60";
+            public const string PrisonerNormalEncounterKey = "ForceEncounter.PrisonerNormalEncounter";
+            public const string PrisonerNormalEncounterGuid = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e61";
+            public const string PrisonerForceCombatKey = "ForceEncounter.PrisonerForceCombat";
+            public const string PrisonerForceCombatGuid = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e62";
+            public const string PrisonerAbandonKey = "ForceEncounter.PrisonerAbandon";
+            public const string PrisonerAbandonGuid = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e63";
+            public const string PrisonerForcedContinueKey = "ForceEncounter.PrisonerForcedContinue";
+            public const string PrisonerForcedContinueGuid = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e64";
+            public const string PrisonerAcceptedContinueKey = "ForceEncounter.PrisonerAcceptedContinue";
+            public const string PrisonerAcceptedContinueGuid = "7a1c2d3e-4f50-4617-8293-0a1b2c3d4e65";
         }
 
         public static class WaitConfirm
