@@ -45,6 +45,14 @@
       ]
     },
     {
+      "name": "EasyQuickSaveLoad",
+      "status": "release",
+      "projects": [
+        "EasyQuickSaveLoad/EasyQuickSaveLoad.Backend/EasyQuickSaveLoad.Backend.csproj",
+        "EasyQuickSaveLoad/EasyQuickSaveLoad.Frontend/EasyQuickSaveLoad.Frontend.csproj"
+      ]
+    },
+    {
       "name": "ExampleMod",
       "status": "sample",
       "projects": [
