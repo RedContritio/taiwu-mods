@@ -51,5 +51,10 @@ namespace DreamLover.Backend
             var locB = b.GetLocation();
             return locA.AreaId == locB.AreaId && locA.BlockId == locB.BlockId;
         }
+
+        public static bool IsAtSameArea(Character a, Character b)
+        {
+            return a.GetLocation().AreaId == b.GetLocation().AreaId;
+        }
     }
 }

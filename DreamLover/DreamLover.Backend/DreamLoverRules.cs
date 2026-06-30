@@ -4,53 +4,89 @@ namespace DreamLover.Backend
 {
     internal static class DreamLoverRules
     {
-        // 有序档位筛选用 [min,max] 闭区间表示（下拉框两端，索引 0 起始）。各维度的等级值即区间索引：
-        //  - 好感：favorType(-6..6) 偏移成索引 favorType+6 (0..12)
-        //  - 立场：goodnessLevel(BehaviorType, 0..4)
-        //  - 魅力：charmLevel(GetAttractionType, 0..8)
-        //  - 阶层：rankLevel(GetInteractionGrade, 0=九品..8=一品)
-        //  - 入魔：infectState(GetInfectionState, 0..2)
-        // 区间端点顺序无关（自动取小/大），两端取到底=不限该维度，两端同档=仅该档。
-        public static bool PassBasicFilters(
+        // 廉价门（无关系查询）：性别 / 追求范围 / 年龄。先于较重的好感/关系查询，用以挡掉绝大多数 NPC（性能）。
+        // 性别：六个开关「或」——命中任一被勾选的类别即通过；全不勾=无人。
+        //  同性/异性 按生理性别相对太吾；男性/女性 为生理性别；男生女相=生理男且变装、女生男相=生理女且变装(显示性别≠生理性别)。
+        // 追求范围（递进）：0=同道(仅太吾同伴) ⊂ 1=同格 ⊂ 2=同区域 ⊂ 3+=不受距离限制。
+        public static bool PassGenderRangeAge(
             bool acceptSameGender,
-            bool sameGender,
-            bool ignoreDistance,
+            bool acceptOppositeGender,
+            bool acceptMale,
+            bool acceptFemale,
+            bool acceptMaleLooksFemale,
+            bool acceptFemaleLooksMale,
+            sbyte npcGender,
+            sbyte taiwuGender,
+            bool npcIsTransgender,
+            int range,
+            bool npcInTaiwuGroup,
             bool sameLocation,
+            bool sameArea,
             int ageYears,
             int minAge,
-            int maxAge,
-            sbyte favorType,
-            int favorMin,
-            int favorMax,
-            int goodnessLevel,
-            int goodMin,
-            int goodMax,
-            sbyte charmLevel,
-            int charmMin,
-            int charmMax,
-            sbyte rankLevel,
-            int rankMin,
-            int rankMax,
-            int infectState,
-            int infectMin,
-            int infectMax)
+            int maxAge)
         {
-            if (!acceptSameGender && sameGender)
+            bool sameGender = npcGender == taiwuGender;
+            bool npcIsMale = npcGender == 1;
+            bool genderOk =
+                (acceptSameGender && sameGender) ||
+                (acceptOppositeGender && !sameGender) ||
+                (acceptMale && npcIsMale) ||
+                (acceptFemale && !npcIsMale) ||
+                (acceptMaleLooksFemale && npcIsMale && npcIsTransgender) ||
+                (acceptFemaleLooksMale && !npcIsMale && npcIsTransgender);
+            if (!genderOk)
                 return false;
-            if (!ignoreDistance && !sameLocation)
+
+            bool geoOk = range <= 0
+                ? npcInTaiwuGroup
+                : range == 1 ? (sameLocation || npcInTaiwuGroup)
+                : range == 2 ? (sameArea || npcInTaiwuGroup)
+                : true;
+            if (!geoOk)
                 return false;
+
             if (ageYears < minAge || ageYears > maxAge)
                 return false;
 
-            if (!InBand(favorType + 6, favorMin, favorMax))
+            return true;
+        }
+
+        // 逐档筛选：每维度一个 bool[]（索引=档位，勾选=接受该档）。各维度等级值即档位索引：
+        //  好感 favorType(-6..6)→索引+6(0..12)、立场 BehaviorType(0..4)、魅力 GetAttractionType(0..8)、
+        //  品级 GetInteractionGrade(0=九品..8=一品)、入魔 GetInfectionState(0..2)。
+        // NPC 的档位索引必须被勾选才通过；某维度一个都不勾=该维度无人通过。
+        public static bool PassTiers(
+            sbyte favorType,
+            IReadOnlyList<bool> favorTiers,
+            int goodnessLevel,
+            IReadOnlyList<bool> goodTiers,
+            sbyte charmLevel,
+            IReadOnlyList<bool> charmTiers,
+            sbyte rankLevel,
+            IReadOnlyList<bool> rankTiers,
+            bool rankAutoMin,
+            int autoMinRankIndex,
+            int infectState,
+            IReadOnlyList<bool> infectTiers)
+        {
+            if (!TierAllowed(favorType + 6, favorTiers))
                 return false;
-            if (!InBand(goodnessLevel, goodMin, goodMax))
+            if (!TierAllowed(goodnessLevel, goodTiers))
                 return false;
-            if (!InBand(charmLevel, charmMin, charmMax))
+            if (!TierAllowed(charmLevel, charmTiers))
                 return false;
-            if (!InBand(rankLevel, rankMin, rankMax))
+            // 品级：自适应下限开启时忽略手动勾选，仅收 品级 >= 相枢等级；否则按逐档勾选。
+            if (rankAutoMin)
+            {
+                if (rankLevel < autoMinRankIndex)
+                    return false;
+            }
+            else if (!TierAllowed(rankLevel, rankTiers))
+            {
                 return false;
-            if (!InBand(infectState, infectMin, infectMax))
+            }
+            if (!TierAllowed(infectState, infectTiers))
                 return false;
 
             return true;
@@ -95,12 +131,10 @@ namespace DreamLover.Backend
                    !taiwuAdoresNpc;
         }
 
-        // 闭区间判断，端点顺序无关（用户把下限/上限填反也能正常成区间）。
-        private static bool InBand(int value, int a, int b)
+        // 逐档筛选：NPC 的档位索引必须被勾选；越界或未勾选=不通过（某维度全不勾即无人通过）。
+        private static bool TierAllowed(int index, IReadOnlyList<bool> tiers)
         {
-            int lo = a < b ? a : b;
-            int hi = a < b ? b : a;
-            return value >= lo && value <= hi;
+            return index >= 0 && index < tiers.Count && tiers[index];
         }
     }
 }

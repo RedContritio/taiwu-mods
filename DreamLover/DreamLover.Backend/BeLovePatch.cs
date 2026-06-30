@@ -108,16 +108,6 @@ namespace DreamLover.Backend
             if (!anyEnabled)
                 return true;
 
-            // 【性能②】廉价预门：在做好感/关系等较重查询之前，先用纯字段比较挡掉绝大多数 NPC。
-            //  - 性别门：默认仅异性，先挡掉同性（IgnoreDistance 时可省约一半人口的好感查询）。
-            //  - 同格门：非「爱慕不受地理限制」时，离格 NPC 立即跳过——这正是原版的同格界限(月度模拟只把太吾
-            //    并入【太吾所在格】的 charSet，故原版从不为离格 NPC 生成对太吾的恋爱候选)。开启 IgnoreDistance
-            //    = 主动放弃此界限、改为遍历全体活人(O(全部)，每人仍只做一次好感/关系查询)。
-            if (!Settings.AcceptSameGender && __instance.GetGender() == taiwu.GetGender())
-                return true;
-            if (!Settings.IgnoreDistance && !CharacterUtils.IsAtSameLocation(__instance, taiwu))
-                return true;
-
             if (!PassFilters(__instance, charId, taiwuId, taiwu))
                 return true;
 
@@ -159,38 +149,48 @@ namespace DreamLover.Backend
 
         private static bool PassFilters(Character npc, int charId, int taiwuId, Character taiwu)
         {
-            int ageYears = npc.GetCurrAge();
-            sbyte favorType = CharacterUtils.GetFavorabilityType(charId, taiwuId);
-            int goodnessLevel = CharacterUtils.GetGoodnessLevel(npc);
-            sbyte charmLevel = CharacterUtils.GetCharmLevel(npc);
-            sbyte rankLevel = CharacterUtils.GetRankLevel(npc);
-            int infectState = CharacterUtils.GetInfectionState(npc);
-
-            if (!DreamLoverRules.PassBasicFilters(
+            // 廉价门先行（无关系查询）：性别 / 追求范围 / 年龄——挡掉绝大多数 NPC，再做较重的好感查询（性能②）。
+            // 性别按生理性别(GetGender)；男生女相/女生男相 = 生理性别 + 变装(显示性别≠生理性别)。
+            sbyte npcGender = npc.GetGender();
+            bool npcIsTransgender = npc.GetDisplayingGender() != npcGender;
+            if (!DreamLoverRules.PassGenderRangeAge(
                     Settings.AcceptSameGender,
-                    npc.GetGender() == taiwu.GetGender(),
-                    Settings.IgnoreDistance,
+                    Settings.AcceptOppositeGender,
+                    Settings.AcceptMale,
+                    Settings.AcceptFemale,
+                    Settings.AcceptMaleLooksFemale,
+                    Settings.AcceptFemaleLooksMale,
+                    npcGender,
+                    taiwu.GetGender(),
+                    npcIsTransgender,
+                    Settings.Range,
+                    npc.IsInTaiwuGroup(),
                     CharacterUtils.IsAtSameLocation(npc, taiwu),
-                    ageYears,
+                    CharacterUtils.IsAtSameArea(npc, taiwu),
+                    npc.GetCurrAge(),
                     Settings.MinAge,
-                    Settings.MaxAge,
-                    favorType,
-                    Settings.FavorMin,
-                    Settings.FavorMax,
-                    goodnessLevel,
-                    Settings.GoodMin,
-                    Settings.GoodMax,
-                    charmLevel,
-                    Settings.CharmMin,
-                    Settings.CharmMax,
-                    rankLevel,
-                    Settings.RankMin,
-                    Settings.RankMax,
-                    infectState,
-                    Settings.InfectMin,
-                    Settings.InfectMax))
+                    Settings.MaxAge))
             {
-                if (Settings.DebugMode) Log(charId + " filtered: basic filter");
+                if (Settings.DebugMode) Log(charId + " filtered: gender/range/age");
+                return false;
+            }
+
+            // 较重门：好感/立场/魅力/阶层/入魔 档位（含一次好感关系查询）。
+            if (!DreamLoverRules.PassTiers(
+                    CharacterUtils.GetFavorabilityType(charId, taiwuId),
+                    Settings.FavorTiers,
+                    CharacterUtils.GetGoodnessLevel(npc),
+                    Settings.GoodTiers,
+                    CharacterUtils.GetCharmLevel(npc),
+                    Settings.CharmTiers,
+                    CharacterUtils.GetRankLevel(npc),
+                    Settings.RankTiers,
+                    Settings.RankAutoMin,
+                    DomainManager.World.GetXiangshuLevel(),
+                    CharacterUtils.GetInfectionState(npc),
+                    Settings.InfectTiers))
+            {
+                if (Settings.DebugMode) Log(charId + " filtered: tier filter");
                 return false;
             }
 

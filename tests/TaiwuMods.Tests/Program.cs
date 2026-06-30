@@ -650,58 +650,102 @@ sealed class ContractTests
 
     private static void DreamLoverRules()
     {
-        // Local wrapper: the band defaults mirror config.lua's default bands
-        // (favor 融洽–不渝 [8,12], 立场 仁善–中庸 [1,2], 魅力 出众–天人 [4,8],
-        //  阶层 七品–一品 [2,8] with 0=九品..8=一品, 入魔 未入邪 [0,0]).
+        // Helper to build a tier array with the given indices checked.
+        static bool[] Tiers(int n, params int[] on)
+        {
+            var a = new bool[n];
+            foreach (int i in on) a[i] = true;
+            return a;
+        }
+        // Default checked tiers mirror config.lua: 好感 8–12, 立场 1–2, 魅力 4–8, 阶层 2–8, 入魔 0.
+        var favorDef = Tiers(13, 8, 9, 10, 11, 12);
+        var goodDef = Tiers(5, 1, 2);
+        var charmDef = Tiers(9, 4, 5, 6, 7, 8);
+        var rankDef = Tiers(9, 2, 3, 4, 5, 6, 7, 8);
+        var infectDef = Tiers(3, 0);
+        // Gender defaults mirror config.lua: 接受异性=on, others off; default npc=female(0), taiwu=male(1) → opposite passes.
         bool Pass(
-            bool acceptSameGender = false, bool sameGender = false,
-            bool ignoreDistance = false, bool sameLocation = true,
+            bool acceptSameGender = false, bool acceptOppositeGender = true,
+            bool acceptMale = false, bool acceptFemale = false,
+            bool acceptMaleLooksFemale = false, bool acceptFemaleLooksMale = false,
+            sbyte npcGender = 0, sbyte taiwuGender = 1, bool npcIsTransgender = false,
+            int range = 1, bool npcInTaiwuGroup = false, bool sameLocation = true, bool sameArea = true,
             int ageYears = 30, int minAge = 16, int maxAge = 60,
-            sbyte favorType = 2, int favorMin = 8, int favorMax = 12,
-            int goodnessLevel = 2, int goodMin = 1, int goodMax = 2,
-            sbyte charmLevel = 4, int charmMin = 4, int charmMax = 8,
-            sbyte rankLevel = 3, int rankMin = 2, int rankMax = 8,
-            int infectState = 0, int infectMin = 0, int infectMax = 0)
-            => DreamLover.Backend.DreamLoverRules.PassBasicFilters(
-                acceptSameGender, sameGender, ignoreDistance, sameLocation,
-                ageYears, minAge, maxAge,
-                favorType, favorMin, favorMax,
-                goodnessLevel, goodMin, goodMax,
-                charmLevel, charmMin, charmMax,
-                rankLevel, rankMin, rankMax,
-                infectState, infectMin, infectMax);
+            sbyte favorType = 2, bool[] favorTiers = null,
+            int goodnessLevel = 2, bool[] goodTiers = null,
+            sbyte charmLevel = 4, bool[] charmTiers = null,
+            sbyte rankLevel = 3, bool[] rankTiers = null, bool rankAutoMin = false, int autoMinRank = 0,
+            int infectState = 0, bool[] infectTiers = null)
+            => DreamLover.Backend.DreamLoverRules.PassGenderRangeAge(
+                acceptSameGender, acceptOppositeGender, acceptMale, acceptFemale,
+                acceptMaleLooksFemale, acceptFemaleLooksMale,
+                npcGender, taiwuGender, npcIsTransgender, range, npcInTaiwuGroup, sameLocation, sameArea,
+                ageYears, minAge, maxAge)
+            && DreamLover.Backend.DreamLoverRules.PassTiers(
+                favorType, favorTiers ?? favorDef,
+                goodnessLevel, goodTiers ?? goodDef,
+                charmLevel, charmTiers ?? charmDef,
+                rankLevel, rankTiers ?? rankDef, rankAutoMin, autoMinRank,
+                infectState, infectTiers ?? infectDef);
 
         Assert(Pass(), "DreamLover basic filters should allow a matching candidate at default bands");
 
-        Assert(!Pass(sameGender: true), "DreamLover should block same gender by default");
-        Assert(Pass(acceptSameGender: true, sameGender: true), "DreamLover should allow same gender when enabled");
-        Assert(!Pass(sameLocation: false), "DreamLover should block distance by default");
-        Assert(Pass(ignoreDistance: true, sameLocation: false), "DreamLover should allow off-block when distance ignored");
+        // Gender: six toggles OR-combined; defaults = 异性 only (npc female vs taiwu male).
+        Assert(!Pass(npcGender: 1, taiwuGender: 1), "DreamLover should block same gender by default (only 异性 on)");
+        Assert(Pass(acceptSameGender: true, npcGender: 1, taiwuGender: 1), "DreamLover should allow same gender when 接受同性 on");
+        Assert(!Pass(acceptOppositeGender: false), "DreamLover with no gender toggle on blocks everyone");
+        Assert(Pass(acceptOppositeGender: false, acceptMale: true, npcGender: 1), "DreamLover 接受男性 allows a male NPC");
+        Assert(!Pass(acceptOppositeGender: false, acceptMale: true, npcGender: 0), "DreamLover 接受男性 blocks a female NPC");
+        Assert(Pass(acceptOppositeGender: false, acceptFemale: true, npcGender: 0), "DreamLover 接受女性 allows a female NPC");
+        Assert(!Pass(acceptOppositeGender: false, acceptFemale: true, npcGender: 1), "DreamLover 接受女性 blocks a male NPC");
+        Assert(Pass(acceptOppositeGender: false, acceptMale: true, acceptFemale: true, npcGender: 1), "DreamLover 男+女 accepts any gender (male)");
+        Assert(Pass(acceptOppositeGender: false, acceptMale: true, acceptFemale: true, npcGender: 0), "DreamLover 男+女 accepts any gender (female)");
+        Assert(Pass(acceptSameGender: true, acceptOppositeGender: true, npcGender: 1, taiwuGender: 1), "DreamLover 同性+异性 accepts everyone (same)");
+        // 男生女相 (生理男 idx1 + 变装) / 女生男相 (生理女 idx0 + 变装).
+        Assert(Pass(acceptOppositeGender: false, acceptMaleLooksFemale: true, npcGender: 1, npcIsTransgender: true), "DreamLover 接受男生女相 allows a trans male");
+        Assert(!Pass(acceptOppositeGender: false, acceptMaleLooksFemale: true, npcGender: 1, npcIsTransgender: false), "DreamLover 接受男生女相 blocks a non-trans male");
+        Assert(!Pass(acceptOppositeGender: false, acceptMaleLooksFemale: true, npcGender: 0, npcIsTransgender: true), "DreamLover 接受男生女相 blocks a 女生男相");
+        Assert(Pass(acceptOppositeGender: false, acceptFemaleLooksMale: true, npcGender: 0, npcIsTransgender: true), "DreamLover 接受女生男相 allows a trans female");
+        Assert(!Pass(acceptOppositeGender: false, acceptFemaleLooksMale: true, npcGender: 1, npcIsTransgender: true), "DreamLover 接受女生男相 blocks a 男生女相");
+        Assert(Pass(acceptOppositeGender: false, acceptMale: true, npcGender: 1, npcIsTransgender: true), "DreamLover 接受男性 still matches a 男生女相 by biological sex");
+        // 追求范围: 同道(0) ⊂ 同格(1, default) ⊂ 同区域(2) ⊂ 不受距离限制(3).
+        Assert(!Pass(sameLocation: false), "DreamLover 同格(default) blocks off-block non-companion");
+        Assert(Pass(range: 3, sameLocation: false, sameArea: false), "DreamLover 不受距离限制 allows anyone");
+        Assert(Pass(range: 1, sameLocation: false, npcInTaiwuGroup: true), "DreamLover 同格 includes a 同道 even off-block");
+        Assert(Pass(range: 0, npcInTaiwuGroup: true), "DreamLover 同道 allows a companion");
+        Assert(!Pass(range: 0, sameLocation: true, npcInTaiwuGroup: false), "DreamLover 同道 blocks a non-companion even in same block");
+        Assert(Pass(range: 2, sameLocation: false, sameArea: true), "DreamLover 同区域 allows off-block but same-area");
+        Assert(!Pass(range: 2, sameLocation: false, sameArea: false), "DreamLover 同区域 blocks cross-area non-companion");
         Assert(!Pass(ageYears: 15), "DreamLover should block below minimum age");
         Assert(!Pass(ageYears: 61), "DreamLover should block above maximum age");
 
-        // 好感 band: favorType+6 must lie in [favorMin,favorMax].
-        Assert(!Pass(favorType: -6), "DreamLover should block favor below band (血仇 < 融洽)");
-        Assert(!Pass(favorType: 1), "DreamLover should block favor just below band (冷淡 idx7 < 融洽 idx8)");
-        Assert(Pass(favorType: 2), "DreamLover should allow favor at lower bound (融洽 idx8)");
-        Assert(Pass(favorType: 6), "DreamLover should allow favor at upper bound (不渝 idx12)");
-        Assert(Pass(favorType: -6, favorMin: 0, favorMax: 12), "DreamLover full favor band ignores favor filter");
-        Assert(Pass(favorType: -6, favorMin: 12, favorMax: 0), "DreamLover favor band endpoints are order-independent");
-        Assert(!Pass(favorType: 2, favorMin: 9, favorMax: 9), "DreamLover exact favor tier blocks other tiers");
-        Assert(Pass(favorType: 3, favorMin: 9, favorMax: 9), "DreamLover exact favor tier allows that tier (热忱 idx9)");
+        // 好感 tiers: NPC's favor index (favorType+6) must be checked. Default checks 8–12.
+        Assert(!Pass(favorType: -6), "DreamLover should block unchecked favor tier (血仇 idx0)");
+        Assert(!Pass(favorType: 1), "DreamLover should block unchecked favor tier (冷淡 idx7)");
+        Assert(Pass(favorType: 2), "DreamLover should allow checked favor tier (融洽 idx8)");
+        Assert(Pass(favorType: 6), "DreamLover should allow checked favor tier (不渝 idx12)");
+        Assert(Pass(favorType: -6, favorTiers: Tiers(13, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)), "DreamLover all-checked favor accepts any tier");
+        Assert(!Pass(favorTiers: new bool[13]), "DreamLover empty favor tiers block everyone");
+        Assert(!Pass(favorType: 2, favorTiers: Tiers(13, 9)), "DreamLover single favor tier blocks other tiers (npc 融洽 idx8, only idx9 checked)");
+        Assert(Pass(favorType: 3, favorTiers: Tiers(13, 9)), "DreamLover single favor tier allows that tier (热忱 idx9)");
 
-        // 阶层 band: GetInteractionGrade 0=九品..8=一品, default [2,8]=七品..一品.
-        Assert(!Pass(rankLevel: 0), "DreamLover should block 九品 below rank band");
-        Assert(!Pass(rankLevel: 1), "DreamLover should block 八品 below rank band");
-        Assert(Pass(rankLevel: 2), "DreamLover should allow 七品 at rank lower bound");
-        Assert(Pass(rankLevel: 8), "DreamLover should allow 一品 at rank upper bound");
+        // 阶层 tiers: GetInteractionGrade 0=九品..8=一品; default checks 2–8.
+        Assert(!Pass(rankLevel: 0), "DreamLover should block unchecked 九品 (idx0)");
+        Assert(!Pass(rankLevel: 1), "DreamLover should block unchecked 八品 (idx1)");
+        Assert(Pass(rankLevel: 2), "DreamLover should allow checked 七品 (idx2)");
+        Assert(Pass(rankLevel: 8), "DreamLover should allow checked 一品 (idx8)");
+        // 品级自适应下限(随相枢): 开启则忽略手动品级勾选，仅收 品级>=相枢等级.
+        Assert(Pass(rankAutoMin: true, autoMinRank: 5, rankLevel: 5), "DreamLover 品级自适应 allows rank == 相枢等级");
+        Assert(Pass(rankAutoMin: true, autoMinRank: 5, rankLevel: 8), "DreamLover 品级自适应 allows rank above 相枢等级");
+        Assert(!Pass(rankAutoMin: true, autoMinRank: 5, rankLevel: 4), "DreamLover 品级自适应 blocks rank below 相枢等级");
+        Assert(Pass(rankAutoMin: true, autoMinRank: 0, rankLevel: 0, rankTiers: new bool[9]), "DreamLover 品级自适应 ignores manual tiers (相枢0 allows 九品)");
 
-        // 立场 / 魅力 / 入魔 bands.
-        Assert(!Pass(goodnessLevel: 0), "DreamLover should block 立场 below band (刚正 < 仁善)");
-        Assert(!Pass(goodnessLevel: 3), "DreamLover should block 立场 above band (叛逆 > 中庸)");
-        Assert(!Pass(charmLevel: 3), "DreamLover should block charm below band (寻常 < 出众)");
-        Assert(!Pass(infectState: 1), "DreamLover should block infect above band (相枢入邪 > 未入邪)");
-        Assert(Pass(infectState: 2, infectMin: 0, infectMax: 2), "DreamLover full infect band allows 相枢化魔");
+        // 立场 / 魅力 / 入魔 tiers (empty=nobody; out-of-set blocked).
+        Assert(!Pass(goodnessLevel: 0), "DreamLover should block unchecked 立场 (刚正 idx0)");
+        Assert(!Pass(goodnessLevel: 3), "DreamLover should block unchecked 立场 (叛逆 idx3)");
+        Assert(!Pass(charmLevel: 3), "DreamLover should block unchecked charm (寻常 idx3)");
+        Assert(!Pass(infectState: 1), "DreamLover should block unchecked infect (相枢入邪 idx1)");
+        Assert(Pass(infectState: 2, infectTiers: Tiers(3, 0, 1, 2)), "DreamLover all-checked infect allows 相枢化魔");
 
         var relationDefs = new[] { ("Rel_A", (ushort)1), ("Rel_B", (ushort)2) };
         Assert(DreamLover.Backend.DreamLoverRules.PassRelationFilter(0, relationDefs, new[] { false, false }), "DreamLover should allow candidates without configured relation flags");
