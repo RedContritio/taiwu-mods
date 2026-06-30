@@ -26,7 +26,7 @@ return {
           DefaultValue = false },
         { SettingType = "Dropdown", Key = "BlindBoxThreshold", GroupName = "高品盲盒",
           DisplayName = "盲盒门槛品级",
-          Description = "声音品级达到该档及以上才触发盲盒；同时作为下方"随机高/低品级"的高低分界。",
+          Description = "声音品级达到该档及以上才触发盲盒；同时作为下方“随机高/低品级”的高低分界。",
           Options = {
               "<color=#8E8E8E>九品</color>",
               "<color=#FBFBFB>八品</color>",
