@@ -14,7 +14,9 @@ namespace FertilityControl.Backend
         public static bool Prefix(IRandomSource random, Character father, Character mother, bool isRape, ref bool __result)
         {
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
-            if (father.GetId() != taiwuId && mother.GetId() != taiwuId)
+            int fatherId = father.GetId();
+            int motherId = mother.GetId();
+            if (!FertilityRules.IsTaiwuInvolved(taiwuId, fatherId, motherId))
                 return true;
 
             if (!Character.CheckMakeLoveRole(father, mother))
@@ -36,34 +38,22 @@ namespace FertilityControl.Backend
             short fatherFertility = father.GetFertility();
             short motherFertility = mother.GetFertility();
 
-            bool setAll = GetToggle("SetAllFertility");
-            if (setAll)
-            {
-                if (!PassChildLimit(father, mother, fatherFertility, motherFertility, ref __result))
-                    return false;
-
-                int val = GetSlider("AllFertilityValue");
-                int chance = FertilityRules.CalculateTotalFertilityChance(isRape, val);
-                __result = random.CheckPercentProb(chance);
-                Log($"CheckPregnant override (total): fertility={val}, chance={chance}%, result={__result}");
-                return false;
-            }
-
+            bool ignoreChildLimit = GetToggle("IgnoreChildLimit");
             if (GetToggle("SetFatherFertility"))
                 fatherFertility = (short)GetSlider("FatherFertilityValue");
             if (GetToggle("SetMotherFertility"))
                 motherFertility = (short)GetSlider("MotherFertilityValue");
 
             bool fertilityOverridden = GetToggle("SetFatherFertility") || GetToggle("SetMotherFertility");
-            bool rateOverridden = GetToggle("SetPregnancyRate");
+            bool rateOverridden = GetToggle("AlwaysPregnant");
 
-            if (!fertilityOverridden && !rateOverridden)
+            if (!FertilityRules.ShouldOverridePregnancyCheck(fertilityOverridden, rateOverridden, ignoreChildLimit))
                 return true;
 
-            if (!PassChildLimit(father, mother, fatherFertility, motherFertility, ref __result))
+            if (!PassChildLimit(father, mother, fatherFertility, motherFertility, ignoreChildLimit, ref __result))
                 return false;
 
-            if (fatherFertility <= 0 || motherFertility <= 0)
+            if (FertilityRules.ShouldBlockForZeroFertility(fatherFertility, motherFertility, rateOverridden))
             {
                 __result = false;
                 return false;
@@ -74,18 +64,23 @@ namespace FertilityControl.Backend
                 fatherFertility,
                 motherFertility,
                 rateOverridden,
-                GetSlider("PregnancyRate"));
+                100); // 必定怀孕 = 100% 成功
 
             __result = random.CheckPercentProb(prob);
-            Log($"CheckPregnant override: fFert={fatherFertility}, mFert={motherFertility}, prob={prob}%, result={__result}");
             return false;
         }
 
-        private static bool PassChildLimit(Character father, Character mother, short fatherFertility, short motherFertility, ref bool result)
+        private static bool PassChildLimit(
+            Character father,
+            Character mother,
+            short fatherFertility,
+            short motherFertility,
+            bool ignoreChildLimit,
+            ref bool result)
         {
             int fatherChildren = DomainManager.Character.GetRelatedCharIds(father.GetId(), 2).Count;
             int motherChildren = DomainManager.Character.GetRelatedCharIds(mother.GetId(), 2).Count;
-            if (!FertilityRules.PassChildLimit(fatherChildren, motherChildren, fatherFertility, motherFertility))
+            if (!FertilityRules.PassChildLimit(fatherChildren, motherChildren, fatherFertility, motherFertility, ignoreChildLimit))
             {
                 result = false;
                 return false;
@@ -107,11 +102,132 @@ namespace FertilityControl.Backend
             DomainManager.Mod.GetSetting(BackendPlugin.ModId, key, ref val);
             return val;
         }
+    }
 
-        private static void Log(string msg)
+    [HarmonyPatch(typeof(Character), "GetMakeLoveRole")]
+    public static class MakeLoveRolePatch
+    {
+        private const short FlexibleRoleFeatureId = 170;
+
+        [HarmonyPrefix]
+        public static bool Prefix(IRandomSource random, ref Character father, ref Character mother, ref bool __result)
         {
-            if (GetToggle("DebugMode"))
-                AdaptableLog.Info("[FertilityControl] " + msg);
+            if (!ShouldBypassNativeRoleAssignment(father, mother))
+                return true;
+
+            __result = true;
+            return false;
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(ref Character father, ref Character mother, bool __result)
+        {
+            if (!__result || !ShouldSwapPregnancyCarrier(father, mother))
+                return;
+
+            Character originalFather = father;
+            father = mother;
+            mother = originalFather;
+        }
+
+        private static bool ShouldBypassNativeRoleAssignment(Character first, Character second)
+        {
+            bool allowNonstandardRoles = false;
+            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "AllowNonstandardPregnancyRoles", ref allowNonstandardRoles);
+
+            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
+            bool nativeAssignmentCanResolve = FertilityRules.CanResolveNativeMakeLoveRole(
+                first.GetGender(),
+                HasFlexibleRole(first),
+                second.GetGender(),
+                HasFlexibleRole(second));
+
+            return FertilityRules.ShouldBypassNativeRoleGate(
+                allowNonstandardRoles,
+                FertilityRules.IsTaiwuInvolved(taiwuId, first.GetId(), second.GetId()),
+                nativeAssignmentCanResolve);
+        }
+
+        private static bool ShouldSwapPregnancyCarrier(Character father, Character mother)
+        {
+            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
+            int fatherId = father.GetId();
+            int motherId = mother.GetId();
+            int pregnancyCarrierMode = GetPregnancyCarrierMode();
+            return FertilityRules.ShouldUseConfiguredCarrier(
+                       pregnancyCarrierMode,
+                       FertilityRules.IsTaiwuInvolved(taiwuId, fatherId, motherId)) &&
+                   FertilityRules.ShouldSwapForPregnancyCarrier(
+                       pregnancyCarrierMode,
+                       taiwuId,
+                       fatherId,
+                       motherId);
+        }
+
+        private static int GetPregnancyCarrierMode()
+        {
+            int val = FertilityRules.PregnancyCarrierNativeMother;
+            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "PregnancyCarrierMode", ref val);
+            return FertilityRules.NormalizePregnancyCarrierMode(val);
+        }
+
+        private static bool HasFlexibleRole(Character character)
+        {
+            return character.GetFeatureIds().Contains(FlexibleRoleFeatureId);
+        }
+    }
+
+    [HarmonyPatch(typeof(Character), "CheckMakeLoveRole")]
+    public static class CheckMakeLoveRolePatch
+    {
+        private const short FlexibleRoleFeatureId = 170;
+
+        [HarmonyPrefix]
+        public static bool Prefix(Character father, Character mother, ref bool __result)
+        {
+            if (!ShouldBypassNativeRoleCheck(father, mother))
+                return true;
+
+            __result = true;
+            return false;
+        }
+
+        private static bool ShouldBypassNativeRoleCheck(Character father, Character mother)
+        {
+            bool allowNonstandardRoles = false;
+            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "AllowNonstandardPregnancyRoles", ref allowNonstandardRoles);
+
+            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
+            int pregnancyCarrierMode = GetPregnancyCarrierMode();
+            bool nativeRoleAllows = FertilityRules.CanUseNativePregnancyRole(
+                father.GetGender(),
+                HasFlexibleRole(father),
+                mother.GetGender(),
+                HasFlexibleRole(mother));
+            bool nativeAssignmentCanResolve = FertilityRules.CanResolveNativeMakeLoveRole(
+                father.GetGender(),
+                HasFlexibleRole(father),
+                mother.GetGender(),
+                HasFlexibleRole(mother));
+
+            return FertilityRules.ShouldBypassPregnancyRoleCheck(
+                allowNonstandardRoles,
+                FertilityRules.IsTaiwuInvolved(taiwuId, father.GetId(), mother.GetId()),
+                nativeRoleAllows,
+                nativeAssignmentCanResolve,
+                pregnancyCarrierMode);
+        }
+
+        private static int GetPregnancyCarrierMode()
+        {
+            int val = FertilityRules.PregnancyCarrierNativeMother;
+            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "PregnancyCarrierMode", ref val);
+            return FertilityRules.NormalizePregnancyCarrierMode(val);
+        }
+
+        private static bool HasFlexibleRole(Character character)
+        {
+            return character.GetFeatureIds().Contains(FlexibleRoleFeatureId);
         }
     }
 
@@ -124,16 +240,12 @@ namespace FertilityControl.Backend
             bool disable = false;
             DomainManager.Mod.GetSetting(BackendPlugin.ModId, "DisableInbreeding", ref disable);
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
-            if (!FertilityRules.ShouldOverrideInbreeding(disable, charId == taiwuId || relatedCharId == taiwuId))
+            if (!FertilityRules.ShouldOverrideInbreeding(
+                disable,
+                FertilityRules.IsTaiwuInvolved(taiwuId, charId, relatedCharId)))
                 return true;
 
             __result = false;
-
-            bool debug = false;
-            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "DebugMode", ref debug);
-            if (debug)
-                AdaptableLog.Info($"[FertilityControl] Inbreeding blocked: {charId} x {relatedCharId}");
-
             return false;
         }
     }
@@ -145,7 +257,6 @@ namespace FertilityControl.Backend
         {
             public bool HadPregnantState;
             public int CurrDate;
-            public int CricketLuckPoint;
         }
 
         [HarmonyPrefix]
@@ -154,45 +265,28 @@ namespace FertilityControl.Backend
             __state = new PatchState
             {
                 HadPregnantState = __instance.TryGetPregnantState(mother.GetId(), out _),
-                CurrDate = DomainManager.World.GetCurrDate(),
-                CricketLuckPoint = DomainManager.Taiwu.GetCricketLuckPoint()
+                CurrDate = DomainManager.World.GetCurrDate()
             };
         }
 
         [HarmonyPostfix]
         public static void Postfix(CharacterDomain __instance, DataContext context, Character mother, Character father, PatchState __state)
         {
-            bool setCricket = false;
-            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "SetCricketRate", ref setCricket);
+            bool alwaysCricket = false;
+            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "AlwaysCricket", ref alwaysCricket);
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!FertilityRules.ShouldOverrideCricketRate(
-                setCricket,
+                alwaysCricket,
                 __state.HadPregnantState,
-                father.GetId() == taiwuId || mother.GetId() == taiwuId))
+                FertilityRules.IsTaiwuInvolved(taiwuId, father.GetId(), mother.GetId())))
                 return;
 
             if (!__instance.TryGetPregnantState(mother.GetId(), out PregnantState state))
                 return;
 
-            int rate = 0;
-            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "CricketRate", ref rate);
-            bool wasHuman = state.IsHuman;
-            state.IsHuman = !context.Random.CheckPercentProb(rate);
-            if (state.IsHuman)
-            {
-                state.ExpectedBirthDate = __state.CurrDate + context.Random.Next(6, 10);
-                DomainManager.Taiwu.SetCricketLuckPoint(__state.CricketLuckPoint, context);
-            }
-            else
-            {
-                state.ExpectedBirthDate = __state.CurrDate + 42;
-                DomainManager.Taiwu.SetCricketLuckPoint(0, context);
-            }
-
-            bool debug = false;
-            DomainManager.Mod.GetSetting(BackendPlugin.ModId, "DebugMode", ref debug);
-            if (debug)
-                AdaptableLog.Info($"[FertilityControl] Cricket override: rate={rate}%, wasHuman={wasHuman}, isHuman={state.IsHuman}");
+            state.IsHuman = false;                                // 必定蛐蛐
+            state.ExpectedBirthDate = __state.CurrDate + 42;
+            DomainManager.Taiwu.SetCricketLuckPoint(0, context);  // 生蛐蛐消耗促织缘归零，与原生一致
         }
     }
 }
