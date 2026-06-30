@@ -1,4 +1,4 @@
-# 情难自已：接入关押目标（Prisoner Entry）设计
+# 情难自已：接入关押目标（Prisoner Entry，独立链版）设计
 
 日期：2026-07-01
 Mod：ForceEncounter（情难自已）
@@ -13,108 +13,128 @@ Mod：ForceEncounter（情难自已）
 
 结果：**对已关押目标，「情难自已」不会出现，因此不生效。**
 
-后端其实已为此预留：`ForceEncounterCombatStarter.StartForcedCombat` 中的 `TargetIsAlreadyPrisonerOfActor`（`target.GetKidnapperId() == actor`）会跳过死战、直接按「已制服」判定强制成功；`ForceEncounterEventText.BuildCombatResultContent` 也已有 `TargetAlreadyPrisoner` 分支与「成年/未成年 已关押成功(村民)」四条反馈文案。缺的只是**外层入口**与**关押态专用说明文案**。
+后端结算 `ExecuteForcedAction`（`MakeLove`/好感惩罚/结仇/密闻/经历）是纯结算逻辑，可直接复用；其余 UI/事件/文案在关押态另起一条独立链。
 
 ## 目标
 
-让玩家在俘虏互动菜单里也能对已关押目标使用「情难自已」，且外层（选项提示）与内层（动作说明）文案都按「关押 vs 普通」区分；后端结算、反馈文案、成本、各类门槛全部沿用现成实现。
+让玩家在俘虏互动菜单里也能对已关押目标使用「情难自已」。关押态拥有**一整套独立的事件链与文案**（新 GUID），与普通路线完全隔离；普通路线的事件与文案一行不动。
 
-## 非目标
+## 设计原则：独立复制，而非分支复用
 
-- 不改后端结算逻辑（成功/失败、好感惩罚、结仇、密闻、`MakeLove`）。
-- 不改普通路线的任何文案或行为。
-- 不为关押入口新增设置项（入口与普通入口一样总是随 Mod 启用而开启）。
-- 不复刻原生俘虏菜单的其它处置（处罚/没收等）。
+- 关押态复制一整套专用事件（外层入口 / 内层选择 / 强制反馈 / 亲密反馈）和文案，都用新 GUID。
+- **后端结算 `ExecuteForcedAction` 共用**（纯结算逻辑，复制只会凭白重复）。
+- 普通路线事件（`ForceEncounterEvent` / `ForceEncounterConsentChoiceEvent` / `ForceEncounterCombatResultEvent` / `ForceEncounterAcceptedResultEvent`）与共享文案构造器**不加任何 `已关押` 分支**。
+- 隔离带来的简化：关押链天然只服务俘虏，因此**不需要**「目标是太吾俘虏」运行时判定、`构造内层说明` 的 `已关押` 维度、或返回菜单纠正助手——这些在独立链里都是常量行为。
 
 ## 已确认的设计决策
 
-1. **交互形态**：复用既有内层二选一页（强制关系 / 其他话题），保留「其他话题」作为反悔入口；但内层说明与外层提示为关押情境另写文案。
-2. **亲密判定**：照常运行——配偶/双向恋人/单恋太吾/太吾村民/符合条件的谷中密友仍可走亲密直通，进入既有 `亲密反馈`（非战斗框架，文案已合适）。
+1. **交互形态**：关押内层保留二选一（更进一步=强制 / 其他话题），「其他话题」作反悔入口；说明与外层提示为关押情境专写。
+2. **亲密判定**：照常运行——配偶/双向恋人/单恋太吾/太吾村民/符合条件的谷中密友仍可走亲密直通，进入关押链自己的亲密反馈页。
 3. **入口开关**：总是开启，不新增设置。
-4. **行动力成本**：与普通强制路线完全一致（沿用 `ActionTimeCostDays`，内层提交时消耗）。
+4. **行动力成本**：与普通强制路线一致（沿用 `ActionTimeCostDays`，内层提交时消耗）。
 5. **外层区分**：外层选项**提示 Desc** 出关押变体；外层**按钮标签**沿用「（情难自已……）」。
+6. **复制边界**：事件链 + 文案独立复制（新 GUID）；后端结算共用。
+7. **强制路径**：直接结算——俘虏从不开战，关押链跳过战斗启动/护卫/战斗结果路由，「更进一步」后直接走成功结算 → 关押强制反馈页。
 
 ## 玩家可见流程（关押目标）
 
-1. 打开俘虏面板，对某关押目标点「互动」→ 进入俘虏互动菜单 `2e651ccb`。
-2. 菜单中出现新选项「（情难自已……）」，悬浮提示为**关押变体**文案（无「开战」字眼）。
-3. 点击 → 外层入口探测：
-   - 亲密判定通过 → 内层显示「半推半就」提交 → 提交后进入既有 `亲密反馈`。
-   - 不通过 → 内层显示「更进一步（强制）/ 其他话题」，内层说明为**关押变体**（对方已被缚、无从反抗，无开战/护卫措辞）。
-4. 选「更进一步」→ `StartForcedCombat` 命中 `TargetIsAlreadyPrisonerOfActor` → 跳过死战，直接判定成功 → `战斗反馈` 用 `TargetAlreadyPrisoner` 分支显示「已关押成功」文案，保留原有关押状态。
-5. 选「其他话题」→ 返回**俘虏菜单 `2e651ccb`**（而非普通菜单 `7c70ce0c`）。
+1. 俘虏面板对某关押目标点「互动」→ 进入俘虏互动菜单 `2e651ccb`。
+2. 菜单出现「（情难自已……）」，悬浮提示为**关押变体**（无「开战」字眼）。
+3. 点击 → 关押外层入口探测（共用后端探测模式）：
+   - 亲密判定通过 → 关押内层显示「半推半就」提交 → 提交后进入**关押亲密反馈页**。
+   - 不通过 → 关押内层显示「更进一步 / 其他话题」，内层说明为**关押变体**（对方已被缚、无从反抗，无开战/护卫措辞）。
+4. 选「更进一步」→ **直接调用后端强制结算**（`battleSucceeded=true`，无战斗）→ **关押强制反馈页**显示「已关押成功」文案，保留关押状态。
+5. 选「其他话题」→ 直接返回俘虏菜单 `2e651ccb`（关押链内硬路由，无需判定）。
+
+## 关押事件链（全部新 GUID）
+
+复制并裁剪自普通链，注册到事件包（`ForceEncounterEventPackage`）。`MainRoleKey=RoleTaiwu / TargetRoleKey=CharacterId`，与 `2e651ccb` 一致。
+
+### P1. 关押外层入口（copy of `ForceEncounterEvent`）
+
+- 含「情难自已·关押」execute 选项：`Behavior=BehaviorEgoistic`，预览成本（沿用 `ForceEncounterEventCosts` 预览，AutoConsume=false），`OnOptionVisibleCheck/OnOptionAvailableCheck` 复用既有可见性/可执行校验（存活、非婴儿、未成年设置）。
+- 按钮标签沿用「（情难自已……）」。
+- 选中：设置外层 wait-confirm 预览键 + 存交互参数 → 共用后端**探测模式**（`ResolutionMode=Probe`）→ 路由到 P2。
+- 可选加固：可见性额外要求 `target.GetKidnapperId()==Taiwu`。
+
+### P2. 关押内层选择（copy of `ForceEncounterConsentChoiceEvent`）
+
+- 选项：`半推半就`(亲密提交，可见条件=探测为亲密通过) / `更进一步`(强制，可见条件=探测为需要战斗选择) / `其他话题`。
+- 内层提交成本 `AutoConsume=true`，消耗 `ActionTimeCostDays`，并确认外层 wait；「其他话题」不确认、不消耗。
+- 说明文案：关押专写（亲密通过用关押亲密说明；否则用关押强制说明，无开战/护卫）。
+- `半推半就` → 共用后端**亲密提交**（`ResolutionMode=AcceptedCommit`）→ P4。
+- `更进一步` → 确认外层 wait → 共用后端**强制结算**（`ResolutionMode=Combat`，`battleSucceeded=true`）→ P3。（不经 `StartForcedCombat`。）
+- `其他话题` → 返回 `2e651ccb`。
+
+### P3. 关押强制反馈（copy of `ForceEncounterCombatResultEvent`，大幅裁剪）
+
+- 仅成功态（俘虏强制必成）。读取后端返回的 `targetIsTaiwuVillager`，按 成年/未成年 × 村民 选择「已关押成功」文案。
+- 单「离开」按钮 → `ToEvent("")` 关闭。无失败/逃走/护卫/擒获分支，无战斗结果路由。
+
+### P4. 关押亲密反馈（copy of `ForceEncounterAcceptedResultEvent`）
+
+- 显示关押亲密成功文案（成年/未成年）；异常兜底沿用结构。单「离开」按钮关闭。
 
 ## 改动清单
 
 ### A. 常量（`ForceEncounter.Shared/ForceEncounterConstants.cs`）
 
 - `EventGuids.NativeKidnappedInteraction = "2e651ccb-3a77-447a-a74f-c9a24a1a32d1"`
-- 关押态外层选项：`Options.ExecutePrisonerKey`（新 key）+ `Options.ExecutePrisonerGuid`（新生成 GUID）
+- 关押链事件 GUID：`PrisonerEntry` / `PrisonerConsentChoice` / `PrisonerForcedResult` / `PrisonerAcceptedResult`（各新生成）
+- 关押链选项 key/guid：外层 `ExecutePrisoner*`、内层 `半推半就/更进一步/其他话题`、反馈 `离开/继续` 各一套新值（避免与普通链选项 GUID 冲突）
 
-### B. 外层入口选项（`ForceEncounter.Events/ForceEncounterEvent.cs`）
+### B. 关押事件实现（`ForceEncounter.Events/` 新增 4 个事件类）
 
-在外层入口事件中新增第二个 execute 选项「情难自已·关押」：
+`ForceEncounterPrisonerEntryEvent` / `ForceEncounterPrisonerConsentChoiceEvent` / `ForceEncounterPrisonerForcedResultEvent` / `ForceEncounterPrisonerAcceptedResultEvent`，按 P1–P4。可复用 `ForceEncounterEventRuntime`、`ForceEncounterEventCosts` 这类无状态工具（它们不是「事件」本身）。在 `ForceEncounterEventPackage` 注册这 4 个事件。
 
-- `OptionKey/OptionGuid` 用上面新增的关押常量
-- `Behavior = BehaviorEgoistic`，预览成本同现有 execute 选项
-- `OnOptionVisibleCheck = IsVisible`、`OnOptionAvailableCheck = CanExecute`、`OnOptionSelect = Execute`（**复用同一处理器**，行为与普通入口一致）
-- 按钮标签沿用 `按钮.情难自已`（「（情难自已……）」）
+### C. 关押文案（`ForceEncounter.Events/` 新增 `ForceEncounterPrisonerText` 或独立 section）
 
-注：两个 execute 选项分别供两个菜单注入；同一 `Execute` 处理器自然适配关押/普通（差异只在文案，由下游判定）。
+- 关押外层提示 Desc（见 D）。
+- 关押内层说明：成年亲密 / 未成年亲密 / 成年强制 / 未成年强制（强制版无开战、无护卫）。
+- 关押强制反馈：成年/未成年 × 村民「已关押成功」（可沿用现有 `强制反馈.*已关押成功*` 文案的文本，迁入关押文案区）。
+- 关押亲密反馈：成年/未成年成功 + 异常兜底。
+- 普通链的 `ForceEncounterEventText` 共享构造器**不动**。
 
-### C. 外层提示配置（`ForceEncounter/Config/` 下新增一份 lua）
+### D. 外层提示配置（`ForceEncounter/Config/` 新增一份 lua）
 
-新增一份 `EventOptionTipsInfo` 配置（与现有 `Config/EventOptionTipsInfo.lua` 同加载机制），绑定到关押选项新 GUID：
+新增 `EventOptionTipsInfo` 配置（与现有 `Config/EventOptionTipsInfo.lua` 同加载机制），绑定关押外层选项新 GUID：
 
-- `Title = "情难自已"`
-- `Desc`：关押变体，去掉「开战」字眼。示例：「对已被你擒下、无力反抗之人为所欲为。若情投意合则两厢情愿；否则径直得手。作罢不消耗行动力。」
-- `Guid = { <ExecutePrisonerGuid> }`
+- `Title = "情难自已"`，按钮标签沿用「（情难自已……）」。
+- `Desc`：关押变体，例如「对已被你擒下、无力反抗之人为所欲为。若情投意合则两厢情愿；否则径直得手。作罢不消耗行动力。」
+- 实现时确认 `Config/*.lua` 加载/登记方式：现有两份 Config lua 已生效，沿用同机制；若需显式登记则一并补。关押入口**不需要** `InteractionEventOption`（那是地图块「敌对」自定义按钮；俘虏入口走 `AddOptionToEvent` 直接注入）。
 
-实现时确认 `Config/*.lua` 的加载/登记方式：现有 `InteractionEventOption.lua`、`EventOptionTipsInfo.lua` 已生效，沿用同机制；若加载需显式登记，则一并补登记。关押入口**不需要**新增 `InteractionEventOption`（TemplateId 1099，那是地图块「敌对」子菜单的自定义按钮；俘虏入口走 `AddOptionToEvent` 直接注入）。
+### E. 入口注入（`ForceEncounter.Backend/BackendPlugin.cs`，`EnsureHostileMenuOption()`）
 
-### D. 入口注入（`ForceEncounter.Backend/BackendPlugin.cs`，`EnsureHostileMenuOption()`）
+- 保留：`AddOptionToEvent(7c70ce0c, Entry普通, ExecuteKey普通)`
+- 新增：`AddOptionToEvent(NativeKidnappedInteraction[2e651ccb], PrisonerEntry, ExecutePrisonerKey)`
+- 两处注入都在 `OnEnterNewWorld` / `OnLoadedArchiveData` 执行（沿用现状）。
 
-- 保留：`AddOptionToEvent(7c70ce0c, Entry, ExecuteKey)`
-- 新增：`AddOptionToEvent(NativeKidnappedInteraction[2e651ccb], Entry, ExecutePrisonerKey)`
+### F. 后端（不改）
 
-`2e651ccb` 的 `MainRoleKey = RoleTaiwu / TargetRoleKey = CharacterId` 与现有流程一致，无需改参数。注入在 `OnEnterNewWorld` / `OnLoadedArchiveData` 两处都会执行（沿用现状）。
+- `ExecuteForcedAction` 共用：探测（`Probe`）、亲密提交（`AcceptedCommit`）、强制结算（`Combat` + `battleSucceeded=true`）均走现有路径；强制成功的好感惩罚/结仇/密闻/经历与普通强制一致。
+- 关押链直接以 `battleSucceeded=true` 调强制结算，不依赖 `ForceEncounterCombatStarter` 的俘虏短路（该短路仍保留给普通链的边角情形，无需删除）。
 
-### E. 内层说明关押变体（`ForceEncounter.Events/ForceEncounterEventText.cs`）
-
-- 新增 `入口说明.成年已关押` / `入口说明.未成年已关押`：俘虏情境措辞（对方已被缚、无从反抗），不含开战/护卫。
-- `构造内层说明` 增加 `已关押` 维度：当 `已关押 && !亲密通过` 时返回上述文案，并忽略 `有护卫` 分支（俘虏无护卫拦截）。亲密通过分支不变（沿用 `成年/未成年亲密`）。
-
-### F. 关押态判定 + 返回菜单纠正（`ForceEncounter.Events/ForceEncounterConsentChoiceEvent.cs` 与 `ForceEncounterEventRuntime`）
-
-- `ForceEncounterEventRuntime` 新增助手 `目标是太吾俘虏(argBox)`：复用 `target.GetKidnapperId() == actorId`（与 `ForceEncounterCombatStarter.TargetIsAlreadyPrisonerOfActor` 同口径）。
-- `ConsentChoiceEvent.GetReplacedContentString`：取「目标是太吾俘虏」传入 `构造内层说明`。
-- 返回菜单纠正：`Abandon()`（其他话题）是唯一显式导航回菜单的出口，封一个 `决定返回菜单(argBox)` 助手——目标是太吾俘虏时返回 `NativeKidnappedInteraction[2e651ccb]`，否则沿用现有逻辑（`MainInteractionHeadEvent ?? 7c70ce0c`）。（探测失败、反馈页「离开/继续」等出口均为 `ToEvent("")` 关闭，无需纠正。）
-
-### G. 不改动
-
-- 后端 `ExecuteForcedAction` / 结算 / `TargetAlreadyPrisoner` 短路：已就绪。
-- 战斗反馈「已关押成功」四条文案：已存在。
-- 亲密反馈、成本、未成年/婴儿门槛、好感惩罚、结仇、密闻：沿用。
-
-### H. 版本与文档
+### G. 版本与文档
 
 - 按构建规则 bump 第四段版本（`autoIncrementBuildVersion`），同步 `config.lua` 与后端 `[PluginConfig]`。
-- 更新 `README.md`、`docs/development-notes.md`：补「关押目标入口」机制、`2e651ccb` 路径、外层/内层关押文案区分。
+- 更新 `README.md`、`docs/development-notes.md`：补「关押目标独立入口链」机制、`2e651ccb` 路径、关押外层/内层/反馈文案独立。
 
 ## 边界与一致性
 
-- **菜单隔离**：普通选项只注入 `7c70ce0c`，关押选项只注入 `2e651ccb`；两菜单上下文天然互斥，不会同时出现。可选加固：关押选项可见性额外要求「目标是太吾俘虏」。
-- **护卫/戒心**：关押态在 `StartForcedCombat` 命中俘虏短路前不触发护卫准备与开战戒心；内层说明也不显示护卫预警。
-- **未成年**：沿用 `允许未成年` 设置与既有未成年说明/反馈文案（含已关押未成年变体）。
+- **菜单隔离**：普通选项只注入 `7c70ce0c`，关押选项只注入 `2e651ccb`；两菜单上下文互斥。
+- **无战斗副作用**：关押强制不触发护卫准备、开战戒心、战斗结果路由；内层不显示护卫预警。
+- **未成年/婴儿**：沿用 `允许未成年` 设置与可见性校验；关押文案含未成年变体。
+- **普通链回归**：普通（未关押）目标在 `7c70ce0c` 的行为与文案完全不变。
 
 ## 测试计划
 
 构建部署后入档，准备一名已被太吾关押的非婴儿目标：
 
 1. 俘虏面板「互动」菜单出现「（情难自已……）」，提示为关押变体（无「开战」字眼）。
-2. 普通成年俘虏：点击 → 内层显示关押变体说明 + 「更进一步 / 其他话题」。
-3. 选「其他话题」→ 回到**俘虏菜单**，不开战、不写失败记录、不结仇。
-4. 选「更进一步」→ 不进入战斗，直接「已关押成功」反馈；检查经历/好感/结仇/密闻与普通强制成功一致，关押状态保留。
-5. 亲密直通目标（如配偶被关押）：点击 → 亲密提交 → `亲密反馈`，不开战、不强制结仇。
-6. 未成年俘虏：内层说明显示未成年 + 关押变体；反馈走未成年已关押成功文案。
+2. 普通成年俘虏：点击 → 关押内层显示关押强制说明 + 「更进一步 / 其他话题」。
+3. 选「其他话题」→ 回到俘虏菜单 `2e651ccb`，不开战、不写失败、不结仇、不消耗行动力。
+4. 选「更进一步」→ 不进入战斗，直接「已关押成功」反馈；经历/好感/结仇/密闻与普通强制成功一致，关押状态保留。
+5. 亲密直通目标（如配偶被关押）：点击 → 半推半就提交 → 关押亲密反馈，不开战、不强制结仇。
+6. 未成年俘虏：关押内层说明显示未成年变体；反馈走未成年已关押成功文案。
 7. 普通（未关押）目标在 `7c70ce0c` 的行为与文案完全不变（回归）。
+8. 行动力成本：内层「更进一步 / 半推半就」提交按 `ActionTimeCostDays` 消耗；「其他话题」不消耗。
