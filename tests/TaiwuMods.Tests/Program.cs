@@ -845,7 +845,9 @@ sealed class ContractTests
         int lo = Resolve(8, 7, M.RandomLow);
         Assert(lo >= 0 && lo <= 6, "RandomLow should pick within the low partition");
         // 确定性：相同输入相同输出
-        Assert(Resolve(8, 7, M.RandomLow, seed: 999) == Resolve(8, 7, M.RandomLow, seed: 999), "Random pick should be deterministic for the same seed");
+        int det1 = Resolve(8, 7, M.RandomLow, seed: 999);
+        int det2 = Resolve(8, 7, M.RandomLow, seed: 999);
+        Assert(det1 == det2 && det1 == 2, "RandomLow should be a deterministic function of the seed (stable concrete value 2)");
         // 盐不同结果可变（低区跨度大，至少两种取值）
         var seen = new HashSet<int>();
         for (int s = 0; s < 16; s++) seen.Add(Resolve(8, 7, M.RandomLow, seed: s));
