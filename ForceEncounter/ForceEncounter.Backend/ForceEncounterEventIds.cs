@@ -10,6 +10,9 @@ namespace ForceEncounter.Backend
         public const string NavigationOptionGuid = ForceEncounterConstants.Options.OpenGuid;
         public const string OptionGuid = ForceEncounterConstants.Options.ExecuteGuid;
         public const string OptionKey = ForceEncounterConstants.Options.ExecuteKey;
+        public const string NativeKidnappedInteractionEventGuid = ForceEncounterConstants.EventGuids.NativeKidnappedInteraction;
+        public const string PrisonerEntryEventGuid = ForceEncounterConstants.EventGuids.PrisonerEntry;
+        public const string ExecutePrisonerOptionKey = ForceEncounterConstants.Options.ExecutePrisonerKey;
         public const string BattleSucceededParam = ForceEncounterConstants.Backend.BattleSucceeded;
         public const string ResolutionModeParam = ForceEncounterConstants.Backend.ResolutionMode;
         public const string ResolutionParam = ForceEncounterConstants.Backend.Resolution;

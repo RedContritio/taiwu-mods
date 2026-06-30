@@ -448,6 +448,10 @@ namespace ForceEncounter.Backend
                 ForceEncounterEventIds.NativeEnemyInteractionEventGuid,
                 ForceEncounterEventIds.EventGuid,
                 ForceEncounterEventIds.OptionKey);
+            EventHelper.AddOptionToEvent(
+                ForceEncounterEventIds.NativeKidnappedInteractionEventGuid,
+                ForceEncounterEventIds.PrisonerEntryEventGuid,
+                ForceEncounterEventIds.ExecutePrisonerOptionKey);
             DebugLog("Ensured hostile menu option");
         }
 

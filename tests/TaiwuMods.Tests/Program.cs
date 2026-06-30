@@ -575,6 +575,22 @@ sealed class ContractTests
         Assert(events.Contains("ForceEncounterPrisonerText.BuildForcedResultContent", StringComparison.Ordinal), "ForceEncounter prisoner forced feedback should use the prisoner text catalog");
         Assert(events.Contains("class ForceEncounterPrisonerAcceptedResultEvent", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner intimate feedback event");
         Assert(events.Contains("ForceEncounterPrisonerText.BuildAcceptedResultContent", StringComparison.Ordinal), "ForceEncounter prisoner intimate feedback should use the prisoner text catalog");
+
+        string package = ReadProjectDirectorySource(mod.Name, "ForceEncounter.Events");
+        Assert(package.Contains("new ForceEncounterPrisonerEntryEvent()", StringComparison.Ordinal), "ForceEncounter prisoner entry event is not registered");
+        Assert(package.Contains("new ForceEncounterPrisonerConsentChoiceEvent()", StringComparison.Ordinal), "ForceEncounter prisoner consent choice event is not registered");
+        Assert(package.Contains("new ForceEncounterPrisonerForcedResultEvent()", StringComparison.Ordinal), "ForceEncounter prisoner forced feedback event is not registered");
+        Assert(package.Contains("new ForceEncounterPrisonerAcceptedResultEvent()", StringComparison.Ordinal), "ForceEncounter prisoner intimate feedback event is not registered");
+        Assert(package.Contains("ForceEncounterEventIds.事件.原生关押菜单", StringComparison.Ordinal), "ForceEncounter should extend the kidnapped-interaction menu");
+        Assert(Regex.IsMatch(package, @"AddOptionToEvent\(\s*ForceEncounterEventIds\.事件\.原生关押菜单,\s*ForceEncounterEventIds\.事件\.关押外层入口,\s*ForceEncounterEventIds\.选项\.情难自已关押\.Key"), "ForceEncounter should inject the prisoner entry option into the kidnapped-interaction menu");
+
+        string backend = ReadModFile(mod.Name, "ForceEncounter.Backend", "BackendPlugin.cs");
+        Assert(Regex.IsMatch(backend, @"AddOptionToEvent\(\s*ForceEncounterEventIds\.NativeKidnappedInteractionEventGuid,\s*ForceEncounterEventIds\.PrisonerEntryEventGuid,\s*ForceEncounterEventIds\.ExecutePrisonerOptionKey"), "ForceEncounter backend should restore the prisoner menu option after runtime resets");
+
+        string backendIds = ReadModFile(mod.Name, "ForceEncounter.Backend", "ForceEncounterEventIds.cs");
+        Assert(backendIds.Contains("NativeKidnappedInteractionEventGuid", StringComparison.Ordinal), "ForceEncounter backend ids should expose the kidnapped-interaction menu guid");
+        Assert(backendIds.Contains("PrisonerEntryEventGuid", StringComparison.Ordinal), "ForceEncounter backend ids should expose the prisoner entry guid");
+        Assert(backendIds.Contains("ExecutePrisonerOptionKey", StringComparison.Ordinal), "ForceEncounter backend ids should expose the prisoner execute option key");
     }
 
     private void CricketSingGradeColorContract()

@@ -19,7 +19,11 @@ namespace ForceEncounter.Events
                 new ForceEncounterGuardInterceptEvent(),
                 new ForceEncounterCombatResultEvent(),
                 new ForceEncounterCapturedTargetDispositionEvent(),
-                new ForceEncounterAcceptedResultEvent()
+                new ForceEncounterAcceptedResultEvent(),
+                new ForceEncounterPrisonerEntryEvent(),
+                new ForceEncounterPrisonerConsentChoiceEvent(),
+                new ForceEncounterPrisonerForcedResultEvent(),
+                new ForceEncounterPrisonerAcceptedResultEvent()
             };
 
             foreach (TaiwuEventItem item in EventList)
@@ -31,6 +35,11 @@ namespace ForceEncounter.Events
                 ForceEncounterEventIds.事件.原生敌对菜单,
                 ForceEncounterEventIds.事件.外层入口,
                 ForceEncounterEventIds.选项.情难自已.Key);
+
+            EventHelper.AddOptionToEvent(
+                ForceEncounterEventIds.事件.原生关押菜单,
+                ForceEncounterEventIds.事件.关押外层入口,
+                ForceEncounterEventIds.选项.情难自已关押.Key);
         }
     }
 }
