@@ -18,6 +18,8 @@
       "mod": "FertilityControl",
       "patterns": [
         "CheckPregnant",
+        "GetMakeLoveRole",
+        "CheckMakeLoveRole",
         "IsInsect",
         "CreatePregnantState"
       ]
@@ -35,7 +37,8 @@
       "mod": "CricketSingGradeColor",
       "patterns": [
         "ShowCricketSingImage",
-        "Sing"
+        "Sing",
+        "InitCatchPlace"
       ]
     }
   ]

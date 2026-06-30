@@ -584,6 +584,11 @@ sealed class ContractTests
         Assert(calculator.Contains("scores[scores.Count / 2]", StringComparison.Ordinal), "CricketSingGradeColor should use median grade anchors");
         Assert(calculator.Contains("Colors.Instance.GradeColors", StringComparison.Ordinal), "CricketSingGradeColor should prefer the game's own grade palette");
         Assert(calculator.Contains("SoundGradeConfig.FallbackTierColors", StringComparison.Ordinal), "CricketSingGradeColor should keep a fallback palette");
+
+        string seedPatch = ReadModFile(mod.Name, "CricketSingGradeColor.Frontend", "SessionSeedPatch.cs");
+        Assert(seedPatch.Contains("[HarmonyPatch(typeof(ViewCatchCricket), \"InitCatchPlace\")]", StringComparison.Ordinal), "CricketSingGradeColor should patch InitCatchPlace to derive a per-session seed");
+        Assert(seedPatch.Contains("BlindBox.ComputeSessionSeed", StringComparison.Ordinal), "CricketSingGradeColor session seed should hash the grass cricket composition");
+        Assert(seedPatch.Contains("BlindBoxConfig.SessionSeed", StringComparison.Ordinal), "CricketSingGradeColor session seed patch should store the seed for the colorizer");
     }
 
     private void FertilityControlContract()
