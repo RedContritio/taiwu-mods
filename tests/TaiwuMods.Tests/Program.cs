@@ -566,6 +566,11 @@ sealed class ContractTests
         Assert(events.Contains("class ForceEncounterPrisonerEntryEvent", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner entry event");
         Assert(Regex.IsMatch(events, @"OptionKey\s*=\s*ForceEncounterEventIds\.选项\.情难自已关押\.Key,[\s\S]*?Behavior\s*=\s*EventOptionBehavior\.BehaviorEgoistic,[\s\S]*?OnOptionSelect\s*=\s*Execute"), "ForceEncounter prisoner entry should use native egoistic styling and probe on select");
         Assert(events.Contains("return ForceEncounterEventIds.事件.关押内层选择", StringComparison.Ordinal), "ForceEncounter prisoner entry should route to the prisoner inner choice");
+        Assert(events.Contains("class ForceEncounterPrisonerConsentChoiceEvent", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner inner choice event");
+        Assert(events.Contains("CallCombatBackend(GetRuntimeModId(), actorId, targetId, true)", StringComparison.Ordinal), "ForceEncounter prisoner forced route should settle directly as success without combat");
+        Assert(Regex.IsMatch(events, @"class ForceEncounterPrisonerConsentChoiceEvent[\s\S]*?return ForceEncounterEventIds\.事件\.原生关押菜单"), "ForceEncounter prisoner abandon should return to the kidnapped-interaction menu");
+        Assert(events.Contains("return ForceEncounterEventIds.事件.关押强制反馈", StringComparison.Ordinal), "ForceEncounter prisoner forced route should route to the prisoner forced feedback");
+        Assert(events.Contains("return ForceEncounterEventIds.事件.关押亲密反馈", StringComparison.Ordinal), "ForceEncounter prisoner intimate route should route to the prisoner intimate feedback");
     }
 
     private void CricketSingGradeColorContract()
