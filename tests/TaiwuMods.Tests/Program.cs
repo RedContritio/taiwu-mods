@@ -563,6 +563,9 @@ sealed class ContractTests
         Assert(events.Contains("BuildForcedResultContent", StringComparison.Ordinal), "ForceEncounter prisoner text should build forced-result feedback");
         Assert(events.Contains("无从抗拒", StringComparison.Ordinal), "ForceEncounter prisoner inner description should read as a bound captive");
         Assert(!Regex.IsMatch(events, @"ForceEncounterPrisonerText[\s\S]{0,4000}?护卫"), "ForceEncounter prisoner text should not mention guards");
+        Assert(events.Contains("class ForceEncounterPrisonerEntryEvent", StringComparison.Ordinal), "ForceEncounter should have a dedicated prisoner entry event");
+        Assert(Regex.IsMatch(events, @"OptionKey\s*=\s*ForceEncounterEventIds\.选项\.情难自已关押\.Key,[\s\S]*?Behavior\s*=\s*EventOptionBehavior\.BehaviorEgoistic,[\s\S]*?OnOptionSelect\s*=\s*Execute"), "ForceEncounter prisoner entry should use native egoistic styling and probe on select");
+        Assert(events.Contains("return ForceEncounterEventIds.事件.关押内层选择", StringComparison.Ordinal), "ForceEncounter prisoner entry should route to the prisoner inner choice");
     }
 
     private void CricketSingGradeColorContract()
