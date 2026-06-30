@@ -562,7 +562,9 @@ sealed class ContractTests
         Assert(plugin.Contains($"PluginConfig(\"CricketSingGradeColor\", \"RedContritio\", \"{version}\")", StringComparison.Ordinal), "CricketSingGradeColor PluginConfig version should match config.lua Version");
 
         Assert(catchPatch.Contains("[HarmonyPatch(typeof(ViewCatchCricket), \"ShowCricketSingImage\")]", StringComparison.Ordinal), "CricketSingGradeColor should patch the catch-minigame ripple renderer");
-        Assert(catchPatch.Contains("RippleColorizer.Colorize(image, place.SingPitch, place.SingSize)", StringComparison.Ordinal), "CricketSingGradeColor catch patch should color only from SingPitch and SingSize");
+        Assert(catchPatch.Contains("RippleColorizer.ColorizeForCatch(image, place.SingPitch, place.SingSize)", StringComparison.Ordinal), "CricketSingGradeColor catch patch should route through the blind-box colorizer");
+        Assert(colorizer.Contains("BlindBox.ResolveDisplayGrade", StringComparison.Ordinal), "CricketSingGradeColor catch colorizer should consult the blind-box logic");
+        Assert(colorizer.Contains("ResetToVanilla", StringComparison.Ordinal), "CricketSingGradeColor should be able to restore the vanilla white ripple");
         Assert(plugin.Contains("PatchCricketViewSing(\"CricketView\")", StringComparison.Ordinal), "CricketSingGradeColor should patch CricketView card ripples");
         Assert(plugin.Contains("PatchCricketViewSing(\"CricketViewNew\")", StringComparison.Ordinal), "CricketSingGradeColor should patch CricketViewNew card ripples");
         Assert(plugin.Contains("AccessTools.Method(type, \"Sing\"", StringComparison.Ordinal), "CricketSingGradeColor card patch should resolve Sing by runtime type");

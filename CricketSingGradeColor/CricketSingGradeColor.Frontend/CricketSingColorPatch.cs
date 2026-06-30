@@ -45,7 +45,7 @@ namespace CricketSingGradeColor.Frontend
                 return;
             }
 
-            RippleColorizer.Colorize(image, place.SingPitch, place.SingSize);
+            RippleColorizer.ColorizeForCatch(image, place.SingPitch, place.SingSize);
         }
     }
 }
