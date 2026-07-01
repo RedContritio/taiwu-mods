@@ -120,10 +120,11 @@ namespace EasyQuickSaveLoad.Frontend
         // ---- Panel construction --------------------------------------------
 
         // Layout tuning constants for the far-right panel.
-        private const float RightMargin       = 24f;   // px in from the right edge
+        private const float RightMargin       = 0f;    // flush to the right edge (水平贴右)
         private const float ButtonHeight      = 30f;   // approx native CButton height
-        private const float VerticalPadding   = 120f;  // frame chrome above/below the 4 buttons
+        private const float VerticalPadding   = 180f;  // frame chrome incl. the title, above/below the 4 buttons
         private const float SlicedWidth       = 240f;  // narrowed width when the frame sprite is Sliced
+        private const string PanelTitle       = "快速 SL";
 
         private void BuildPanel(object viewSystemOption)
         {
@@ -180,12 +181,17 @@ namespace EasyQuickSaveLoad.Frontend
                 UnityEngine.Object.Destroy(child.gameObject);
             }
 
-            // Strip any non-frame decorations directly under the panel that are neither the frame
-            // graphic on the panel root nor CONTENT (e.g. a title text object): keep it minimal.
+            // Keep the native title element (so the panel has a header like 系统选项) and relabel it
+            // to PanelTitle. Strip any OTHER decorations, keeping only the frame + title + CONTENT.
+            var title = _panel.transform.Find("Title");
+            if (title != null)
+            {
+                SetLabelViaReflection(title.gameObject, PanelTitle);
+            }
             for (int i = _panel.transform.childCount - 1; i >= 0; i--)
             {
                 var child = _panel.transform.GetChild(i);
-                if (child == clonedContent) continue;
+                if (child == clonedContent || child == title) continue;
                 UnityEngine.Object.Destroy(child.gameObject);
             }
 
