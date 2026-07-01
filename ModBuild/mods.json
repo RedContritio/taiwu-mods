@@ -24,7 +24,6 @@
     {
       "name": "ForceEncounter",
       "status": "release",
-      "autoIncrementBuildVersion": true,
       "projects": [
         "ForceEncounter/ForceEncounter.Backend/ForceEncounter.Backend.csproj",
         "ForceEncounter/ForceEncounter.Events/ForceEncounter.Events.csproj"

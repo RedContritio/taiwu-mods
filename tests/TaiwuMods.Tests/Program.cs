@@ -293,9 +293,9 @@ sealed class ContractTests
     {
         ModEntry mod = _mods.Single(m => m.Name == "ForceEncounter");
         string config = ReadModFile(mod.Name, "config.lua");
-        Assert(mod.AutoIncrementBuildVersion, "ForceEncounter should auto-increment its build version during packaging and local deploy builds");
+        Assert(!mod.AutoIncrementBuildVersion, "ForceEncounter build version is pinned (auto-increment off) at the 1.1.0 line");
         string forceEncounterVersion = ExtractLuaString(config, "Version");
-        Assert(forceEncounterVersion.StartsWith("1.1.0.", StringComparison.Ordinal), "ForceEncounter version should start from the 1.1.0.x line");
+        Assert(forceEncounterVersion.StartsWith("1.1.0", StringComparison.Ordinal), "ForceEncounter version should start from the 1.1.0 line");
         Assert(int.TryParse(forceEncounterVersion.Split('.')[3], out int forceEncounterBuild) && forceEncounterBuild >= 0, "ForceEncounter build version should be non-negative");
         Assert(File.Exists(Path.Combine(_repo, "TaiwuMod.Common", "TaiwuModSettings.cs")), "Taiwu common settings facade is missing");
 
