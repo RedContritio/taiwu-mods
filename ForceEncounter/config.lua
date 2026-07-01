@@ -1,11 +1,11 @@
 return {
 	Title = "情难自已",
 	Description = "让玩家也能像 npc 一样，对心动的目标强行实施侮辱行为",
-	Version = "1.0.0.7",
+	Version = "1.1.0.0",
 	Author = "RedContritio",
 	Source = 0,
 	Cover = "cover.png",
-	GameVersion = "1.0.20.0",
+	GameVersion = "1.0.46",
 	BackendPlugins = {
 		[1] = "ForceEncounter.Backend.dll",
 	},
