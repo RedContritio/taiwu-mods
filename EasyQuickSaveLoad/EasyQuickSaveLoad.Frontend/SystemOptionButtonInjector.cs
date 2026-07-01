@@ -2,6 +2,10 @@ using System;
 using System.Reflection;
 using FrameWork;
 using FrameWork.UISystem.UIElements;
+using GameData.Domains.Global;
+using GameData.Domains.Mod;
+using GameData.Domains.World;
+using GameData.Serializer;
 using UnityEngine;
 
 namespace EasyQuickSaveLoad.Frontend
@@ -218,7 +222,12 @@ namespace EasyQuickSaveLoad.Frontend
             _boundUiBase = null;
         }
 
-        // ---- Click handlers (Task 5/6 will fill real implementations) ------
+        // ---- Quick slot constant --------------------------------------------
+
+        /// <summary>Quick-save/load uses slot index -1 (the dedicated quick slot).</summary>
+        private const int QuickSlot = -1;
+
+        // ---- Click handlers ------------------------------------------------
 
         public void OnSaveClick()
         {
@@ -232,12 +241,76 @@ namespace EasyQuickSaveLoad.Frontend
 
         public void OnQuickSaveClick()
         {
-            Debug.Log("[EasyQuickSaveLoad] QuickSave clicked");
+            if (!EqslCore.CanOperate(out _)) return;
+
+            Action doSave = () => EqslCore.CallSave(QuickSlot);
+
+            if (EqslSettings.QuickSaveConfirm)
+            {
+                EqslCore.RequestSlots(res =>
+                {
+                    string summary = QuickSummary(res);
+                    NativeDialog.Confirm("确认快速存档", "将覆盖快捷存档\n" + summary, doSave);
+                });
+            }
+            else
+            {
+                doSave();
+            }
         }
 
         public void OnQuickLoadClick()
         {
-            Debug.Log("[EasyQuickSaveLoad] QuickLoad clicked");
+            if (!EqslCore.CanOperate(out _)) return;
+
+            EqslCore.RequestSlots(res =>
+            {
+                var wi = QuickWorldInfo(res);
+                if (wi == null) return; // quick slot empty — no-op
+
+                Action doLoad = () =>
+                {
+                    HideSystemOption();
+                    EqslCore.LoadSlotWorld(QuickSlot);
+                };
+
+                if (EqslSettings.QuickLoadConfirm)
+                    NativeDialog.Confirm("确认快速读档", EqslCore.FormatWorldInfoBrief(wi), doLoad);
+                else
+                    doLoad();
+            });
+        }
+
+        // ---- Quick-slot helpers --------------------------------------------
+
+        /// <summary>
+        /// Returns a one-line summary of the quick slot's current save, or "（空）" when empty.
+        /// </summary>
+        private static string QuickSummary(SerializableModData res)
+        {
+            var wi = QuickWorldInfo(res);
+            return wi != null ? EqslCore.FormatWorldInfoBrief(wi) : "（空）";
+        }
+
+        /// <summary>
+        /// Extracts the <see cref="GameData.Domains.World.WorldInfo"/> stored in the quick slot
+        /// from a ListSlots result, or null if the slot is empty or the result is unavailable.
+        /// </summary>
+        private static WorldInfo QuickWorldInfo(SerializableModData res)
+        {
+            if (res == null) return null;
+            if (!res.Get("QuickInfo", out ArchiveInfo qi)) return null;
+            return qi?.WorldInfo;
+        }
+
+        // ---- System-option hide helper -------------------------------------
+
+        private static void HideSystemOption()
+        {
+            if (UIManager.Instance != null && UIElement.SystemOption.Exist)
+            {
+                UIManager.Instance.HideUI(UIElement.SystemOption);
+            }
         }
     }
 }
