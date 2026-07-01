@@ -136,13 +136,27 @@ namespace EasyBridge.Frontend
                 ? list
                 : (IList)new List<object>();
 
-            var selected = SelectMethodByInArg(type, method, args.Count, isStatic: true);
-            if (selected == null) return Error("static method not found (by name + in-arg count): " + method + "/" + args.Count);
+            // Optional: invoke an INSTANCE method on a singleton reached through a static member.
+            // e.g. {type:"...UIManager", onStaticMember:"Instance", method:"MaskUI", args:[...]} →
+            // resolves UIManager.Instance then calls its instance method MaskUI. Keeps the generic
+            // static-invoke path for the common case (no onStaticMember).
+            string onStaticMember = GetString(parsed, "onStaticMember");
+            object target = null;
+            Type dispatchType = type;
+            if (!string.IsNullOrEmpty(onStaticMember))
+            {
+                target = GetStaticMember(type, onStaticMember);
+                if (target == null) return Error("static member null or not found: " + typeName + "." + onStaticMember);
+                dispatchType = target.GetType();
+            }
+
+            var selected = SelectMethodByInArg(dispatchType, method, args.Count, isStatic: target == null);
+            if (selected == null) return Error("method not found (by name + in-arg count): " + method + "/" + args.Count);
 
             try
             {
-                var result = BuildAndInvoke(selected, null, args, depth, maxMembers);
-                result["type"] = type.FullName;
+                var result = BuildAndInvoke(selected, target, args, depth, maxMembers);
+                result["type"] = dispatchType.FullName;
                 return result;
             }
             catch (TargetInvocationException ex)
