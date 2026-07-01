@@ -21,7 +21,12 @@ namespace EasyQuickSaveLoad.Frontend
         private const float ConfirmSeconds = 4f;
         private const float ActionCooldownSeconds = 1.5f;
         private const float ArchiveInfoRefreshCooldownSeconds = 1.5f;
-        private const string ModId = "EasyQuickSaveLoad";
+        // The runtime mod id used to dispatch backend mod methods. This is NOT the display name
+        // "EasyQuickSaveLoad" — the backend registers its mod methods under TaiwuRemakePlugin.ModIdStr (a runtime
+        // id like "0_2"), and CallModMethod* looks up "<modIdStr>.Method.<name>". Using the wrong id means the
+        // backend method is never found (logged as "Unable to call method ..."). FrontendPlugin injects the real
+        // ModIdStr via SetModId during Initialize.
+        private static string ModId = "EasyQuickSaveLoad";
         private const string SaveWorldWithBackupMethod = "SaveWorldWithBackup";
         private const string ListManualSavesMethod = "ListManualSaves";
         private const string LoadManualSaveMethod = "LoadManualSave";
@@ -84,6 +89,15 @@ namespace EasyQuickSaveLoad.Frontend
             DontDestroyOnLoad(host);
             _instance = host.AddComponent<EasyQuickSaveLoadOverlay>();
             return _instance;
+        }
+
+        // Injects the runtime mod id (TaiwuRemakePlugin.ModIdStr, e.g. "0_2") so backend mod methods resolve.
+        public static void SetModId(string modId)
+        {
+            if (!string.IsNullOrEmpty(modId))
+            {
+                ModId = modId;
+            }
         }
 
         public static void Destroy(EasyQuickSaveLoadOverlay overlay)
@@ -965,8 +979,11 @@ namespace EasyQuickSaveLoad.Frontend
             {
                 UIManager.Instance.HideAll();
                 SingletonObject.RemoveInstance<CharacterMonitorModel>();
-                GlobalOperations.PackCrossArchiveGameData();
-                GlobalOperations.LeaveWorld();
+                // PackCrossArchiveGameData + LeaveWorld are performed inside the backend LoadManualSave mod
+                // method, not here: those are domain-method calls (global listener) while the load is a
+                // mod-method call (listener -1), and the two streams are not ordered, so leaving here would
+                // race the load and trip LoadWorldAt's IsInWorld guard. OnLeaveWorld is frontend-only bookkeeping
+                // and stays here (native runs it before the backend leave is applied too).
                 GlobalOperations.OnLeaveWorld();
                 UIManager.Instance.DestroyAll(new List<UIElement>
                 {

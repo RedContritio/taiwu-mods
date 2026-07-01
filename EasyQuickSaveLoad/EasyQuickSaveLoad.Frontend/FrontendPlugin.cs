@@ -13,8 +13,10 @@ namespace EasyQuickSaveLoad.Frontend
         {
             try
             {
+                // Use the runtime mod id (matches the backend's registration key) for backend mod-method calls.
+                EasyQuickSaveLoadOverlay.SetModId(ModIdStr);
                 _overlay = EasyQuickSaveLoadOverlay.Create();
-                Debug.Log("[EasyQuickSaveLoad] Frontend initialized.");
+                Debug.Log("[EasyQuickSaveLoad] Frontend initialized. ModId=" + ModIdStr);
             }
             catch (Exception ex)
             {

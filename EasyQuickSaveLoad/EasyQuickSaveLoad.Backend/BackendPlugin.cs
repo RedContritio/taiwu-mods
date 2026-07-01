@@ -106,10 +106,29 @@ namespace EasyQuickSaveLoad.Backend
                 throw new FileNotFoundException("Manual save file not found.", archiveDataPath);
             }
 
-            Common.SetArchiveId(archiveId);
+            // Leave the current world HERE, inside this mod-method call, rather than relying on the frontend
+            // calling GlobalOperations.LeaveWorld() first. That frontend call is a domain-method call (global
+            // listener) while this runs as a mod-method call (listener -1); the two streams are NOT ordered,
+            // so LoadManualSave can be processed while still in-world, and LoadWorldAt's `if (IsInWorld()) throw
+            // "Need to exit the current world first"` guard then trips. Doing it synchronously here keeps the
+            // pack/leave/load sequence ordered. (Pack mirrors native GameApp.LoadArchive.)
+            if (Common.IsInWorld())
+            {
+                DomainManager.Global.PackAllCrossArchiveGameData();
+                DomainManager.Global.LeaveWorld();
+            }
+
             InvokeGlobalPrivate("SetLoadedAllArchiveData", new[] { typeof(bool), typeof(DataContext) }, false, null);
-            AddInitAchievementsHandler();
             InvokeGlobalPrivate("LoadWorldAt", new[] { typeof(DataContext), typeof(string) }, context, archiveDataPath);
+            // LoadWorldAt begins with `if (IsInWorld()) throw "Need to exit the current world first"`, so the
+            // archive id MUST be set AFTER it (every native loader checks IsInWorld first, then SetArchiveId).
+            // It still runs synchronously here, before LoadWorldAt's next-frame Load delegate executes.
+            Common.SetArchiveId(archiveId);
+            // LoadWorldAt registers RegisterItemOwners -> FixAllAbnormalDomainArchiveData -> InitBuildingEffect.
+            // Native GlobalDomain.LoadWorld appends InitAchievements LAST, and post-modification handlers run in
+            // registration order, so InitAchievements must be added AFTER LoadWorldAt (not before) to match the
+            // native ordering and avoid resolving achievements against not-yet-fixed/owned archive data.
+            AddInitAchievementsHandler();
             GameData.GameDataBridge.GameDataBridge.StartNextFrame(
                 () => InvokeGlobalPrivate("SetCurrGameWorldType", new[] { typeof(sbyte), typeof(DataContext) }, (sbyte)1, null));
         }
