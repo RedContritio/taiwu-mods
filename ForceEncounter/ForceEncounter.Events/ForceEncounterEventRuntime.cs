@@ -124,7 +124,6 @@ namespace ForceEncounter.Events
                 ", actor=" + actorId +
                 ", target=" + targetId);
             var parameter = new SerializableModData();
-            parameter.Set(ForceEncounterConstants.Backend.ActorId, actorId);
             parameter.Set(ForceEncounterConstants.Backend.TargetId, targetId);
             parameter.Set(ForceEncounterEventIds.后端.结算模式, resolutionMode);
 
@@ -145,7 +144,6 @@ namespace ForceEncounter.Events
                 ", target=" + targetId +
                 ", battleSucceeded=" + battleSucceeded);
             var parameter = new SerializableModData();
-            parameter.Set(ForceEncounterConstants.Backend.ActorId, actorId);
             parameter.Set(ForceEncounterConstants.Backend.TargetId, targetId);
             parameter.Set(ForceEncounterEventIds.后端.战斗成功, battleSucceeded);
             parameter.Set(ForceEncounterEventIds.后端.结算模式, ForceEncounterEventIds.结算模式.战斗结算);

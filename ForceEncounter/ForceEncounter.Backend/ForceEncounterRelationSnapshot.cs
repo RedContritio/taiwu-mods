@@ -5,32 +5,24 @@ namespace ForceEncounter.Backend
         public ForceEncounterRelationSnapshot(
             bool isSpouse,
             bool isMutualLover,
-            bool actorAdoresTarget,
             bool targetAdoresActor,
             bool targetIsDeepValleyCloseFriend,
             bool targetIsTaiwuVillager,
             bool targetHasExclusiveAttachmentToOther,
-            int actorFavorabilityType,
-            int targetFavorabilityType,
-            int actorBehaviorType)
+            int targetFavorabilityType)
         {
             IsSpouse = isSpouse;
             IsMutualLover = isMutualLover;
-            ActorAdoresTarget = actorAdoresTarget;
             TargetAdoresActor = targetAdoresActor;
             TargetIsDeepValleyCloseFriend = targetIsDeepValleyCloseFriend;
             TargetIsTaiwuVillager = targetIsTaiwuVillager;
             TargetHasExclusiveAttachmentToOther = targetHasExclusiveAttachmentToOther;
-            ActorFavorabilityType = actorFavorabilityType;
             TargetFavorabilityType = targetFavorabilityType;
-            ActorBehaviorType = actorBehaviorType;
         }
 
         public bool IsSpouse { get; }
 
         public bool IsMutualLover { get; }
-
-        public bool ActorAdoresTarget { get; }
 
         public bool TargetAdoresActor { get; }
 
@@ -40,11 +32,7 @@ namespace ForceEncounter.Backend
 
         public bool TargetHasExclusiveAttachmentToOther { get; }
 
-        public int ActorFavorabilityType { get; }
-
         public int TargetFavorabilityType { get; }
-
-        public int ActorBehaviorType { get; }
 
         public bool TargetUnilaterallyAdoresActor => TargetAdoresActor && !IsSpouse && !IsMutualLover;
 

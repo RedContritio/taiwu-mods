@@ -44,10 +44,7 @@ namespace ForceEncounter.Backend
             bool targetAdoresActor,
             bool targetIsDeepValleyCloseFriend,
             bool isTaiwuVillager,
-            bool targetHasExclusiveAttachmentToOther,
-            int actorFavorabilityType,
-            int targetFavorabilityType,
-            int actorBehaviorType)
+            int targetFavorabilityType)
         {
             return EvaluateIntimateEncounter(
                 isSpouse,
@@ -55,10 +52,7 @@ namespace ForceEncounter.Backend
                 targetAdoresActor,
                 targetIsDeepValleyCloseFriend,
                 isTaiwuVillager,
-                targetHasExclusiveAttachmentToOther,
-                actorFavorabilityType,
-                targetFavorabilityType,
-                actorBehaviorType).Accepted;
+                targetFavorabilityType).Accepted;
         }
 
         public static ForceEncounterIntimateAcceptanceDecision EvaluateIntimateEncounter(
@@ -67,33 +61,13 @@ namespace ForceEncounter.Backend
             bool targetAdoresActor,
             bool targetIsDeepValleyCloseFriend,
             bool isTaiwuVillager,
-            bool targetHasExclusiveAttachmentToOther,
-            int actorFavorabilityType,
-            int targetFavorabilityType,
-            int actorBehaviorType)
+            int targetFavorabilityType)
         {
-            if (targetIsDeepValleyCloseFriend && targetHasExclusiveAttachmentToOther)
-            {
-                bool deepValleyAccepted = targetFavorabilityType > ForceEncounterConstants.FavorabilityTypes.Favorite2;
-                return new ForceEncounterIntimateAcceptanceDecision(
-                    deepValleyAccepted,
-                    deepValleyAccepted ? "DeepValleyAttachedAccepted" : "DeepValleyAttachedFavorabilityTooLow",
-                    hasIntimateSource: true,
-                    deepValleyAttachedRule: true,
-                    villagerLeniencyApplied: false,
-                    nonLoverMinimumApplied: false,
-                    baseRequiredFavorabilityType: ForceEncounterConstants.FavorabilityTypes.Favorite2 + 1,
-                    requiredFavorabilityType: ForceEncounterConstants.FavorabilityTypes.Favorite2 + 1,
-                    actorFavorabilityPassed: true,
-                    targetFavorabilityPassed: deepValleyAccepted);
-            }
-
-            bool deepValleyCloseFriendCanAccept = targetIsDeepValleyCloseFriend &&
-                                                  !targetHasExclusiveAttachmentToOther;
+            // 亲密来源：配偶 / 双向爱慕 / 目标单恋太吾 / 谷中密友 / 太吾村民。
             bool hasIntimateSource = isSpouse ||
                                      isMutualLover ||
                                      targetAdoresActor ||
-                                     deepValleyCloseFriendCanAccept ||
+                                     targetIsDeepValleyCloseFriend ||
                                      isTaiwuVillager;
             if (!hasIntimateSource)
             {
@@ -101,44 +75,19 @@ namespace ForceEncounter.Backend
                     false,
                     "NoIntimateSource",
                     hasIntimateSource: false,
-                    deepValleyAttachedRule: false,
-                    villagerLeniencyApplied: false,
-                    nonLoverMinimumApplied: false,
-                    baseRequiredFavorabilityType: 0,
                     requiredFavorabilityType: 0,
-                    actorFavorabilityPassed: false,
                     targetFavorabilityPassed: false);
             }
 
-            int requiredFavorabilityType = GetIntimateAcceptanceFavorabilityType(actorBehaviorType);
-            int baseRequiredFavorabilityType = requiredFavorabilityType;
-            bool villagerLeniencyApplied = false;
-            if (isTaiwuVillager && !targetHasExclusiveAttachmentToOther)
-            {
-                requiredFavorabilityType = Math.Max(3, requiredFavorabilityType - 1);
-                villagerLeniencyApplied = true;
-            }
-
-            bool nonLoverMinimumApplied = false;
-            if (!isSpouse && !isMutualLover && !targetAdoresActor)
-            {
-                requiredFavorabilityType = Math.Max(4, requiredFavorabilityType);
-                nonLoverMinimumApplied = true;
-            }
-
-            bool actorFavorabilityPassed = actorFavorabilityType >= requiredFavorabilityType;
+            // 统一门槛：只看目标对太吾的好感，达到「热忱」(Favorite2 + 1) 即可。
+            // 不看太吾对目标的好感，也不按性格浮动。
+            int requiredFavorabilityType = ForceEncounterConstants.FavorabilityTypes.Favorite2 + 1;
             bool targetFavorabilityPassed = targetFavorabilityType >= requiredFavorabilityType;
-            bool accepted = actorFavorabilityPassed && targetFavorabilityPassed;
             return new ForceEncounterIntimateAcceptanceDecision(
-                accepted,
-                accepted ? "AcceptedByFavorability" : "FavorabilityTooLow",
-                hasIntimateSource,
-                deepValleyAttachedRule: false,
-                villagerLeniencyApplied,
-                nonLoverMinimumApplied,
-                baseRequiredFavorabilityType,
+                targetFavorabilityPassed,
+                targetFavorabilityPassed ? "AcceptedByFavorability" : "FavorabilityTooLow",
+                hasIntimateSource: true,
                 requiredFavorabilityType,
-                actorFavorabilityPassed,
                 targetFavorabilityPassed);
         }
 
@@ -154,17 +103,6 @@ namespace ForceEncounter.Backend
             }
 
             return targetUnilaterallyAdoresActor || deepValleyCloseFriendHasOtherAttachment;
-        }
-
-        private static int GetIntimateAcceptanceFavorabilityType(int actorBehaviorType)
-        {
-            return actorBehaviorType switch
-            {
-                3 => 3,
-                4 => 3,
-                2 => 4,
-                _ => 5
-            };
         }
     }
 }

@@ -27,14 +27,11 @@ namespace ForceEncounter.Backend
                 isSpouse: RelationType.HasRelation(actorToTarget.RelationType, ForceEncounterConstants.Relations.Spouse) &&
                           RelationType.HasRelation(targetToActor.RelationType, ForceEncounterConstants.Relations.Spouse),
                 isMutualLover: actorAdoresTarget && targetAdoresActor,
-                actorAdoresTarget: actorAdoresTarget,
                 targetAdoresActor: targetAdoresActor,
                 targetIsDeepValleyCloseFriend: IsDeepValleyCloseFriendToActor(actor, target),
                 targetIsTaiwuVillager: IsTaiwuVillager(target),
                 targetHasExclusiveAttachmentToOther: HasExclusiveLivingAttachmentToOther(target, actorId),
-                actorFavorabilityType: actorToTarget.GetFavorabilityType(),
-                targetFavorabilityType: targetToActor.GetFavorabilityType(),
-                actorBehaviorType: actor.GetBehaviorType());
+                targetFavorabilityType: targetToActor.GetFavorabilityType());
             return true;
         }
 

@@ -295,7 +295,7 @@ sealed class ContractTests
         string config = ReadModFile(mod.Name, "config.lua");
         Assert(!mod.AutoIncrementBuildVersion, "ForceEncounter build version is pinned (auto-increment off) at the 1.1.0 line");
         string forceEncounterVersion = ExtractLuaString(config, "Version");
-        Assert(forceEncounterVersion.StartsWith("1.1.0", StringComparison.Ordinal), "ForceEncounter version should start from the 1.1.0 line");
+        Assert(forceEncounterVersion.StartsWith("1.2.0", StringComparison.Ordinal), "ForceEncounter version should start from the 1.2.0 line");
         Assert(int.TryParse(forceEncounterVersion.Split('.')[3], out int forceEncounterBuild) && forceEncounterBuild >= 0, "ForceEncounter build version should be non-negative");
         Assert(File.Exists(Path.Combine(_repo, "TaiwuMod.Common", "TaiwuModSettings.cs")), "Taiwu common settings facade is missing");
 
@@ -503,8 +503,8 @@ sealed class ContractTests
         string backendProject = ReadProjectDirectorySource(mod.Name, "ForceEncounter.Backend");
         Assert(backend.Contains($"PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, \"{forceEncounterVersion}\")", StringComparison.Ordinal), "ForceEncounter backend plugin version should match config.lua Version");
         Assert(!backend.Contains("AddExecuteMethod(\"ForceEncounter\")", StringComparison.Ordinal), "ForceEncounter backend should not register methods under a hard-coded development mod id");
-        Assert(backend.Contains("actorId != taiwuId", StringComparison.Ordinal), "ForceEncounter backend should reject non-Taiwu actors until its public interface supports NPC actors");
-        Assert(backend.Contains("ForceEncounterConstants.Reasons.NonTaiwuActorNotAllowed", StringComparison.Ordinal), "ForceEncounter backend should return a clear reason for non-Taiwu actors");
+        Assert(backend.Contains("int actorId = DomainManager.Taiwu.GetTaiwuCharId();", StringComparison.Ordinal), "ForceEncounter backend actor should always be Taiwu, derived locally");
+        Assert(!backend.Contains("ForceEncounterConstants.Backend.ActorId", StringComparison.Ordinal), "ForceEncounter backend should not accept an external actor id (no forward-compat)");
         Assert(backend.Contains("GetBoolSetting(ForceEncounterConstants.Settings.DebugMode, true)", StringComparison.Ordinal), "ForceEncounter backend debug logging should default on when settings are unavailable");
         Assert(!backend.Contains("HandleRapeAction", StringComparison.Ordinal), "ForceEncounter should not call original combat-power-based HandleRapeAction");
         Assert(!backend.Contains("GetCombatPower()", StringComparison.Ordinal), "ForceEncounter should not use combat power as a success gate");
@@ -702,17 +702,18 @@ sealed class ContractTests
         Assert(ForceEncounter.Backend.ForceEncounterRules.IsResolvedSuccess(true, false), "ForceEncounter should succeed after formal battle win");
         Assert(!ForceEncounter.Backend.ForceEncounterRules.IsResolvedSuccess(false, false), "ForceEncounter should fail after battle loss");
         Assert(!ForceEncounter.Backend.ForceEncounterRules.IsResolvedSuccess(true, true), "ForceEncounter should not succeed when target is Taiwu");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, false, false, false, 4, 4, 2), "ForceEncounter should allow good spouse relation for neutral behavior");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, false, false, false, 3, 4, 2), "ForceEncounter should require both directions to pass intimate favor threshold");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, false, false, false, 3, 3, 3), "ForceEncounter should allow rebellious mutual lovers at a lower threshold");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, false, false, false, 4, 4, 0), "ForceEncounter should require stricter favor for upright mutual lovers");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, true, false, false, false, 3, 3, 3), "ForceEncounter should treat targets who unilaterally adore Taiwu as lover-like for intimate difficulty");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, false, 5, 5, 0), "ForceEncounter should allow unattached 谷中密友 through the intimate route");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, true, 5, 3, 0), "ForceEncounter should allow attached 谷中密友 above native Favorite2 / 融洽 through the intimate route");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, true, 5, 2, 0), "ForceEncounter should send attached 谷中密友 at or below native Favorite2 / 融洽 to the combat route");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, false, 4, 4, 0), "ForceEncounter should let unattached Taiwu villagers use the villager intimacy leniency");
-        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, true, 4, 4, 0), "ForceEncounter should cancel villager intimacy leniency when the target has an exclusive living attachment");
-        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, true, 5, 5, 0), "ForceEncounter attached Taiwu villagers should still pass at normal intimacy difficulty");
+        // 亲密直通：有亲密来源 且 目标对太吾好感 >= 热忱(type 3)。不看太吾侧好感、不看性格。
+        // 签名: (isSpouse, isMutualLover, targetAdoresActor, targetIsDeepValleyCloseFriend, isTaiwuVillager, targetFavorabilityType)
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, false, false, 3), "ForceEncounter spouse with target favor at 热忱(3) should pass");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(true, false, false, false, false, 2), "ForceEncounter should require target favor at 热忱(3); 融洽(2) fails even for a spouse");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, true, false, false, false, 3), "ForceEncounter mutual lovers with target favor at 热忱 should pass");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, true, false, false, 3), "ForceEncounter target who unilaterally adores Taiwu with 热忱 should pass");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, true, false, false, 2), "ForceEncounter one-sided adoration at 融洽(2) should fail the intimate threshold");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, true, false, 3), "ForceEncounter 谷中密友 with target favor at 热忱 should pass (attachment no longer matters)");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, 3), "ForceEncounter Taiwu villager with target favor at 热忱 should pass");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, 2), "ForceEncounter Taiwu villager at 融洽(2) should fail the intimate threshold");
+        Assert(!ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, false, 6), "ForceEncounter should reject the intimate route without any intimate source, even at 不渝(6)");
+        Assert(ForceEncounter.Backend.ForceEncounterRules.CanAcceptIntimateEncounter(false, false, false, false, true, 6), "ForceEncounter should pass any intimate source when target favor exceeds the threshold");
         Assert(ForceEncounter.Backend.ForceEncounterRules.CalculateForcedFavorabilityDelta(30000, false, 30) == -30000, "ForceEncounter normal forced route should default to the configured full penalty");
         Assert(ForceEncounter.Backend.ForceEncounterRules.CalculateForcedFavorabilityDelta(30000, true, 30) == -9000, "ForceEncounter Taiwu villager forced route should use 30% of the normal forced penalty by default");
         Assert(ForceEncounter.Backend.ForceEncounterRules.CalculateForcedFavorabilityDelta(30000, true, 0) == 0, "ForceEncounter Taiwu villager penalty ratio should support 0%");

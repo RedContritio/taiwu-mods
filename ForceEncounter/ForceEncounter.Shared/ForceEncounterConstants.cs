@@ -159,7 +159,6 @@ namespace ForceEncounter.Shared
         public static class Backend
         {
             public const string ExecuteMethod = "ExecuteForcedAction";
-            public const string ActorId = "ActorId";
             public const string TargetId = "TargetId";
             public const string BattleSucceeded = "BattleSucceeded";
             public const string ResolutionMode = "ResolutionMode";
@@ -170,7 +169,6 @@ namespace ForceEncounter.Shared
         {
             public const string Ok = "Ok";
             public const string Succeeded = "Succeeded";
-            public const string ActorId = Backend.ActorId;
             public const string TargetId = Backend.TargetId;
             public const string TargetIsTaiwuVillager = "TargetIsTaiwuVillager";
             public const string AppliedEnmity = "AppliedEnmity";
@@ -205,7 +203,6 @@ namespace ForceEncounter.Shared
             public const string MissingActorOrTarget = "MissingActorOrTarget";
             public const string MissingBattleResult = "MissingBattleResult";
             public const string SameActorAndTarget = "SameActorAndTarget";
-            public const string NonTaiwuActorNotAllowed = "NonTaiwuActorNotAllowed";
             public const string TaiwuTargetNotAllowed = "TaiwuTargetNotAllowed";
             public const string ActorNotFound = "ActorNotFound";
             public const string TargetNotFound = "TargetNotFound";

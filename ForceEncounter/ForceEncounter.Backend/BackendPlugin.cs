@@ -10,7 +10,7 @@ using TaiwuModdingLib.Core.Plugin;
 
 namespace ForceEncounter.Backend
 {
-    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "1.1.0.0")]
+    [PluginConfig(ForceEncounterConstants.Mod.Id, ForceEncounterConstants.Mod.Author, "1.2.0.0")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
         internal static string ModId;
@@ -43,10 +43,8 @@ namespace ForceEncounter.Backend
         private static SerializableModData ExecuteForcedAction(DataContext context, SerializableModData parameter)
         {
             var result = new SerializableModData();
-            if (!TryGetInt(parameter, ForceEncounterConstants.Backend.ActorId, out int actorId))
-            {
-                actorId = DomainManager.Taiwu.GetTaiwuCharId();
-            }
+            // 行为者恒为太吾；不接受外部指定 ActorId。
+            int actorId = DomainManager.Taiwu.GetTaiwuCharId();
 
             if (!TryGetInt(parameter, ForceEncounterConstants.Backend.TargetId, out int targetId))
             {
@@ -58,7 +56,6 @@ namespace ForceEncounter.Backend
             bool isAcceptedCommit = resolutionMode == ForceEncounterEventIds.ResolutionModeAcceptedCommit;
             DebugLog(
                 "Backend enter mode=" + resolutionMode +
-                ", actor=" + actorId +
                 ", target=" + targetId +
                 ", isCombatResolution=" + isCombatResolution +
                 ", isAcceptedCommit=" + isAcceptedCommit);
@@ -68,18 +65,7 @@ namespace ForceEncounter.Backend
                 return Fail(result, ForceEncounterConstants.Reasons.MissingBattleResult, actorId, targetId, resolutionMode);
             }
 
-            if (actorId == targetId)
-            {
-                return Fail(result, ForceEncounterConstants.Reasons.SameActorAndTarget, actorId, targetId, resolutionMode);
-            }
-
-            int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
-            if (actorId != taiwuId)
-            {
-                return Fail(result, ForceEncounterConstants.Reasons.NonTaiwuActorNotAllowed, actorId, targetId, resolutionMode);
-            }
-
-            if (targetId == taiwuId)
+            if (targetId == actorId)
             {
                 return Fail(result, ForceEncounterConstants.Reasons.TaiwuTargetNotAllowed, actorId, targetId, resolutionMode);
             }
@@ -119,7 +105,6 @@ namespace ForceEncounter.Backend
 
             result.Set(ForceEncounterConstants.Response.Ok, true);
             result.Set(ForceEncounterConstants.Response.Succeeded, success);
-            result.Set(ForceEncounterConstants.Response.ActorId, actorId);
             result.Set(ForceEncounterConstants.Response.TargetId, targetId);
             result.Set(ForceEncounterConstants.Response.TargetIsTaiwuVillager, targetIsTaiwuVillager);
             result.Set(ForceEncounterConstants.Response.AppliedEnmity, appliedEnmity);
@@ -145,7 +130,6 @@ namespace ForceEncounter.Backend
                 result.Set(ForceEncounterConstants.Response.Ok, true);
                 result.Set(ForceEncounterConstants.Response.Succeeded, false);
                 result.Set(ForceEncounterEventIds.ResolutionParam, ForceEncounterEventIds.ResolutionAccepted);
-                result.Set(ForceEncounterConstants.Response.ActorId, actor.GetId());
                 result.Set(ForceEncounterConstants.Response.TargetId, target.GetId());
                 result.Set(ForceEncounterConstants.Response.Reason, ForceEncounterConstants.Reasons.Accepted);
                 DebugLog("Probe route=Accepted actor=" + actor.GetId() + ", target=" + target.GetId());
@@ -155,7 +139,6 @@ namespace ForceEncounter.Backend
             result.Set(ForceEncounterConstants.Response.Ok, true);
             result.Set(ForceEncounterConstants.Response.Succeeded, false);
             result.Set(ForceEncounterEventIds.ResolutionParam, ForceEncounterEventIds.ResolutionNeedCombatChoice);
-            result.Set(ForceEncounterConstants.Response.ActorId, actor.GetId());
             result.Set(ForceEncounterConstants.Response.TargetId, target.GetId());
             result.Set(ForceEncounterConstants.Response.Reason, ForceEncounterConstants.Reasons.NeedCombatChoice);
             DebugLog("Probe route=NeedCombatChoice actor=" + actor.GetId() + ", target=" + target.GetId());
@@ -192,7 +175,6 @@ namespace ForceEncounter.Backend
             result.Set(ForceEncounterConstants.Response.Ok, true);
             result.Set(ForceEncounterConstants.Response.Succeeded, true);
             result.Set(ForceEncounterEventIds.ResolutionParam, ForceEncounterEventIds.ResolutionAccepted);
-            result.Set(ForceEncounterConstants.Response.ActorId, actor.GetId());
             result.Set(ForceEncounterConstants.Response.TargetId, target.GetId());
             result.Set(ForceEncounterConstants.Response.Reason, ForceEncounterConstants.Reasons.Accepted);
             DebugLog("Accepted encounter committed actor=" + actor.GetId() + ", target=" + target.GetId());
@@ -274,10 +256,7 @@ namespace ForceEncounter.Backend
                 snapshot.TargetAdoresActor,
                 snapshot.TargetIsDeepValleyCloseFriend,
                 snapshot.TargetIsTaiwuVillager,
-                snapshot.TargetHasExclusiveAttachmentToOther,
-                snapshot.ActorFavorabilityType,
-                snapshot.TargetFavorabilityType,
-                snapshot.ActorBehaviorType);
+                snapshot.TargetFavorabilityType);
             DebugLogIntimateDecision(phase, actor.GetId(), target.GetId(), snapshot, decision);
             return decision.Accepted;
         }
@@ -297,21 +276,13 @@ namespace ForceEncounter.Backend
                 ", reason=" + decision.Reason +
                 ", isSpouse=" + snapshot.IsSpouse +
                 ", isMutualLover=" + snapshot.IsMutualLover +
-                ", actorAdoresTarget=" + snapshot.ActorAdoresTarget +
                 ", targetAdoresActor=" + snapshot.TargetAdoresActor +
                 ", targetIsDeepValleyCloseFriend=" + snapshot.TargetIsDeepValleyCloseFriend +
                 ", targetIsTaiwuVillager=" + snapshot.TargetIsTaiwuVillager +
                 ", targetHasExclusiveAttachmentToOther=" + snapshot.TargetHasExclusiveAttachmentToOther +
-                ", actorFavorabilityType=" + snapshot.ActorFavorabilityType +
                 ", targetFavorabilityType=" + snapshot.TargetFavorabilityType +
-                ", actorBehaviorType=" + snapshot.ActorBehaviorType +
                 ", hasIntimateSource=" + decision.HasIntimateSource +
-                ", deepValleyAttachedRule=" + decision.DeepValleyAttachedRule +
-                ", villagerLeniencyApplied=" + decision.VillagerLeniencyApplied +
-                ", nonLoverMinimumApplied=" + decision.NonLoverMinimumApplied +
-                ", baseRequiredFavorabilityType=" + decision.BaseRequiredFavorabilityType +
                 ", requiredFavorabilityType=" + decision.RequiredFavorabilityType +
-                ", actorFavorabilityPassed=" + decision.ActorFavorabilityPassed +
                 ", targetFavorabilityPassed=" + decision.TargetFavorabilityPassed);
         }
 
