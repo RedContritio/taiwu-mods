@@ -7,12 +7,17 @@ using GameData.Domains.Mod;
 using GameData.Domains.World;
 using GameData.Serializer;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace EasyQuickSaveLoad.Frontend
 {
     /// <summary>
-    /// MonoBehaviour host that clones native CButtons from ViewSystemOption into the ESC system-option menu.
-    /// The clone anchor is btnReturnToGame (private SerializeField), discovered by reflection at runtime.
+    /// MonoBehaviour host that builds a SEPARATE, far-right panel reusing the native
+    /// ViewSystemOption window frame style, holding only the four EQSL buttons
+    /// (存档/读档/快速存档/快速读档). It does NOT modify or insert into the native ESC menu.
+    /// The panel is cloned from the native styled window (MAINWINDOW) discovered via the
+    /// private [SerializeField] CButton btnReturnToGame anchor, appears/disappears with the
+    /// ESC menu (same focus lifecycle), and is destroyed on menu close / rebuild.
     /// Label setting uses reflection on a "text" property to handle both UnityEngine.UI.Text and
     /// TMPro.TextMeshProUGUI without a compile-time TMP dependency.
     /// </summary>
@@ -20,8 +25,8 @@ namespace EasyQuickSaveLoad.Frontend
     {
         private static SystemOptionButtonInjector _instance;
 
-        private readonly System.Collections.Generic.List<GameObject> _injected
-            = new System.Collections.Generic.List<GameObject>();
+        // The single cloned panel GameObject (native-styled frame + 4 buttons). Destroyed on cleanup.
+        private GameObject _panel;
 
         // Typed references to the four cloned CButtons (cast from Component).
         private CButton _save;
@@ -29,7 +34,7 @@ namespace EasyQuickSaveLoad.Frontend
         private CButton _quickSave;
         private CButton _quickLoad;
 
-        // The ViewSystemOption instance we last injected into — used to detect teardown/rebuild.
+        // The ViewSystemOption instance we last built the panel for — used to detect teardown/rebuild.
         private object _boundUiBase;
 
         // ---- Factory -------------------------------------------------------
@@ -58,24 +63,24 @@ namespace EasyQuickSaveLoad.Frontend
 
             if (uiBase == null)
             {
-                // Menu not open or not focused — clean up any leftover injected objects.
+                // Menu not open or not focused — destroy any leftover panel.
                 if (_boundUiBase != null) Cleanup();
                 return;
             }
 
             if (!ReferenceEquals(uiBase, _boundUiBase))
             {
-                // New (or rebuilt) ViewSystemOption instance — clean up the old injection, then inject fresh.
+                // New (or rebuilt) ViewSystemOption instance — destroy the old panel, then build fresh.
                 Cleanup();
                 try
                 {
-                    Inject(uiBase);
+                    BuildPanel(uiBase);
                     _boundUiBase = uiBase;
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning("[EasyQuickSaveLoad] Button injection failed: " + ex);
-                    // Graceful degradation: leave the menu unmodified, no crash.
+                    Debug.LogWarning("[EasyQuickSaveLoad] Panel build failed: " + ex);
+                    // Graceful degradation: leave the native menu unmodified, no crash.
                 }
             }
 
@@ -112,9 +117,15 @@ namespace EasyQuickSaveLoad.Frontend
             }
         }
 
-        // ---- Injection core ------------------------------------------------
+        // ---- Panel construction --------------------------------------------
 
-        private void Inject(object viewSystemOption)
+        // Layout tuning constants for the far-right panel.
+        private const float RightMargin       = 24f;   // px in from the right edge
+        private const float ButtonHeight      = 30f;   // approx native CButton height
+        private const float VerticalPadding   = 120f;  // frame chrome above/below the 4 buttons
+        private const float SlicedWidth       = 240f;  // narrowed width when the frame sprite is Sliced
+
+        private void BuildPanel(object viewSystemOption)
         {
             // Reflect the private [SerializeField] CButton field from ViewSystemOption.
             var type = viewSystemOption.GetType();
@@ -127,36 +138,104 @@ namespace EasyQuickSaveLoad.Frontend
             {
                 Debug.LogWarning(
                     "[EasyQuickSaveLoad] Clone anchor btnReturnToGame not found on " + type.FullName
-                    + " — skipping injection.");
+                    + " — building nothing.");
                 return;
             }
 
-            var parent = srcButton.transform.parent;
+            // Structure (verified in-game):
+            //   btnReturnToGame.parent        = CONTENT  (VerticalLayoutGroup)
+            //   btnReturnToGame.parent.parent = MAINWINDOW (CImage frame)
+            //   .parent.parent.parent         = CANVAS ROOT (full-screen Canvas)
+            var content    = srcButton.transform.parent;
+            var mainWindow = content?.parent;
+            var canvasRoot = mainWindow?.parent;
+            if (mainWindow == null || canvasRoot == null)
+            {
+                Debug.LogWarning(
+                    "[EasyQuickSaveLoad] Native window/canvas hierarchy not found — building nothing.");
+                return;
+            }
 
-            // Clone 4 buttons into the same parent container.
-            _save      = CloneButton(srcButton, parent, "存档",    OnSaveClick);
-            _load      = CloneButton(srcButton, parent, "读档",    OnLoadClick);
-            _quickSave = CloneButton(srcButton, parent, "快速存档", OnQuickSaveClick);
-            _quickLoad = CloneButton(srcButton, parent, "快速读档", OnQuickLoadClick);
+            // Clone the whole native-styled frame (frame + a CONTENT child with native buttons).
+            _panel = UnityEngine.Object.Instantiate(mainWindow.gameObject, canvasRoot);
+            _panel.name = "EQSL_Panel";
 
-            // Place them contiguously right after the clone source (继续游戏).
-            int baseIndex = srcButton.transform.GetSiblingIndex();
-            _save.transform.SetSiblingIndex(baseIndex + 1);
-            _load.transform.SetSiblingIndex(baseIndex + 2);
-            _quickSave.transform.SetSiblingIndex(baseIndex + 3);
-            _quickLoad.transform.SetSiblingIndex(baseIndex + 4);
+            // Locate the cloned CONTENT (the child with a VerticalLayoutGroup) and empty it.
+            var clonedContent = FindContent(_panel.transform);
+            if (clonedContent == null)
+            {
+                Debug.LogWarning(
+                    "[EasyQuickSaveLoad] Cloned CONTENT (VerticalLayoutGroup) not found in panel clone.");
+                UnityEngine.Object.Destroy(_panel);
+                _panel = null;
+                return;
+            }
+
+            // Destroy ALL existing children of CONTENT (the cloned native buttons) so it starts empty.
+            // Detach first so index math during Instantiate below is unaffected by pending destroys.
+            for (int i = clonedContent.childCount - 1; i >= 0; i--)
+            {
+                var child = clonedContent.GetChild(i);
+                child.SetParent(null, false);
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
+
+            // Strip any non-frame decorations directly under the panel that are neither the frame
+            // graphic on the panel root nor CONTENT (e.g. a title text object): keep it minimal.
+            for (int i = _panel.transform.childCount - 1; i >= 0; i--)
+            {
+                var child = _panel.transform.GetChild(i);
+                if (child == clonedContent) continue;
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
+
+            // Clone the native button (from the LIVE source, which is intact) 4× into the empty CONTENT.
+            _save      = BuildButton(srcButton, clonedContent, "存档",     OnSaveClick);
+            _load      = BuildButton(srcButton, clonedContent, "读档",     OnLoadClick);
+            _quickSave = BuildButton(srcButton, clonedContent, "快速存档", OnQuickSaveClick);
+            _quickLoad = BuildButton(srcButton, clonedContent, "快速读档", OnQuickLoadClick);
+
+            // Position far-right + size for 4 buttons.
+            var rt = _panel.transform as RectTransform;
+            if (rt != null)
+            {
+                rt.anchorMin       = new Vector2(1f, 0.5f);
+                rt.anchorMax       = new Vector2(1f, 0.5f);
+                rt.pivot           = new Vector2(1f, 0.5f);
+                rt.anchoredPosition = new Vector2(-RightMargin, 0f);
+
+                var size = rt.sizeDelta;
+                size.y = 4f * ButtonHeight + VerticalPadding;
+
+                // Only narrow width if the frame sprite is Sliced (safe); otherwise keep native width
+                // to avoid distorting the frame sprite.
+                var frameImg = _panel.GetComponent<Image>();
+                if (frameImg != null && frameImg.type == Image.Type.Sliced)
+                    size.x = SlicedWidth;
+
+                rt.sizeDelta = size;
+            }
+        }
+
+        /// <summary>
+        /// Finds the CONTENT transform within the cloned panel: the first descendant carrying a
+        /// <see cref="VerticalLayoutGroup"/>.
+        /// </summary>
+        private static Transform FindContent(Transform panelRoot)
+        {
+            var vlg = panelRoot.GetComponentInChildren<VerticalLayoutGroup>(true);
+            return vlg != null ? vlg.transform : null;
         }
 
         /// <summary>
         /// Clones srcButton into parent, renames the object, sets the label via reflection
         /// (handles both UnityEngine.UI.Text.text and TMPro.TextMeshProUGUI.text without a TMP
-        /// compile-time reference), wires the click listener, and tracks the cloned GO for cleanup.
+        /// compile-time reference), and wires the click listener.
         /// </summary>
-        private CButton CloneButton(CButton src, Transform parent, string label, Action onClick)
+        private CButton BuildButton(CButton src, Transform parent, string label, Action onClick)
         {
             var go = UnityEngine.Object.Instantiate(src.gameObject, parent);
             go.name = "EQSL_" + label;
-            _injected.Add(go);
 
             // Set label: search all child components for one that has a public settable "text" string property.
             // This handles both UnityEngine.UI.Text and TMPro.TextMeshProUGUI without TMP dependency.
@@ -213,11 +292,8 @@ namespace EasyQuickSaveLoad.Frontend
 
         private void Cleanup()
         {
-            foreach (var go in _injected)
-            {
-                if (go != null) UnityEngine.Object.Destroy(go);
-            }
-            _injected.Clear();
+            if (_panel != null) UnityEngine.Object.Destroy(_panel);
+            _panel = null;
             _save = _load = _quickSave = _quickLoad = null;
             _boundUiBase = null;
         }
