@@ -7,15 +7,15 @@ namespace EasyQuickSaveLoad.Frontend
     [PluginConfig("EasyQuickSaveLoad", "RedContritio", "1.0.0.0")]
     public sealed class FrontendPlugin : TaiwuRemakePlugin
     {
-        private EasyQuickSaveLoadOverlay _overlay;
+        private SystemOptionButtonInjector _injector;
 
         public override void Initialize()
         {
             try
             {
                 // Use the runtime mod id (matches the backend's registration key) for backend mod-method calls.
-                EasyQuickSaveLoadOverlay.SetModId(ModIdStr);
-                _overlay = EasyQuickSaveLoadOverlay.Create();
+                EqslCore.ModId = ModIdStr;
+                _injector = SystemOptionButtonInjector.Create();
                 Debug.Log("[EasyQuickSaveLoad] Frontend initialized. ModId=" + ModIdStr);
             }
             catch (Exception ex)
@@ -28,7 +28,7 @@ namespace EasyQuickSaveLoad.Frontend
         {
             try
             {
-                EasyQuickSaveLoadOverlay.Destroy(_overlay);
+                SystemOptionButtonInjector.Destroy(_injector);
             }
             catch (Exception ex)
             {
@@ -36,7 +36,7 @@ namespace EasyQuickSaveLoad.Frontend
             }
             finally
             {
-                _overlay = null;
+                _injector = null;
             }
         }
     }
