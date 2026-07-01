@@ -50,10 +50,10 @@ namespace ForceEncounter.Events
 
         private static class 亲密反馈
         {
-            public const string 成年成功 = "也不知过了多久，二人才渐渐安顿下来。<Character key=CharacterId str=Name/>鬓发散乱，面上红潮未褪，只侧身倚着<Character key=RoleTaiwu str=Name/>，半晌不曾开口。\n\n<Character key=RoleTaiwu str=Name/>伸手替<Character key=CharacterId str=Name/>拢了拢碎发，指节擦过耳际时，<Character key=CharacterId str=Name/>微微一缩，随即又松弛下来，连呼吸都轻了。";
-            public const string 成年结算失败 = "孰料临到此时，<Character key=CharacterId str=Name/>却忽然偏过头去，呼吸急促了几分。<Character key=RoleTaiwu str=Name/>怔了怔，到底不忍勉强，只低低说了句什么，二人便这么依偎着，许久没有再进一步。";
-            public const string 未成年成功 = "过了许久，<Character key=CharacterId str=Name/>仍蜷着身子，耳根的红一路蔓延到颈侧。<Character key=RoleTaiwu str=Name/>替<Character key=CharacterId str=Name/>理了理揉皱的衣领，<Character key=CharacterId str=Name/>这才抬起眼飞快地看了一眼，又迅速垂下目光，手指却悄悄勾住了<Character key=RoleTaiwu str=Name/>的袖角。";
-            public const string 未成年结算失败 = "<Character key=CharacterId str=Name/>忽然偏过头去，眼眶微微泛红，呼吸又急又浅。<Character key=RoleTaiwu str=Name/>伸出的手顿在半空，半晌叹了口气，替<Character key=CharacterId str=Name/>把滑落的衣带重新系好，不再迫近。";
+            public const string 成年成功 = "也不知过了多久，二人才渐渐安顿下来。<Character key=CharacterId str=Name/>手上的绳索仍未解开，鬓发散乱，面上红潮未褪，却只侧身倚着<Character key=RoleTaiwu str=Name/>，半晌不曾开口。\n\n<Character key=RoleTaiwu str=Name/>伸手替<Character key=CharacterId str=Name/>拢了拢碎发，又把被绳索勒红的手腕轻轻揉开。<Character key=CharacterId str=Name/>微微一缩，随即又松弛下来，连呼吸都轻了。";
+            public const string 成年结算失败 = "孰料临到此时，<Character key=CharacterId str=Name/>却忽然偏过头去，缚着的手不安地动了动，呼吸急促了几分。<Character key=RoleTaiwu str=Name/>怔了怔，到底不忍勉强，只替<Character key=CharacterId str=Name/>拢了拢散乱的衣裳，低低说了句什么。绳索未解，二人便这么依偎着，许久没有再进一步。";
+            public const string 未成年成功 = "过了许久，<Character key=CharacterId str=Name/>仍蜷着身子，缚着的双手搁在膝上，耳根的红一路蔓延到颈侧。<Character key=RoleTaiwu str=Name/>替<Character key=CharacterId str=Name/>理了理揉皱的衣领，<Character key=CharacterId str=Name/>这才抬起眼飞快地看了一眼，又迅速垂下目光，被缚的手指却悄悄勾住了<Character key=RoleTaiwu str=Name/>的袖角。";
+            public const string 未成年结算失败 = "<Character key=CharacterId str=Name/>忽然偏过头去，缚着的手往怀里缩了缩，眼眶微微泛红，呼吸又急又浅。<Character key=RoleTaiwu str=Name/>伸出的手顿在半空，半晌叹了口气，替<Character key=CharacterId str=Name/>把滑落的衣带重新系好，不再迫近。";
         }
     }
 }
