@@ -71,7 +71,15 @@ namespace EasyQuickSaveLoad.Backend
             sbyte archiveId = Common.GetCurrArchiveId();
             int slotCount = GetSlotCount();
 
-            var quick = new ArchiveInfo { Status = ArchiveStatusGood, WorldInfo = SlotStore.TryReadWorldInfo(archiveId, SlotStore.QuickSlot) };
+            // BackupWorldsInfo MUST be non-null: ArchiveInfo.GetSerializedSize/Serialize dereference
+            // BackupWorldsInfo.Count with no null guard, so a null list NREs (and crashes the backend)
+            // when this result is serialized back to the frontend. Give the quick-slot info an empty list.
+            var quick = new ArchiveInfo
+            {
+                Status = ArchiveStatusGood,
+                WorldInfo = SlotStore.TryReadWorldInfo(archiveId, SlotStore.QuickSlot),
+                BackupWorldsInfo = new System.Collections.Generic.List<(long timestamp, WorldInfo worldInfo)>()
+            };
 
             var slots = new ArchiveInfo
             {
