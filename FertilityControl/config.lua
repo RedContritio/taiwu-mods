@@ -1,12 +1,12 @@
 return {
     Title = "太吾必孕妙法",
     Description = "太吾与他人发生关系时，控制怀孕的概率和方式。",
-    Version = "1.0.0.0",
+    Version = "1.0.1.0",
     Author = "RedContritio",
     Source = 0,
     Cover = "cover.jpg",
     WorkshopCover = "cover.jpg",
-    GameVersion = "1.0.44.0",
+    GameVersion = "1.0.52",
     BackendPlugins = {
         "FertilityControl.Backend.dll",
     },

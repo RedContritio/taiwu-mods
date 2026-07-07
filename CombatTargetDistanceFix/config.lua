@@ -5,7 +5,7 @@ return {
     Author = "RedContritio",
     Source = 0,
     Cover = "",
-    GameVersion = "1.0.20.0",
+    GameVersion = "1.0.52",
     FrontendPlugins = {
         "CombatTargetDistanceFix.Frontend.dll",
     },

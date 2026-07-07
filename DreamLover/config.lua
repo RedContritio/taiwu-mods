@@ -1,12 +1,12 @@
 return {
     Title = "梦中情人",
     Description = "让太吾成为万千少女的梦中情人，在梦中就会爱上太吾乃至疯狂表白求婚。\n通过配置，可以筛选让满足特定条件的 NPC 主动对太吾产生爱慕、表白与求婚。",
-    Version = "1.0.1.0",
+    Version = "1.0.2.0",
     Author = "RedContritio",
     Source = 0,
     Cover = "cover.jpg",
     WorkshopCover = "cover.jpg",
-    GameVersion = "1.0.44.0",
+    GameVersion = "1.0.52",
     BackendPlugins = {
         "DreamLover.Backend.dll",
     },

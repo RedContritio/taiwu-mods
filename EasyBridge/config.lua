@@ -1,7 +1,7 @@
 return {
-    Title = "EasyBridge",
+    Title = "太吾调试 skill",
     Description = "用于 LLM agent 的工具 Mod，可以让 ai 玩太吾绘卷。\n通过命名管道检视/操控界面、读写角色状态，辅助自动化验证；任意 C# 执行和通用反射写入默认关闭，需要时通过 /config 显式启用。\n\n该 mod 的 agent skills 在 mod 目录中，在安装后，可以告诉 AI：\n我给太吾绘卷安装了 EasyBridge Mod，你去读这个 Mod 的目录内容，然后帮我开发我想要的 Mod。\n\n推荐用于 AI 开发 Mod，不推荐用于替自己行侠仗义拯救苍生。\n",
-    Version = "0.2.0.0",
+    Version = "0.3.0.0",
     Author = "RedContritio",
     Source = 0,
     Cover = "cover.jpg",

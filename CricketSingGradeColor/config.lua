@@ -1,7 +1,7 @@
 return {
     Title = "观音识蛐蛐",
     Description = "捕捉蛐蛐时，根据蛐蛐的叫声计算出品级，让蛐蛐叫声也有品级颜色。",
-    Version = "1.1.0.0",
+    Version = "1.1.1.0",
     Author = "RedContritio",
     Source = 0,
     Cover = "cover.jpg",
@@ -9,7 +9,7 @@ return {
     DetailImageList = {
         "details_1.png",
     },
-    GameVersion = "1.0.40.0",
+    GameVersion = "1.0.52",
     FrontendPlugins = {
         "CricketSingGradeColor.Frontend.dll",
     },
@@ -52,4 +52,6 @@ return {
     ChangeConfig = false,
     NeedRestartWhenSettingChanged = false,
     Visibility = 0,
+    FileId = 3753793159,
+    UpdateLogList = { },
 }
