@@ -63,17 +63,19 @@ function Invoke-StateEasyBridge {
 - `Invoke-StateEasyBridge -Path "/combat/watch/cancel" -Body @{ restore=$true }` → 取消 watch，并恢复 arm 时保存的 `timeScale/autoCombat/autoMove`
 - `Invoke-StateEasyBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
 - `Invoke-StateEasyBridge -Path "/preset" -Body @{ name="spouse" }` → 一键造 NPC，返回 `{id, name, expectedRoute, snapshot}`
-- `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25; grade=4; baseAttraction=500; villager=$false }`
+- `Invoke-StateEasyBridge -Path "/spawn" -Body @{ gender=0; age=25; grade=4; baseAttraction=500; villager=$false; role=-1 }`
   → 默认生成**非村民散人**（落在太吾格，但会随月度游走/被门派招募）。
-  **`villager=$true` 才转入太吾村**（村民文案分支用），但太吾村村民缺村民角色数据，**过月会让游戏
-  `TaiwuDomain.UpdateVillagerFixedActions` 空引用崩溃、卡死过月**——验证过月类 mod（如 DreamLover）
-  务必用 `villager=$false`，并配合 DreamLover 设 `IgnoreDistance` 以免散人游走出格被 sameLocation 过滤。
+  **`villager=$true` 转入太吾村并走游戏内置村职登记**（`OnTaiwuVillagerGradeChanged`→`RegisterVillagerRole`），
+  **已过月安全**（不再触发 `TaiwuDomain.UpdateVillagerFixedActions` 空引用）。可选 `role`（村职 templateId，
+  太吾村现为 0..6→品阶 1..7；缺省 -1 用最低非掌门村职）指定山门职务；传无效 role 会回退默认并在结果标 `roleFallback`。
+  验证过月类 mod（如 DreamLover）时若想让散人不游走出格，仍可配合 DreamLover 设 `IgnoreDistance`。
 - `Invoke-StateEasyBridge -Path "/sects" -Body @{ count=8 }` → 门派据点格位列表 `{orgTemplate, areaId, blockId, blockTypeName}`；普通请求 `count` 硬限 20
 - `Invoke-StateEasyBridge -Path "/settlements" -Body @{ civilianOnly=$true; max=40 }` → 城镇/城市据点列表（含 blockType），找弱平民格触发护卫拦截；返回 `matched/truncated/max`。非平民全量或更大 `max` 要显式 `allowLarge=$true`
 - `Invoke-StateEasyBridge -Path "/move/taiwu" -Body @{ areaId=..; blockId=.. }` → 瞬移太吾（跨区自动 QuickTravel）
 - `Invoke-StateEasyBridge -Path "/relation" -Body @{ a=$taiwu; b=$npc; type="spouse"; both=$true }`
 - `Invoke-StateEasyBridge -Path "/favor" -Body @{ from=$taiwu; to=$npc; type=6 }`
-- `Invoke-StateEasyBridge -Path "/villager" -Body @{ id=$npc }` / `-Path "/nonvillager"`
+- `Invoke-StateEasyBridge -Path "/villager" -Body @{ id=$npc; role=-1 }` / `-Path "/nonvillager"`
+  → `/villager` 把角色登记为太吾村村职（走原生路线、过月安全）；可选 `role`=村职 templateId，缺省用默认低品村职。
 - `Invoke-StateEasyBridge -Path "/prisoner" -Body @{ id=$npc }`
 - `Invoke-StateEasyBridge -Path "/injure" -Body @{ id=$npc; level=6 }` → 叠伤势，84 标记 → 无力应战；对太吾 6818 削弱可制造战败
 - `Invoke-StateEasyBridge -Path "/heal" -Body @{ id=6818 }` → 清空伤势（复原太吾）
