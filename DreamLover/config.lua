@@ -103,11 +103,8 @@ return {
     Visibility = 0,
     FileId = 3754290100,
     UpdateLogList = {
-        {
-            Timestamp = 1782743190,
-        },
-        {
-            Timestamp = 1782838374,
-        },
+        { Timestamp = 1782743190 },
+        { Timestamp = 1782838374 },
+        { Timestamp = 1783451082 },
     },
 }

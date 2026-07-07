@@ -25,8 +25,7 @@ return {
     -- 创意工坊发布元数据（游戏上传后写入；持久化在此，避免重新部署时被覆盖丢失）。
     FileId = 3753794240,
     UpdateLogList = {
-        {
-            Timestamp = 1782742612,
-        },
+        { Timestamp = 1782742612 },
+        { Timestamp = 1783451072 },
     },
 }

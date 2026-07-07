@@ -53,5 +53,8 @@ return {
     NeedRestartWhenSettingChanged = false,
     Visibility = 0,
     FileId = 3753793159,
-    UpdateLogList = { },
+    UpdateLogList = {
+        { Timestamp = 1783451019 },
+        { Timestamp = 1783451062 },
+    },
 }

@@ -110,14 +110,10 @@ return {
 	FileId = 3750485094,
 	WorkshopCover = "cover.png",
 	UpdateLogList = {
-		[1] = {
-			Timestamp = 1782240898,
-		},
-		[2] = {
-			Timestamp = 1782241019,
-		},
-		[3] = {
-			Timestamp = 1782241062,
-		},
+		{ Timestamp = 1782240898 },
+		{ Timestamp = 1782241019 },
+		{ Timestamp = 1782241062 },
+		{ Timestamp = 1783451032 },
+		{ Timestamp = 1783451053 },
 	},
 }
