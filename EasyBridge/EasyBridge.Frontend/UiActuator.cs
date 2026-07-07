@@ -64,8 +64,7 @@ namespace EasyBridge.Frontend
                     return Ok(element, id, "click", null);
                 case "toggle":
                     var tg = (Toggle)ctrl.Component;
-                    SimulatePointerClick(tg.gameObject);
-                    return Ok(element, id, "click", tg.isOn);
+                    return ClickToggle(element, id, "click", tg);
                 default:
                     return Fail($"'click' not supported on '{ctrl.Type}'; use set/select/toggle");
             }
@@ -77,14 +76,12 @@ namespace EasyBridge.Frontend
             var tg = (Toggle)ctrl.Component;
             if (TryBool(rawValue, out bool b))
             {
-                if (tg.isOn != b)
-                    SimulatePointerClick(tg.gameObject);
+                return SetToggle(element, id, tg, b);
             }
             else
             {
-                SimulatePointerClick(tg.gameObject);
+                return ClickToggle(element, id, "toggle", tg);
             }
-            return Ok(element, id, "toggle", tg.isOn);
         }
 
         private static System.Collections.Generic.Dictionary<string, object> DoSet(string element, string id, UiTree.Control ctrl, object rawValue)
@@ -147,11 +144,161 @@ namespace EasyBridge.Frontend
 
         private static void SimulatePointerClick(GameObject go)
         {
-            var evtData = new PointerEventData(EventSystem.current);
+            var evtData = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerEnter = go,
+                pointerPress = go,
+                rawPointerPress = go,
+                eligibleForClick = true,
+                clickCount = 1,
+                clickTime = Time.unscaledTime
+            };
             ExecuteEvents.Execute(go, evtData, ExecuteEvents.pointerClickHandler);
         }
 
+        private static void SimulatePointerEnter(GameObject go)
+        {
+            var evtData = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerEnter = go
+            };
+            ExecuteEvents.Execute(go, evtData, ExecuteEvents.pointerEnterHandler);
+        }
+
+        private static System.Collections.Generic.Dictionary<string, object> ClickToggle(string element, string id, string action, Toggle toggle)
+        {
+            if (!toggle.interactable) return Fail("toggle not interactable");
+            var before = ReadTaiwuToggleGroupState(toggle);
+            SimulatePointerEnter(toggle.gameObject);
+            SimulatePointerClick(toggle.gameObject);
+            var after = ReadTaiwuToggleGroupState(toggle);
+            return Ok(element, id, action, toggle.isOn, ToggleGroupExtras(before, after));
+        }
+
+        private static System.Collections.Generic.Dictionary<string, object> SetToggle(string element, string id, Toggle toggle, bool desiredOn)
+        {
+            if (!toggle.interactable) return Fail("toggle not interactable");
+            var before = ReadTaiwuToggleGroupState(toggle);
+            if (toggle.isOn != desiredOn)
+            {
+                SimulatePointerEnter(toggle.gameObject);
+                if (toggle.isOn != desiredOn)
+                    SimulatePointerClick(toggle.gameObject);
+            }
+            var after = ReadTaiwuToggleGroupState(toggle);
+            return Ok(element, id, "toggle", toggle.isOn, ToggleGroupExtras(before, after));
+        }
+
+        private sealed class ToggleGroupState
+        {
+            public string Group;
+            public int TargetIndex = -1;
+            public int TargetKey = -1;
+            public int ActiveIndex = -1;
+            public int ActiveKey = -1;
+        }
+
+        private static ToggleGroupState ReadTaiwuToggleGroupState(Toggle toggle)
+        {
+            if (toggle == null) return null;
+            string typeName = toggle.GetType().Name;
+            if (typeName != "CToggle" && typeName != "CToggleObsolete")
+                return null;
+
+            object group = GetFieldValue(toggle, "_toggleGroup");
+            if (group == null) return null;
+            string groupTypeName = group.GetType().Name;
+            var state = new ToggleGroupState
+            {
+                Group = groupTypeName,
+                TargetIndex = IndexOfToggle(group, toggle),
+                TargetKey = GetIntFieldValue(toggle, "Key", -1)
+            };
+
+            if (typeName == "CToggle" && groupTypeName == "CToggleGroup")
+            {
+                state.ActiveIndex = GetActiveIndex(group);
+                Toggle active = InvokeGroupMethod(group, "Get", new[] { typeof(int) }, new object[] { state.ActiveIndex }) as Toggle;
+                state.ActiveKey = active == null ? -1 : GetIntFieldValue(active, "Key", state.ActiveIndex);
+                return state;
+            }
+
+            if (typeName == "CToggleObsolete" && groupTypeName == "CToggleGroupObsolete")
+            {
+                Toggle active = InvokeGroupMethod(group, "GetActive", Type.EmptyTypes, Array.Empty<object>()) as Toggle;
+                state.ActiveIndex = active == null ? -1 : IndexOfToggle(group, active);
+                state.ActiveKey = active == null ? -1 : GetIntFieldValue(active, "Key", state.ActiveIndex);
+                return state;
+            }
+
+            return null;
+        }
+
+        private static System.Collections.Generic.Dictionary<string, object> ToggleGroupExtras(ToggleGroupState before, ToggleGroupState after)
+        {
+            if (before == null && after == null) return null;
+            var src = after ?? before;
+            return new System.Collections.Generic.Dictionary<string, object>
+            {
+                ["group"] = src.Group,
+                ["targetIndex"] = src.TargetIndex,
+                ["targetKey"] = src.TargetKey,
+                ["activeIndexBefore"] = before == null ? -1 : before.ActiveIndex,
+                ["activeKeyBefore"] = before == null ? -1 : before.ActiveKey,
+                ["activeIndexAfter"] = after == null ? -1 : after.ActiveIndex,
+                ["activeKeyAfter"] = after == null ? -1 : after.ActiveKey,
+                ["changed"] = before != null && after != null && before.ActiveIndex != after.ActiveIndex,
+            };
+        }
+
+        private static int IndexOfToggle(object group, Toggle target)
+        {
+            object all = InvokeGroupMethod(group, "GetAll", Type.EmptyTypes, Array.Empty<object>());
+            if (all is System.Collections.IEnumerable enumerable)
+            {
+                int index = 0;
+                foreach (object item in enumerable)
+                {
+                    if (ReferenceEquals(item, target)) return index;
+                    index++;
+                }
+            }
+            return -1;
+        }
+
+        private static int GetActiveIndex(object group)
+        {
+            object value = InvokeGroupMethod(group, "GetActiveIndex", Type.EmptyTypes, Array.Empty<object>());
+            try { return Convert.ToInt32(value); } catch { return -1; }
+        }
+
+        private static object InvokeGroupMethod(object group, string name, Type[] parameterTypes, object[] args)
+        {
+            var method = group.GetType().GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, parameterTypes, null);
+            if (method != null)
+                return method.Invoke(group, args);
+            throw new MissingMethodException(group.GetType().FullName, name);
+        }
+
         // ---------- 反射小工具 ----------
+        private static object GetFieldValue(object obj, string name)
+        {
+            for (var t = obj.GetType(); t != null; t = t.BaseType)
+            {
+                var f = t.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (f != null) return f.GetValue(obj);
+            }
+            return null;
+        }
+
+        private static int GetIntFieldValue(object obj, string name, int defaultValue)
+        {
+            object value = GetFieldValue(obj, name);
+            try { return value == null ? defaultValue : Convert.ToInt32(value); } catch { return defaultValue; }
+        }
+
         private static void SetStringProp(object obj, string prop, string val)
         {
             var p = obj.GetType().GetProperty(prop, BindingFlags.Public | BindingFlags.Instance);
@@ -226,6 +373,19 @@ namespace EasyBridge.Frontend
                 ["action"] = action,
             };
             if (value != null) d["value"] = value;
+            return d;
+        }
+
+        private static System.Collections.Generic.Dictionary<string, object> Ok(
+            string element, string id, string action, object value,
+            System.Collections.Generic.Dictionary<string, object> extras)
+        {
+            var d = Ok(element, id, action, value);
+            if (extras != null)
+            {
+                foreach (var kv in extras)
+                    d[kv.Key] = kv.Value;
+            }
             return d;
         }
 

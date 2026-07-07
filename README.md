@@ -12,6 +12,10 @@ The release matrix is controlled by [ModBuild/mods.json](ModBuild/mods.json).
 | AntiNTR | release | Blocks protected NPC spouses from non-Taiwu make-love fixed actions. |
 | FertilityControl | release | Controls fertility, pregnancy probability, cricket birth, and inbreeding behavior. |
 | ForceEncounter | release | Adds a hostile interaction-menu option and backend interface for forced character actions. |
+| CombatTargetDistanceFix | release | Fixes combat target-distance bar interaction and UI-camera hit testing. |
+| CricketSingGradeColor | release | Colors cricket chirp rings by inferred sound grade. |
+| EasyQuickSaveLoad | release | Adds save/load and quick save/load buttons to the in-game ESC system panel. |
+| EasyBridge | release | Agent bridge for inspecting and driving game UI/state during mod development and verification. |
 | ExampleMod | sample | Development environment sample only. |
 
 ## Common Commands

@@ -10,7 +10,7 @@ This repository uses a shared first-level build toolkit in `ModBuild/`. It is in
 - `status = draft`: kept in the workspace but excluded from release gates by default.
 - `status = sample`: build sample, excluded from release gates by default.
 
-Current release mods are `DreamLover`, `AntiNTR`, `FertilityControl`, and `ForceEncounter`.
+Current release mods are `DreamLover`, `AntiNTR`, `FertilityControl`, `ForceEncounter`, `CombatTargetDistanceFix`, `CricketSingGradeColor`, `EasyQuickSaveLoad`, and `EasyBridge`.
 
 ## Workshop Layout
 

@@ -73,7 +73,7 @@ SB -Path "/eval" -Body @{ code = "return GameOps.Taiwu();" }                    
 dotnet build EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj -c Release
 dotnet build EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj -c Release
 # 部署到游戏（带上后端可选 Roslyn DLL，以及 skills/）
-pwsh ./deploy.ps1 -ModName EasyBridge -IncludeDrafts
+pwsh ./deploy.ps1 EasyBridge -Clean
 ```
 
 要点：

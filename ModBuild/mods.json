@@ -62,12 +62,11 @@
     },
     {
       "name": "EasyBridge",
-      "status": "sample",
+      "status": "release",
       "projects": [
         "EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj",
         "EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj"
-      ],
-      "note": "Agent debugging bridge shared for others to debug their own mods: one mod with a frontend UI pipe (easybridge-ui) and a backend state pipe (easybridge-state, incl. /eval dynamic C#) for inspecting/driving the game and verifying mods."
+      ]
     }
   ]
 }
