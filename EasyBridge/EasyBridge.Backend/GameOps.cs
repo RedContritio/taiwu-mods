@@ -285,7 +285,7 @@ namespace EasyBridge.Backend
         // ---------- 构造（生成 NPC） ----------
 
         /// <summary>在太吾所在格生成一个普通智能 NPC。</summary>
-        public static Dictionary<string, object> Spawn(DataContext ctx, sbyte gender, short age, short settlementId, sbyte grade, short baseAttraction, bool villager)
+        public static Dictionary<string, object> Spawn(DataContext ctx, sbyte gender, short age, short settlementId, sbyte grade, short baseAttraction, bool villager, short roleTemplateId = -1)
         {
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.TryGetElement_Objects(taiwuId, out var taiwu))
@@ -304,12 +304,17 @@ namespace EasyBridge.Backend
             // 落位到太吾所在格，确保出现在同一张地图角色列表里供 UI 交互。
             ch.SetLocation(loc, ctx);
 
-            // 默认转为非村民（org 0 散人）。太吾村村民缺少村民角色固定行为数据，过月时
-            // TaiwuDomain.UpdateVillagerFixedActions 会空引用崩溃、卡死整个过月流程（验证过月类 mod
-            // 如 DreamLover 必须用非村民）。需要村民身份（如 ForceEncounter 村民文案分支）时显式传
-            // villager=true，但不要在这种 NPC 上过月。
-            if (!villager)
+            if (villager)
             {
+                // villager=true 走 MakeVillager 的游戏内置村职登记（OnTaiwuVillagerGradeChanged→RegisterVillagerRole），
+                // 已过月安全；可传 roleTemplateId 指定山门职务，缺省用默认低品村职。
+                var mv = MakeVillager(ctx, id, roleTemplateId);
+                if (mv != null && mv.TryGetValue("ok", out var okv) && okv is bool okb && !okb) return mv;
+                ch.SetLocation(loc, ctx);
+            }
+            else
+            {
+                // 非村民（org 0 散人）：可自由过月、被门派招募。
                 var outsider = new OrganizationInfo(0, 0, true, DomainManager.Organization.GetSettlementIdByOrgTemplateId(0));
                 DomainManager.Organization.ChangeOrganization(ctx, ch, outsider);
                 ch.SetLocation(loc, ctx);
@@ -519,16 +524,54 @@ namespace EasyBridge.Backend
             };
         }
 
-        /// <summary>把角色转入太吾村（org 模板 16），用于 Taiwu villager 分支。</summary>
-        public static Dictionary<string, object> MakeVillager(DataContext ctx, int id)
+        /// <summary>取最低的非掌门(品阶 0&lt;grade&lt;8)村职做默认；返回 (roleTemplateId, grade)，找不到返回 (-1,-1)。</summary>
+        private static (short role, sbyte grade) DefaultVillagerRole()
+        {
+            short best = -1; sbyte bestGrade = 127;
+            foreach (Config.VillagerRoleItem item in
+                     (System.Collections.Generic.IEnumerable<Config.VillagerRoleItem>)Config.VillagerRole.Instance)
+            {
+                sbyte g = Config.OrganizationMember.Instance[item.OrganizationMember].Grade;
+                if (g > 0 && g < 8 && g < bestGrade) { bestGrade = g; best = item.TemplateId; }
+            }
+            return best >= 0 ? (best, bestGrade) : ((short)-1, (sbyte)-1);
+        }
+
+        /// <summary>把角色以「太吾村村职」身份登记（入 org16 + 原生 OnTaiwuVillagerGradeChanged → RegisterVillagerRole），
+        /// 从而过月安全（不再触发 TaiwuDomain.UpdateVillagerFixedActions 空引用）。roleTemplateId&lt;0 用默认村职；
+        /// 传了但无效则回退默认并标 roleFallback。</summary>
+        public static Dictionary<string, object> MakeVillager(DataContext ctx, int id, short roleTemplateId = -1)
         {
             if (!DomainManager.Character.TryGetElement_Objects(id, out var ch))
                 return Err("character not found: " + id);
+
+            short role; sbyte grade; bool fallback = false;
+            var cfg = roleTemplateId >= 0 ? Config.VillagerRole.Instance.GetItem(roleTemplateId) : null;
+            if (cfg != null)
+            {
+                role = roleTemplateId;
+                grade = Config.OrganizationMember.Instance[cfg.OrganizationMember].Grade;
+            }
+            else
+            {
+                if (roleTemplateId >= 0) fallback = true;
+                (role, grade) = DefaultVillagerRole();
+                if (role < 0) return Err("no valid villager role found in config");
+            }
+
             short villageSettlement = DomainManager.Taiwu.GetTaiwuVillageSettlementId();
-            var org = new OrganizationInfo(TaiwuVillageOrgTemplateId, 0, true, villageSettlement);
-            DomainManager.Organization.ChangeOrganization(ctx, ch, org);
+            // 走游戏内置晋升村职路线：先入太吾村并置目标品阶，再由 OnTaiwuVillagerGradeChanged 登记村职。
+            DomainManager.Organization.ChangeOrganization(ctx, ch,
+                new OrganizationInfo(TaiwuVillageOrgTemplateId, grade, true, villageSettlement));
+            DomainManager.Taiwu.OnTaiwuVillagerGradeChanged(ctx, ch, grade);
+
+            if (DomainManager.Extra.GetVillagerRole(id) == null)
+                return Err("villager role registration failed (role=" + role + ", grade=" + grade + ")");
+
             var res = Snapshot(id);
             res["madeVillager"] = true;
+            res["role"] = (int)DomainManager.Extra.GetVillagerRoleTemplateId(id);
+            if (fallback) res["roleFallback"] = true;
             return res;
         }
 
