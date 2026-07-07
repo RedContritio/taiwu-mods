@@ -1,13 +1,13 @@
 # EasyBridge
 
 给 **LLM / 自动化 agent** 用的太吾绘卷调试桥 —— 让你（以及拿到这个 mod 的任何人）都能用 agent 端到端地
-检视/操控游戏、构造角色状态、跑临时 C#，从而验证**任意 mod**（如 ForceEncounter）的各分支路径。
+检视/操控游戏、构造角色状态，并在显式开启后跑临时 C#，从而验证**任意 mod**（如 ForceEncounter）的各分支路径。
 **一个 mod、两个插件、两条命名管道**：
 
 | 插件 | 进程 | 命名管道 | 作用 | 技能 |
 |------|------|---------|------|------|
 | `EasyBridge.Frontend` | 前端 Unity（Mono/net48） | `easybridge-ui` | 语义化检视/操控游戏 **UI**（click/toggle/set/select、等待窗口） | `skills/taiwu-ui.md` |
-| `EasyBridge.Backend` | 后端 GameData（.NET 8） | `easybridge-state` | 读取/构造**角色与关系状态**（生成符合条件的 NPC）、瞬移、伤势、捕绳，以及 **`/eval` 动态执行任意 C#** | `skills/taiwu-statebridge.md` |
+| `EasyBridge.Backend` | 后端 GameData（.NET 8） | `easybridge-state` | 读取/构造**角色与关系状态**（生成符合条件的 NPC）、瞬移、伤势、捕绳，以及显式开启后的 **`/eval` 动态执行任意 C#** | `skills/taiwu-statebridge.md` |
 
 > 前后端是两个进程：UI 在 Unity 前端，角色数据在 .NET 8 后端，一个插件 DLL 只能跑在一个进程里，所以需要两个插件；
 > 这里把它们打包成**同一个 mod「EasyBridge」**（参照 ExampleMod 的双插件模式），游戏里只显示一个条目。
@@ -22,6 +22,8 @@
 ## 后端状态桥端点（`easybridge-state`）
 
 读：`/ping`（含 `tickAlive`）、`/taiwu`、`/whereami`、`/combat`（含 `pause/frame/timeScale` 和双方准备状态）、`/char/{id}`、`/block/chars`、`/sects`、`/settlements`。
+列表类端点默认返回摘要规模：`/sects`、`/settlements`、`/block/chars` 都有硬上限并返回 `matched/truncated/max`；
+确实需要更大结果时在 body 里显式传 `allowLarge=true`。
 构造/改写（均在后端主线程、用主线程写上下文执行）：`/spawn`、`/spawn/closefriend`、`/preset`、`/relation`、`/favor`、
 `/favor/exact`、`/villager`、`/nonvillager`、`/prisoner`、`/injure`、`/heal`、`/cripple`、`/giverope`、`/throwrope`、
 `/move/taiwu`、`/combat/control`（设置 `pause/autoCombat/autoMove/timeScale` 并读回）、`/combat/watch`、
@@ -30,17 +32,23 @@
 ## 前端 UI 桥端点（`easybridge-ui`）
 
 语义树：`/ping`、`/ui`、`/ui/{name}`、`/find`、`/elements`、`/wait`。
-动作：`/action`（click/toggle/set/select）、`/wait/actions`（等待窗口后在同一主线程调度中执行动作序列）、`/quit`。
+UI 读取是渐进式的：`/ui/{name}` 默认 `detail=summary`，只回标题、分区计数和扫描信息；`detail=title` 只读标题；
+需要控件/文本条目时才用 `detail=full`，并用 `fields=controls|texts|controls,texts`、`section=`、`max=` 精确下钻。
+`/elements` 默认只返回 showing/exist 的窗口；全目录要 `all=true`，大结果要 `allowLarge=true`。
+动作：`/action`（click/toggle/set/select）、`/wait/actions`（等待窗口后在同一主线程调度中执行动作序列）；`/quit` 需先开启 `enableInvoke`。
 通用诊断：`/inspect` 返回指定 UI 对象的组件、RectTransform 屏幕坐标和 UI camera；`/reflect` 只读反射组件字段。
 `/pointer` 返回 Unity 当前鼠标坐标、屏幕尺寸和 EventSystem raycast 命中栈；也可传 `x/y/origin=top-left`
 验证某个 Computer Use 截图坐标实际会命中哪些 UI 对象。
-写/调类端点（`/reflect/invoke`、`/reflect/set`、`/static`、`/pin`）**默认开启**（这是 agent 驱动的调试桥）；不需要时 `POST /config {"enableInvoke":false}` 可关。字段快照深度/成员数有代码默认上限，按请求传 `depth` / `max` 覆盖。
+写/调类端点（`/reflect/invoke`、`/reflect/set`、`/static`、`/pin`）**默认关闭**；需要时 `POST /config {"enableInvoke":true}` 临时开启。字段快照深度/成员数有代码默认上限，按请求传 `depth` / `max` 覆盖；
+普通请求会被小上限夹住，只有传 `allowLarge=true` 才能取更大的反射快照。
+请求监控浮层也默认关闭；需要显示 agent 操作日志时 `POST /config {"enableMonitor":true}` 开启，F9 显示/隐藏，F8 暂停。
 
 ### `/eval`：动态执行任意 C#
 
-后端内置 Roslyn（CSharpScript）。`/eval {code}` 把 C# 在后端主线程上、用主线程写上下文 `ctx` 运行，脚本里已 `using`
+后端内置 Roslyn（CSharpScript），但默认不加载/预热。先 `POST /config {"enableEval":true}` 后，`/eval {code}` 才会把 C# 在后端主线程上、用主线程写上下文 `ctx` 运行，脚本里已 `using`
 `DomainManager.*` / `EventHelper.*` / `GameOps.*`，预置全局 `ctx`(DataContext) 与 `taiwuId`(int)，用 `return ...;` 返回，
 结果序列化进 `result`（Dictionary/基元/字符串/可枚举 → JSON，其它 → ToString），编译/运行错误返回 `{ok:false,error}`。
+`/eval` 返回值默认按 `maxItems=40` 和长字符串预览摘要，防止一次吐出巨大集合；确需更多项时传 `maxItems`，更高上限需 `allowLarge=true`。
 用它做一次性/临时操作，**不必再为每个新操作加端点重编译重启**；常用流程仍走上面的命名端点。
 
 ```powershell
@@ -55,7 +63,8 @@ SB -Path "/eval" -Body @{ code = "return GameOps.Taiwu();" }                    
 2. 进存档回到地图后，两条管道才开始工作（后端要 tick 才会响应，详见 `skills/taiwu-statebridge.md`）。
 3. 把随 mod 部署的 `skills/` 指给你的 agent —— 里面有连接函数、端点清单和踩坑约定，agent 照着调用即可。
 
-> 这个 mod 不改存档、不加内容，纯调试桥；写/调类端点默认开启（见下方端点说明），不需要时可 `POST /config {"enableInvoke":false}` 关。
+> 这个 mod 不加内容；但状态构造和写入端点会修改当前运行态，若随后保存可能进入存档。通用反射写入、`/quit` 和 `/eval`
+> 默认关闭，需要通过 `/config` 显式开启。
 
 ## 从源码构建 / 部署（开发本 mod）
 
@@ -63,15 +72,15 @@ SB -Path "/eval" -Body @{ code = "return GameOps.Taiwu();" }                    
 # 构建（前端 net48 + 后端 net8，输出到 EasyBridge/Plugins）
 dotnet build EasyBridge/EasyBridge.Backend/EasyBridge.Backend.csproj -c Release
 dotnet build EasyBridge/EasyBridge.Frontend/EasyBridge.Frontend.csproj -c Release
-# 部署到游戏（带上后端捆绑的 Roslyn DLL，以及 skills/）
+# 部署到游戏（带上后端可选 Roslyn DLL，以及 skills/）
 pwsh ./deploy.ps1 -ModName EasyBridge -IncludeDrafts
 ```
 
 要点：
-- 后端 `EasyBridge.Backend.csproj` 用 `CopyLocalLockFileAssemblies=true` 把 4 个 `Microsoft.CodeAnalysis*.dll` 拷进 `Plugins`
-  （net8 的 `System.*` 在框架内、不拷）；`SatelliteResourceLanguages=en` 去掉本地化卫星目录。
+- 后端 `EasyBridge.Backend.csproj` 用 `CopyLocalLockFileAssemblies=true` 把 `Microsoft.CodeAnalysis*.dll` 拷进 `Plugins`
+  （net8 的 `System.*` 在框架内、不拷）；`SatelliteResourceLanguages=en` 去掉本地化卫星目录。Roslyn 默认不预热，只有启用 `/eval` 后才按需加载。
 - `Copy-ModFiles` 会把 `Plugins` 里非声明插件的依赖 DLL（即 Roslyn）一并带到部署目录，并把 `skills/` 整目录递归拷进部署目录（供使用者的 agent 读取）。
-- 游戏后端插件加载器把插件及其直接引用按字节加载、且其依赖解析是死代码，所以 `BackendPlugin` 自己挂了
+- 游戏后端插件加载器把插件及其直接引用按字节加载、且其依赖解析是死代码，所以启用 `/eval` 后 `BackendPlugin` 会挂
   `AssemblyLoadContext.Default.Resolving`，用 `LoadFromAssemblyPath` 从本 mod 的 Plugins 目录解析 Roslyn 的传递依赖；
   脚本对本 mod 程序集的引用用 `CreateFromImage`（仅编译期 metadata）+ 钩子返回已加载的那份，避免跨 ALC 的类型身份冲突。
 - **本地 mod 需在「模组管理」里启用并重启游戏才加载**；后端 DLL 改动也必须重启游戏。

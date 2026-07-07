@@ -12,6 +12,14 @@ namespace EasyBridge.Backend
         public const string ModName = "EasyBridge";
         public const string Version = BackendPlugin.Version;
         public static int PumpTimeoutMs = 8000;
+        public static bool EnableEval;
+        public static bool EnableMonitorForward;
+
+        public static void ReloadRuntimeOptions()
+        {
+            // No user Settings.Lua fields are defined yet. Keep runtime switches in memory so
+            // OnModSettingUpdate never tears down a live pipe just to re-read an empty settings table.
+        }
 
         public static (int status, object body) Handle(string method, string path,
             Dictionary<string, string> query, string requestBody)
@@ -26,6 +34,8 @@ namespace EasyBridge.Backend
                     ["mod"] = ModName,
                     ["version"] = Version,
                     ["tickAlive"] = MainThreadPump.TickAlive,
+                    ["enableEval"] = EnableEval,
+                    ["enableMonitor"] = EnableMonitorForward,
                 });
 
             object body = Json.Parse(requestBody);
@@ -55,7 +65,7 @@ namespace EasyBridge.Backend
             if (path == "/combat/watch")
             {
                 if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
-                    return Pump(ctx => CombatStepper.Status(ctx));
+                    return Pump(ctx => CombatStepper.Status(ctx, QueryBool(query, "includeSnapshot", true)));
                 return Pump(ctx => CombatStepper.Arm(ctx, body));
             }
 
@@ -67,14 +77,16 @@ namespace EasyBridge.Backend
 
             if (path == "/sects")
             {
-                int count = Json.GetInt(body, "count", 6);
+                bool allowLarge = IsLarge(body);
+                int count = Clamp(Json.GetInt(body, "count", 6), 1, allowLarge ? 50 : 20);
                 return Pump(ctx => GameOps.FindSects(ctx, count));
             }
 
             if (path == "/settlements")
             {
+                bool allowLarge = IsLarge(body);
                 bool civilianOnly = Json.GetBool(body, "civilianOnly", true);
-                int max = Json.GetInt(body, "max", 40);
+                int max = Clamp(Json.GetInt(body, "max", 40), 1, allowLarge ? 200 : 80);
                 return Pump(ctx => GameOps.Settlements(ctx, civilianOnly, max));
             }
 
@@ -174,7 +186,11 @@ namespace EasyBridge.Backend
             }
 
             if (path == "/block/chars")
-                return Pump(_ => GameOps.BlockChars());
+            {
+                bool allowLarge = IsLarge(body);
+                int max = Clamp(Json.GetInt(body, "max", 40), 1, allowLarge ? 200 : 80);
+                return Pump(_ => GameOps.BlockChars(max));
+            }
 
             if (path == "/giverope")
             {
@@ -199,12 +215,39 @@ namespace EasyBridge.Backend
                 return Pump(ctx => Presets.Build(ctx, name, gender, age));
             }
 
-            // 动态执行任意 C# 代码（Roslyn）。脚本可直接用 ctx / DomainManager.* / EventHelper.* / GameOps.*，
-            // 用 `return ...;` 返回值。给更长超时：首次编译可能略久。
+            if (path == "/config")
+            {
+                if (body is IDictionary<string, object> m)
+                {
+                    if (m.TryGetValue("enableEval", out var ev) && ev != null)
+                        EnableEval = ToBool(ev);
+                    if (m.TryGetValue("enableMonitor", out var mv) && mv != null)
+                        EnableMonitorForward = ToBool(mv);
+                    if (m.TryGetValue("pumpTimeoutMs", out var tv) && tv != null && int.TryParse(tv.ToString(), out int t))
+                        PumpTimeoutMs = Math.Max(1000, Math.Min(t, 30000));
+                }
+                return Ok(new Dictionary<string, object>
+                {
+                    ["ok"] = true,
+                    ["enableEval"] = EnableEval,
+                    ["enableMonitor"] = EnableMonitorForward,
+                    ["pumpTimeoutMs"] = PumpTimeoutMs,
+                });
+            }
+
+            // 动态执行任意 C# 代码（Roslyn）。默认关闭；启用后才延迟加载 Roslyn 依赖。
             if (path == "/eval")
             {
+                if (!EnableEval)
+                    return (403, new Dictionary<string, object>
+                    {
+                        ["ok"] = false,
+                        ["error"] = "eval disabled; POST /config {\"enableEval\":true} first",
+                    });
                 string code = Json.GetString(body, "code");
-                return Pump(ctx => Eval.Run(ctx, code), 30000);
+                int maxItems = Clamp(Json.GetInt(body, "maxItems", 40), 1, IsLarge(body) ? 200 : 60);
+                BackendPlugin.EnsureRoslynAssembliesLoaded();
+                return Pump(ctx => Eval.Run(ctx, code, maxItems), 30000);
             }
 
             return (404, new Dictionary<string, object> { ["ok"] = false, ["error"] = "not found", ["path"] = path });
@@ -237,5 +280,27 @@ namespace EasyBridge.Backend
 
         private static (int, object) Ok(object body) => (200, body);
         private static (int, object) Bad(string msg) => (400, new Dictionary<string, object> { ["ok"] = false, ["error"] = msg });
+
+        private static bool ToBool(object value)
+        {
+            if (value is bool b) return b;
+            if (value is double d) return d != 0;
+            return bool.TryParse(value.ToString(), out bool parsed) && parsed;
+        }
+
+        private static int Clamp(int value, int min, int max)
+            => Math.Max(min, Math.Min(max, value));
+
+        private static bool IsLarge(object body)
+            => Json.GetBool(body, "allowLarge", false) || Json.GetBool(body, "large", false);
+
+        private static bool QueryBool(Dictionary<string, string> query, string key, bool fallback)
+        {
+            if (query == null || !query.TryGetValue(key, out var value) || string.IsNullOrEmpty(value))
+                return fallback;
+            if (bool.TryParse(value, out bool parsed))
+                return parsed;
+            return value == "1" || value.Equals("yes", StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

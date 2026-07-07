@@ -6,6 +6,8 @@
 
 ## 一、搭场景（后端 `/eval`，运行时内存、别保存存档）
 
+先开启后端 eval：`SB -Path "/config" -Body @{ enableEval=$true }`。
+
 - **造我方蛐蛐**：`Item.CreateCricket(ctx, colorId, partId)` → `taiwu.AddInventoryItem(...)`。品名由 `(colorId,partId).CalcCricketGrade()` 决定（内部 0~8）。**品名与品级反直觉**：`八败`=templateId 21=Level 8=**1品(最强)**；`呆物`=templateId 0=Level 0=**9品(最弱)**。
 - **造 N 品对手**：`/spawn {villager:$false}` 生成散人 NPC（村民过月会崩、且散人通常无护卫最易开战）→ `ChangeOrganization` 设 `OrganizationInfo(org, grade)`（`grade=7`=2品）。对手三只蛐蛐由 `CricketGenerator.Generate(grade,grade,…)` **现生成**（如 grade7 → 内部 `[7,7,4]`）。
 - **设出战方案**：`Taiwu.SetCricketPlan(ctx, planIndex, …)` + `SetLastCricketPlan`（方案0 = 先锋/大将/主帅 三只）。
@@ -13,6 +15,8 @@
 - **坑**：开局前先 `/time {pause}`，只用小步 `/time step` 渲染界面，看到 `StartCombat` 再点；否则 resume 久了对局会自动打完。重开残局用窗口里「落闸罢斗」。
 
 ## 二、卡在特定事件（前端反射，**纯反射够用、零编译**）
+
+先开启前端反射写/调类：`UI -Path "/config" -Body '{"enableInvoke":true}'`。
 
 **读事件队列、别读 Spine 动画名**（动画名是糊弄信号，和"播到第几条 log"不对齐 → 会停早/停错）。
 

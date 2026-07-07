@@ -36,11 +36,11 @@ namespace EasyBridge.Frontend
                 Source = source,
                 Method = method,
                 Path = path,
-                Query = Trunc(query, 90),
-                Body = Trunc(Flatten(body), 160),
-                Note = Trunc(Flatten(note), 140),
+                Query = Preview(query, 90),
+                Body = Preview(body, 160),
+                Note = Preview(note, 140),
                 Status = status,
-                Result = Trunc(Flatten(resultJson), 200),
+                Result = Preview(resultJson, 200),
                 Ms = ms,
             };
             lock (_lock)
@@ -140,13 +140,27 @@ namespace EasyBridge.Frontend
         private static string Esc(string s)
             => string.IsNullOrEmpty(s) ? s : s.Replace("<", "‹").Replace(">", "›");
 
-        private static string Flatten(string s)
-            => string.IsNullOrEmpty(s) ? s : s.Replace("\r", " ").Replace("\n", " ");
+        private static string Preview(string s, int n)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            int take = Math.Min(s.Length, n + 1);
+            if (take > 0 && take < s.Length && char.IsHighSurrogate(s[take - 1])) take--;
+            var sb = new StringBuilder(take + 1);
+            for (int i = 0; i < take; i++)
+            {
+                char c = s[i];
+                sb.Append(c == '\r' || c == '\n' ? ' ' : c);
+            }
+            if (s.Length > n)
+            {
+                if (sb.Length > n) sb.Length = n;
+                if (sb.Length > 0 && char.IsHighSurrogate(sb[sb.Length - 1])) sb.Length--;
+                sb.Append("…");
+            }
+            return sb.ToString();
+        }
 
         private static string Cut(string s, int n)
-            => string.IsNullOrEmpty(s) || s.Length <= n ? s : Safe(s, n) + "…";
-
-        private static string Trunc(string s, int n)
             => string.IsNullOrEmpty(s) || s.Length <= n ? s : Safe(s, n) + "…";
 
         // Never split a UTF-16 surrogate pair (a lone surrogate breaks Text mesh / JSON).

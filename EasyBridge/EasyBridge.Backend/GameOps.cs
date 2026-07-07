@@ -397,12 +397,15 @@ namespace EasyBridge.Backend
             var all = new List<Settlement>();
             DomainManager.Organization.GetAllSettlements(all);
             var list = new List<object>();
+            int matched = 0;
             foreach (var s in all)
             {
                 bool civ = s is CivilianSettlement;
                 if (civilianOnly && !civ) continue;
                 var loc = s.GetLocation();
                 if (loc.AreaId < 0 || loc.AreaId >= 45) continue;
+                matched++;
+                if (list.Count >= max) continue;
                 int bt = (int)DomainManager.Map.GetBlockData(loc.AreaId, loc.BlockId).BlockType;
                 list.Add(new Dictionary<string, object>
                 {
@@ -414,9 +417,16 @@ namespace EasyBridge.Backend
                     ["blockType"] = bt,
                     ["blockTypeName"] = BlockTypeName(bt),
                 });
-                if (list.Count >= max) break;
             }
-            return new Dictionary<string, object> { ["ok"] = true, ["count"] = list.Count, ["settlements"] = list };
+            return new Dictionary<string, object>
+            {
+                ["ok"] = true,
+                ["count"] = list.Count,
+                ["matched"] = matched,
+                ["max"] = max,
+                ["truncated"] = matched > list.Count,
+                ["settlements"] = list,
+            };
         }
 
         /// <summary>列出若干门派据点的格位（用于瞬移到门派格，那里的原生门派 NPC 通常带护卫）。</summary>
@@ -677,8 +687,9 @@ namespace EasyBridge.Backend
 
         // ---------- 当前格角色（含护卫，用于护卫拦截测试目标选取） ----------
 
-        public static Dictionary<string, object> BlockChars()
+        public static Dictionary<string, object> BlockChars(int max)
         {
+            if (max <= 0) max = 40;
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (!DomainManager.Character.TryGetElement_Objects(taiwuId, out var taiwu))
                 return Err("taiwu not found");
@@ -688,10 +699,13 @@ namespace EasyBridge.Backend
             if (block.CharacterSet != null) foreach (var i in block.CharacterSet) ids.Add(i);
             if (block.FixedCharacterSet != null) foreach (var i in block.FixedCharacterSet) ids.Add(i);
             var list = new List<object>();
+            int matched = 0;
             foreach (int id in ids)
             {
                 if (id == taiwuId) continue;
                 if (!DomainManager.Character.TryGetElement_Objects(id, out var ch)) continue;
+                matched++;
+                if (list.Count >= max) continue;
                 list.Add(new Dictionary<string, object>
                 {
                     ["id"] = id,
@@ -707,6 +721,9 @@ namespace EasyBridge.Backend
                 ["areaId"] = (int)loc.AreaId,
                 ["blockId"] = (int)loc.BlockId,
                 ["count"] = list.Count,
+                ["matched"] = matched,
+                ["max"] = max,
+                ["truncated"] = matched > list.Count,
                 ["chars"] = list,
             };
         }

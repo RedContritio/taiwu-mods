@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using GameData.Common;
 
@@ -18,6 +19,7 @@ namespace EasyBridge.Backend
             public object Result;
             public Exception Error;
             public readonly ManualResetEventSlim Done = new ManualResetEventSlim(false);
+            public int Cancelled;
         }
 
         private static readonly ConcurrentQueue<Job> Queue = new ConcurrentQueue<Job>();
@@ -30,7 +32,10 @@ namespace EasyBridge.Backend
             var job = new Job { Fn = fn };
             Queue.Enqueue(job);
             if (!job.Done.Wait(timeoutMs))
+            {
+                Interlocked.Exchange(ref job.Cancelled, 1);
                 throw new TimeoutException("main-thread job timed out (is a save loaded so GlobalDomain ticks?)");
+            }
             if (job.Error != null)
                 throw job.Error;
             return job.Result;
@@ -40,12 +45,20 @@ namespace EasyBridge.Backend
         public static void Drain(DataContext context)
         {
             TickAlive = true;
-            int guard = 32;
+            int guard = 16;
+            var sw = Stopwatch.StartNew();
             while (guard-- > 0 && Queue.TryDequeue(out var job))
             {
+                if (Volatile.Read(ref job.Cancelled) != 0)
+                {
+                    job.Error = new TimeoutException("main-thread job cancelled before execution");
+                    job.Done.Set();
+                    continue;
+                }
                 try { job.Result = job.Fn(context); }
                 catch (Exception ex) { job.Error = ex; }
                 finally { job.Done.Set(); }
+                if (sw.ElapsedMilliseconds >= 4) break;
             }
         }
 

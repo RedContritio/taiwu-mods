@@ -1,6 +1,6 @@
 ---
 name: taiwu-statebridge
-description: Use to construct in-game character/relationship state (generate condition-meeting NPCs), read it back for assertions, and run arbitrary C# via /eval — over the EasyBridge mod's backend pipe (easybridge-state). Pair with the taiwu-ui skill (same EasyBridge mod's frontend pipe easybridge-ui) to drive and verify ForceEncounter event paths end-to-end.
+description: Use to construct in-game character/relationship state (generate condition-meeting NPCs), read it back for assertions, and optionally run arbitrary C# via /eval after explicitly enabling it — over the EasyBridge mod's backend pipe (easybridge-state). Pair with the taiwu-ui skill (same EasyBridge mod's frontend pipe easybridge-ui) to drive and verify ForceEncounter event paths end-to-end.
 ---
 
 # EasyBridge State Skill
@@ -16,6 +16,8 @@ description: Use to construct in-game character/relationship state (generate con
 3. **生成的 NPC 落在太吾所在格**，因此会出现在 `MapBlockCharList` 里，可被 UiBridge 点击。用返回的
    `name` 在 UI 角色列表里匹配；若同名多个，用 `/spawn` 逐个生成并立刻交互，避免歧义。
 4. 写操作有 ~8s 超时；若超时多半是没进存档（tick 不跑）。
+5. 列表/脚本结果默认按摘要规模返回：`/sects`、`/settlements`、`/block/chars`、`/eval` 都有硬上限；
+   响应里的 `matched/truncated/max` 或 `_truncated` 表示需要继续缩小条件或显式 `allowLarge=true`。
 
 ## 游戏品级约定（重要：读 grade 数据前必看）
 
@@ -32,7 +34,7 @@ description: Use to construct in-game character/relationship state (generate con
 ```powershell
 function Invoke-StateEasyBridge {
     param([string]$Path, [hashtable]$Body, [string]$Note)
-    # -Note: 一句中文说明，显示在游戏内「EasyBridge」浮层上（随游戏关闭自动消失）。每次调用都带上。
+    # -Note: 一句中文说明；前端 monitor 开启后会显示在游戏内「EasyBridge」浮层。每次调用都带上。
     $req = @{ path = $Path }
     if ($Body) { $req.body = ($Body | ConvertTo-Json -Compress) }
     if ($Note) { $req.note = $Note }
@@ -51,11 +53,12 @@ function Invoke-StateEasyBridge {
 ## 端点
 
 - `Invoke-StateEasyBridge -Path "/ping"` → `{ok, tickAlive}`
+- `Invoke-StateEasyBridge -Path "/config" -Body @{ enableEval=$true }` → 临时开启 `/eval`；`enableMonitor=$true` 会把后端请求摘要转发到前端浮层
 - `Invoke-StateEasyBridge -Path "/taiwu"` → `{taiwuId, closeFriendId, areaId, blockId, behaviorType, ...}`
 - `Invoke-StateEasyBridge -Path "/whereami"` → 太吾当前格 `{areaId, blockId, blockType, blockTypeName}`（护卫判定看 blockType）
 - `Invoke-StateEasyBridge -Path "/combat"` → 只读战斗快照 `{inCombat, pause, frame, timeScale, autoCombat, autoMove, currentDistance, lastTargetDistance, self, enemy}`；`self/enemy` 含状态机状态、技能/其他动作/道具准备进度、reserve、移动蓄势
 - `Invoke-StateEasyBridge -Path "/combat/control" -Body @{ timeScale=0; autoCombat=$false; autoMove=$false }` → 设置并读回战斗节奏；实时战斗冻结优先用 `timeScale=0` + 连续 `frame` 不变作为证据
-- `Invoke-StateEasyBridge -Path "/combat/watch" -Body @{ mode="anyReady"; autoCombat=$false; autoMove=$false; freezeBy="timeScale0" }` → 注册后端 tick 内的战斗断点；命中后自动把 `timeScale` 置 0
+- `Invoke-StateEasyBridge -Path "/combat/watch" -Body @{ mode="anyReady"; autoCombat=$false; autoMove=$false; freezeBy="timeScale0"; includeSnapshot=$false }` → 注册后端 tick 内的战斗断点；命中后自动把 `timeScale` 置 0。需要 watch 内保存的战斗快照时再传 `includeSnapshot=$true`
 - `Invoke-StateEasyBridge -Path "/combat/resume"` → 从当前断点继续运行，并自动重设同一个 watch 等下一次命中
 - `Invoke-StateEasyBridge -Path "/combat/watch/cancel" -Body @{ restore=$true }` → 取消 watch，并恢复 arm 时保存的 `timeScale/autoCombat/autoMove`
 - `Invoke-StateEasyBridge -Path "/char/123"` → 角色快照（含 `hasGuard`）
@@ -65,8 +68,8 @@ function Invoke-StateEasyBridge {
   **`villager=$true` 才转入太吾村**（村民文案分支用），但太吾村村民缺村民角色数据，**过月会让游戏
   `TaiwuDomain.UpdateVillagerFixedActions` 空引用崩溃、卡死过月**——验证过月类 mod（如 DreamLover）
   务必用 `villager=$false`，并配合 DreamLover 设 `IgnoreDistance` 以免散人游走出格被 sameLocation 过滤。
-- `Invoke-StateEasyBridge -Path "/sects" -Body @{ count=8 }` → 门派据点格位列表 `{orgTemplate, areaId, blockId, blockTypeName}`
-- `Invoke-StateEasyBridge -Path "/settlements" -Body @{ civilianOnly=$true; max=80 }` → 城镇/城市据点列表（含 blockType），找弱平民格触发护卫拦截
+- `Invoke-StateEasyBridge -Path "/sects" -Body @{ count=8 }` → 门派据点格位列表 `{orgTemplate, areaId, blockId, blockTypeName}`；普通请求 `count` 硬限 20
+- `Invoke-StateEasyBridge -Path "/settlements" -Body @{ civilianOnly=$true; max=40 }` → 城镇/城市据点列表（含 blockType），找弱平民格触发护卫拦截；返回 `matched/truncated/max`。非平民全量或更大 `max` 要显式 `allowLarge=$true`
 - `Invoke-StateEasyBridge -Path "/move/taiwu" -Body @{ areaId=..; blockId=.. }` → 瞬移太吾（跨区自动 QuickTravel）
 - `Invoke-StateEasyBridge -Path "/relation" -Body @{ a=$taiwu; b=$npc; type="spouse"; both=$true }`
 - `Invoke-StateEasyBridge -Path "/favor" -Body @{ from=$taiwu; to=$npc; type=6 }`
@@ -75,20 +78,22 @@ function Invoke-StateEasyBridge {
 - `Invoke-StateEasyBridge -Path "/injure" -Body @{ id=$npc; level=6 }` → 叠伤势，84 标记 → 无力应战；对太吾 6818 削弱可制造战败
 - `Invoke-StateEasyBridge -Path "/heal" -Body @{ id=6818 }` → 清空伤势（复原太吾）
 - `Invoke-StateEasyBridge -Path "/favor/exact" -Body @{ from=$npc; to=$taiwu; value=16000 }` → 精确好感（绕过缩放，BranchA 用）
-- `Invoke-StateEasyBridge -Path "/block/chars"` → 当前格全部角色 `{id,name,orgTemplateId,hasGuard,kidnapperId}`
+- `Invoke-StateEasyBridge -Path "/block/chars" -Body @{ max=40 }` → 当前格角色摘要 `{id,name,orgTemplateId,hasGuard,kidnapperId}`；拥挤格会返回 `truncated=true`
 - `Invoke-StateEasyBridge -Path "/cripple" -Body @{ id=$npc }` → 撤销全部战技 + 内力清零，返回 combatPowerBefore/After（注：根基属性主导，降幅有限）
 - `Invoke-StateEasyBridge -Path "/giverope" -Body @{ template=90 }` → 给太吾高级捕绳（开战前调用）
 - `Invoke-StateEasyBridge -Path "/throwrope"` → 战斗中向敌扔绳（重试至命中 → 擒获）
-- `Invoke-StateEasyBridge -Path "/eval" -Body @{ code="return DomainManager.Taiwu.GetTaiwuCharId();" }` → **动态执行任意 C#**（见下「/eval」节）
+- `Invoke-StateEasyBridge -Path "/eval" -Body @{ code="return DomainManager.Taiwu.GetTaiwuCharId();" }` → **动态执行任意 C#**（默认关闭，见下「/eval」节）；返回集合默认 `maxItems=40`
 
 > 自 EasyBridge 合并版起，前端 UI 桥 + 后端状态桥同属**一个 mod「EasyBridge」**（管道名不变：`easybridge-ui` / `easybridge-state`）。
 
 ## /eval：动态执行任意 C#（无需为每个新操作重编译重启）
 
-后端内置 Roslyn。`/eval` 把传入的 C# 代码在**后端主线程**上、用主线程写上下文 `ctx` 运行，可直接调用
+后端内置 Roslyn，但默认不加载/预热。先调用 `Invoke-StateEasyBridge -Path "/config" -Body @{ enableEval=$true }` 后，
+`/eval` 才会把传入的 C# 代码在**后端主线程**上、用主线程写上下文 `ctx` 运行，可直接调用
 `DomainManager.*`、`EventHelper.*`、以及本桥的 `GameOps.*`（这些命名空间已 `using`）。脚本用 `return ...;`
 返回值，结果序列化进 `result`。预置全局：`ctx`（DataContext）、`taiwuId`（int）。编译结果按代码串缓存；
-编译/运行错误以 `{ok:false, error}` 返回。
+编译/运行错误以 `{ok:false, error}` 返回。返回值会按 `maxItems` 摘要：长字符串截断，大字典/大列表只返回前若干项并标记
+`_truncated` 或尾部 `{truncated:true}`；确实需要更多项时传 `maxItems`，超过普通上限时再传 `allowLarge=$true`。
 
 ```powershell
 . D:\TaiwuMods\_scratch\bridge.ps1
@@ -261,9 +266,9 @@ SB -Path "/heal" -Body @{ id=$taiwu }
 
 ```powershell
 . D:\TaiwuMods\_scratch\bridge.ps1
-$dest = (SB -Path "/settlements" -Body @{civilianOnly=$true;max=80}).settlements | ? { $_.blockTypeName -in @("City","Town") } | Select -First 1
+$dest = (SB -Path "/settlements" -Body @{civilianOnly=$true;max=40}).settlements | ? { $_.blockTypeName -in @("City","Town") } | Select -First 1
 SB -Path "/move/taiwu" -Body @{ areaId=$dest.areaId; blockId=$dest.blockId } | Out-Null
-$g = (SB -Path "/block/chars").chars | ? hasGuard | Select -First 1     # 城镇平民, hasGuard=True
+$g = (SB -Path "/block/chars" -Body @{max=40}).chars | ? hasGuard | Select -First 1     # 城镇平民, hasGuard=True
 $o = FE-Open -Name $g.name                                              # 敌对 → 情难自已
 FE-ForceAndConfirm                                                      # 更进一步 + 重要选择确认
 if (FE-OptionId -Key "ForceEncounter.GuardInterceptContinue") { FE-GuardContinue; Drive-Combat }  # 护卫出面 → 护卫继续 → 与护卫战

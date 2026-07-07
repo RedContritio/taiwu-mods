@@ -15,9 +15,13 @@ namespace EasyBridge.Backend
     internal sealed class PipeServer
     {
         public const string PipeName = "easybridge-state";
+        private const int MaxServerInstances = 8;
+        private const int MaxConcurrentClients = 4;
+        private const int MaxRequestChars = 256 * 1024;
 
         private volatile bool _running;
         private Thread _acceptThread;
+        private static readonly SemaphoreSlim ClientSlots = new SemaphoreSlim(MaxConcurrentClients, MaxConcurrentClients);
 
         public void Start()
         {
@@ -29,6 +33,10 @@ namespace EasyBridge.Backend
         public void Stop()
         {
             _running = false;
+            var thread = _acceptThread;
+            _acceptThread = null;
+            if (thread != null && thread.IsAlive)
+                thread.Join(1000);
         }
 
         private void AcceptLoop()
@@ -39,7 +47,7 @@ namespace EasyBridge.Backend
                 try
                 {
                     pipe = new NamedPipeServerStream(PipeName, PipeDirection.InOut,
-                        NamedPipeServerStream.MaxAllowedServerInstances,
+                        MaxServerInstances,
                         PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
                     var ar = pipe.BeginWaitForConnection(null, null);
@@ -50,7 +58,17 @@ namespace EasyBridge.Backend
                     pipe.EndWaitForConnection(ar);
 
                     var captured = pipe;
-                    ThreadPool.QueueUserWorkItem(_ => HandleClient(captured));
+                    if (!ClientSlots.Wait(0))
+                    {
+                        ThreadPool.QueueUserWorkItem(_ => RejectBusy(captured));
+                        pipe = null;
+                        continue;
+                    }
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        try { HandleClient(captured); }
+                        finally { ClientSlots.Release(); }
+                    });
                     pipe = null;
                 }
                 catch
@@ -68,6 +86,7 @@ namespace EasyBridge.Backend
             {
                 using (pipe)
                 {
+                    TrySetTimeouts(pipe);
                     string requestLine;
                     using (var reader = new StreamReader(pipe, Encoding.UTF8, false, 4096, leaveOpen: true))
                     {
@@ -77,6 +96,11 @@ namespace EasyBridge.Backend
                     if (string.IsNullOrEmpty(requestLine))
                     {
                         WriteResponse(pipe, new Dictionary<string, object> { ["error"] = "empty request" });
+                        return;
+                    }
+                    if (requestLine.Length > MaxRequestChars)
+                    {
+                        WriteResponse(pipe, new Dictionary<string, object> { ["ok"] = false, ["error"] = "request too large" });
                         return;
                     }
 
@@ -110,11 +134,35 @@ namespace EasyBridge.Backend
                     // pipes. Skip infrastructure noise: monitor polls (mon=1) and bare health-checks (/ping, /).
                     bool skipFwd = (query != null && query.TryGetValue("mon", out var mv) && mv == "1")
                         || path == "/ping" || path == "/";
-                    if (!skipFwd)
+                    if (!skipFwd && Router.EnableMonitorForward)
                         MonitorForward.Push(method, path, QueryString(query), body, note, status, json, sw.ElapsedMilliseconds);
                 }
             }
             catch { }
+        }
+
+        private static void RejectBusy(NamedPipeServerStream pipe)
+        {
+            try
+            {
+                using (pipe)
+                {
+                    TrySetTimeouts(pipe);
+                    WriteResponse(pipe, new Dictionary<string, object>
+                    {
+                        ["ok"] = false,
+                        ["error"] = "busy",
+                        ["maxConcurrentClients"] = MaxConcurrentClients,
+                    });
+                }
+            }
+            catch { }
+        }
+
+        private static void TrySetTimeouts(NamedPipeServerStream pipe)
+        {
+            try { pipe.ReadTimeout = 3000; } catch { }
+            try { pipe.WriteTimeout = 3000; } catch { }
         }
 
         private static Dictionary<string, string> ExtractQuery(object parsed)
@@ -140,7 +188,6 @@ namespace EasyBridge.Backend
             var bytes = Encoding.UTF8.GetBytes(json + "\n");
             pipe.Write(bytes, 0, bytes.Length);
             pipe.Flush();
-            pipe.WaitForPipeDrain();
         }
 
         private static string QueryString(Dictionary<string, string> q)

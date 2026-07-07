@@ -10,12 +10,19 @@ namespace EasyBridge.Frontend
     internal static class Router
     {
         public const string ModName = "EasyBridge";
-        public const string Version = "0.0.1";
-        public static int DefaultMax = 60;
+        public const string Version = "0.2.0.0";
+        public static int DefaultMax = 24;
         public static int MaxReflectDepth = 2;
         public static int MaxReflectMembers = 80;
-        public static bool EnableReflectInvoke = true;   // agent-driven debug bridge; POST /config to toggle off
+        public static bool EnableReflectInvoke;
+        public static bool EnableMonitor;
         public static int MainThreadTimeoutMs = 5000;
+
+        public static void ReloadRuntimeOptions()
+        {
+            // EasyBridge has no persisted Settings.Lua fields yet. Keep runtime switches in memory;
+            // settings refreshes should not tear down the pipe.
+        }
 
         public static (int status, object body) Handle(string method, string path,
             Dictionary<string, string> query, string requestBody)
@@ -32,14 +39,21 @@ namespace EasyBridge.Frontend
                         ["mod"] = ModName,
                         ["version"] = Version,
                         ["dispatcher"] = MainThreadDispatcher.Ready,
+                        ["enableInvoke"] = EnableReflectInvoke,
+                        ["enableMonitor"] = EnableMonitor,
                     });
 
                 if (method == "GET" && path == "/log")
-                    return (200, RequestLog.Snapshot(GetInt(query, "since", 0), GetInt(query, "max", 200)));
+                {
+                    int max = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? 500 : 20);
+                    return (200, RequestLog.Snapshot(GetInt(query, "since", 0), max));
+                }
 
                 // Backend pipe forwards its handled requests here so one overlay shows both pipes.
                 if (method == "POST" && path == "/monitor/push")
                 {
+                    if (!EnableMonitor)
+                        return (200, new Dictionary<string, object> { ["ok"] = true, ["ignored"] = true });
                     var p = Json.Parse(requestBody);
                     RequestLog.Add(
                         Json.GetString(p, "source") ?? "backend",
@@ -60,33 +74,47 @@ namespace EasyBridge.Frontend
                 if (method == "GET" && path.StartsWith("/ui/"))
                 {
                     var name = Uri.UnescapeDataString(path.Substring("/ui/".Length));
+                    var detail = (GetStr(query, "detail") ?? "summary").Trim().ToLowerInvariant();
+                    if (detail != "title" && detail != "summary" && detail != "full")
+                        detail = "summary";
+                    var fields = GetStr(query, "fields") ?? "";
+                    bool allowLarge = IsLarge(query);
+                    int maxCap = allowLarge ? 300 : 40;
+                    int scanCap = allowLarge ? 5000 : 1800;
+                    int defaultScan = detail == "full" ? 1600 : 900;
                     var opts = new UiInspector.Options
                     {
-                        Full = GetStr(query, "detail") == "full",
-                        Max = GetInt(query, "max", DefaultMax),
+                        Detail = detail,
+                        Full = detail == "full",
+                        Max = Clamp(GetInt(query, "max", DefaultMax), 1, maxCap),
+                        ScanBudget = Clamp(GetInt(query, "scan", defaultScan), 100, scanCap),
+                        Section = GetStr(query, "section"),
+                        IncludeControls = FieldEnabled(fields, "controls", detail == "full"),
+                        IncludeTexts = FieldEnabled(fields, "texts", detail == "full"),
                     };
-                    if (opts.Max <= 0) opts.Max = DefaultMax;
                     return Main(() => UiInspector.Element(name, opts));
                 }
 
                 if (method == "GET" && path == "/find")
                 {
                     var q = GetStr(query, "q") ?? GetStr(query, "text") ?? "";
-                    var limit = GetInt(query, "limit", 50);
-                    return Main(() => UiInspector.Find(q, limit));
+                    var limit = Clamp(GetInt(query, "limit", 20), 1, IsLarge(query) ? 100 : 30);
+                    var scan = Clamp(GetInt(query, "scan", 1800), 100, IsLarge(query) ? 8000 : 2500);
+                    return Main(() => UiInspector.Find(q, limit, scan));
                 }
 
                 if (method == "GET" && path == "/elements")
                 {
-                    bool onlyActive = GetStr(query, "onlyActive") == "true";
-                    return Main(() => Elements(onlyActive));
+                    bool all = IsTrue(GetStr(query, "all")) || string.Equals(GetStr(query, "onlyActive"), "false", StringComparison.OrdinalIgnoreCase);
+                    int max = Clamp(GetInt(query, "max", all ? 120 : 80), 1, IsLarge(query) ? 500 : 120);
+                    return Main(() => Elements(!all, max));
                 }
 
                 if (method == "GET" && path == "/inspect")
                 {
                     var element = GetStr(query, "element") ?? "";
                     var id = GetStr(query, "id") ?? "";
-                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var maxMembers = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? MaxReflectMembers : 30);
                     return MainStatus(() => ReflectionInspector.Inspect(element, id, maxMembers));
                 }
 
@@ -95,7 +123,7 @@ namespace EasyBridge.Frontend
                     float? x = TryGetFloat(query, "x");
                     float? y = TryGetFloat(query, "y");
                     var origin = GetStr(query, "origin") ?? "bottom-left";
-                    var max = GetInt(query, "max", 20);
+                    var max = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? 100 : 30);
                     return Main(() => PointerInspector.Snapshot(x, y, origin, max));
                 }
 
@@ -106,7 +134,7 @@ namespace EasyBridge.Frontend
                     var component = GetStr(query, "component") ?? "";
                     var member = GetStr(query, "member") ?? "";
                     var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
-                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var maxMembers = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? MaxReflectMembers : 30);
                     return MainStatus(() => ReflectionInspector.Reflect(element, id, component, member, depth, maxMembers));
                 }
 
@@ -142,7 +170,7 @@ namespace EasyBridge.Frontend
                         });
                     }
                     var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
-                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var maxMembers = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? MaxReflectMembers : 30);
                     var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
                         () => ReflectionInspector.Invoke(requestBody, depth, maxMembers), MainThreadTimeoutMs);
                     bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
@@ -158,7 +186,7 @@ namespace EasyBridge.Frontend
                             ["error"] = "set disabled; POST /config {\"enableInvoke\":true} first",
                         });
                     var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
-                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var maxMembers = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? MaxReflectMembers : 30);
                     var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
                         () => ReflectionInspector.Set(requestBody, depth, maxMembers), MainThreadTimeoutMs);
                     bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
@@ -209,9 +237,28 @@ namespace EasyBridge.Frontend
                 if (method == "POST" && path == "/config")
                 {
                     var parsed = Json.Parse(requestBody);
-                    if (parsed is IDictionary<string, object> m && m.TryGetValue("enableInvoke", out var ev) && ev != null)
-                        EnableReflectInvoke = ev is bool b ? b : (bool.TryParse(ev.ToString(), out var bb) && bb);
-                    return (200, new Dictionary<string, object> { ["ok"] = true, ["enableInvoke"] = EnableReflectInvoke });
+                    if (parsed is IDictionary<string, object> m)
+                    {
+                        if (m.TryGetValue("enableInvoke", out var ev) && ev != null)
+                            EnableReflectInvoke = ToBool(ev);
+                        if (m.TryGetValue("enableMonitor", out var mv) && mv != null)
+                        {
+                            EnableMonitor = ToBool(mv);
+                            if (EnableMonitor)
+                                MainThreadDispatcher.Run(() => { MonitorOverlay.Create(); MonitorOverlay.Show(); return null; }, MainThreadTimeoutMs);
+                            else
+                                MainThreadDispatcher.Run(() => { MonitorOverlay.DestroyInstance(); return null; }, MainThreadTimeoutMs);
+                        }
+                        if (m.TryGetValue("mainThreadTimeoutMs", out var tv) && tv != null && int.TryParse(tv.ToString(), out int t))
+                            MainThreadTimeoutMs = Clamp(t, 1000, 30000);
+                    }
+                    return (200, new Dictionary<string, object>
+                    {
+                        ["ok"] = true,
+                        ["enableInvoke"] = EnableReflectInvoke,
+                        ["enableMonitor"] = EnableMonitor,
+                        ["mainThreadTimeoutMs"] = MainThreadTimeoutMs,
+                    });
                 }
 
                 if (method == "POST" && path == "/static")
@@ -223,7 +270,7 @@ namespace EasyBridge.Frontend
                             ["error"] = "static invoke disabled; POST /config {\"enableInvoke\":true} first",
                         });
                     var depth = Clamp(GetInt(query, "depth", 1), 0, MaxReflectDepth);
-                    var maxMembers = Clamp(GetInt(query, "max", MaxReflectMembers), 1, MaxReflectMembers);
+                    var maxMembers = Clamp(GetInt(query, "max", 20), 1, IsLarge(query) ? MaxReflectMembers : 30);
                     var result = (Dictionary<string, object>)MainThreadDispatcher.Run(
                         () => ReflectionInspector.InvokeStatic(requestBody, depth, maxMembers), MainThreadTimeoutMs);
                     bool ok = result.TryGetValue("ok", out var okv) && okv is bool b && b;
@@ -252,6 +299,12 @@ namespace EasyBridge.Frontend
 
                 if (method == "POST" && path == "/quit")
                 {
+                    if (!EnableReflectInvoke)
+                        return (403, new Dictionary<string, object>
+                        {
+                            ["ok"] = false,
+                            ["error"] = "quit disabled; POST /config {\"enableInvoke\":true} first",
+                        });
                     MainThreadDispatcher.Run(() => { UnityEngine.Application.Quit(); return null; }, MainThreadTimeoutMs);
                     // Application.Quit is async; schedule a hard kill fallback
                     System.Threading.ThreadPool.QueueUserWorkItem(_ =>
@@ -382,15 +435,18 @@ namespace EasyBridge.Frontend
             };
         }
 
-        private static object Elements(bool onlyActive)
+        private static object Elements(bool onlyActive, int max)
         {
             UiElementCatalog.EnsureBuilt();
             var list = new List<object>();
+            int matched = 0;
             foreach (var kv in UiElementCatalog.AllElements())
             {
                 bool showing = UiElementCatalog.IsShowing(kv.Value);
                 bool exist = UiElementCatalog.Exist(kv.Value);
                 if (onlyActive && !showing && !exist) continue;
+                matched++;
+                if (list.Count >= max) continue;
                 list.Add(new Dictionary<string, object>
                 {
                     ["name"] = kv.Key,
@@ -398,7 +454,14 @@ namespace EasyBridge.Frontend
                     ["exist"] = exist,
                 });
             }
-            return new Dictionary<string, object> { ["count"] = list.Count, ["elements"] = list };
+            return new Dictionary<string, object>
+            {
+                ["count"] = list.Count,
+                ["matched"] = matched,
+                ["truncated"] = matched > list.Count,
+                ["onlyActive"] = onlyActive,
+                ["elements"] = list,
+            };
         }
 
         private static object GetRawValue(object parsed)
@@ -470,5 +533,38 @@ namespace EasyBridge.Frontend
 
         private static int Clamp(int value, int min, int max)
             => Math.Max(min, Math.Min(max, value));
+
+        private static bool ToBool(object value)
+        {
+            if (value is bool b) return b;
+            if (value is double d) return d != 0;
+            return bool.TryParse(value.ToString(), out bool parsed) && parsed;
+        }
+
+        private static bool IsLarge(Dictionary<string, string> q)
+            => IsTrue(GetStr(q, "allowLarge")) || IsTrue(GetStr(q, "large"));
+
+        private static bool IsTrue(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return false;
+            return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool FieldEnabled(string fields, string name, bool fallback)
+        {
+            if (string.IsNullOrWhiteSpace(fields))
+                return fallback;
+            foreach (var raw in fields.Split(','))
+            {
+                var item = raw.Trim();
+                if (item.Length == 0) continue;
+                if (string.Equals(item, "all", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(item, name, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
     }
 }

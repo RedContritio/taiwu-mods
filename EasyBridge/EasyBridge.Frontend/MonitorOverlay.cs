@@ -28,7 +28,7 @@ namespace EasyBridge.Frontend
         private const KeyCode PauseKey = KeyCode.F8;
         private const string StateFile = "monitor-state.json";   // persisted window rect + visibility, kept in the mod folder
 
-        private bool _visible = true;
+        private bool _visible = false;
         private bool _paused;
         private bool _built;
         private float _timer;
@@ -62,10 +62,24 @@ namespace EasyBridge.Frontend
 
         public static GameObject Create()
         {
+            if (_instance != null) return _instance.gameObject;
             var go = new GameObject("EasyBridgeMonitor");
             DontDestroyOnLoad(go);
             go.AddComponent<MonitorOverlay>();
             return go;
+        }
+
+        public static void DestroyInstance()
+        {
+            if (_instance == null) return;
+            Destroy(_instance.gameObject);
+        }
+
+        public static void Show()
+        {
+            if (_instance == null) return;
+            _instance._visible = true;
+            _instance.SaveState();
         }
 
         /// <summary>Diagnostic snapshot of the monitor's own state, callable over the bridge via
@@ -191,7 +205,7 @@ namespace EasyBridge.Frontend
                 if (Json.TryGetDouble(o, "y", out var y)) s.y = (float)y;
                 if (Json.TryGetDouble(o, "w", out var w)) s.w = (float)w;
                 if (Json.TryGetDouble(o, "h", out var h)) s.h = (float)h;
-                if (!Json.TryGetBool(o, "visible", out s.visible)) s.visible = true;
+                if (!Json.TryGetBool(o, "visible", out s.visible)) s.visible = false;
                 return s;
             }
             catch { }

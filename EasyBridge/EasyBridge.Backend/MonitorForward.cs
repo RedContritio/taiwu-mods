@@ -15,7 +15,7 @@ namespace EasyBridge.Backend
     /// </summary>
     internal static class MonitorForward
     {
-        private const int MaxInFlight = 8;
+        private const int MaxInFlight = 2;
         private static readonly TimeSpan BackoffAfterFail = TimeSpan.FromSeconds(3);
 
         private static int _inFlight;
@@ -34,8 +34,14 @@ namespace EasyBridge.Backend
                     var entry = new Dictionary<string, object>
                     {
                         ["source"] = "backend",
-                        ["method"] = method, ["path"] = path, ["query"] = query, ["body"] = body,
-                        ["note"] = note, ["status"] = status, ["result"] = resultJson, ["ms"] = ms,
+                        ["method"] = method,
+                        ["path"] = path,
+                        ["query"] = Preview(query, 90),
+                        ["body"] = Preview(body, 160),
+                        ["note"] = Preview(note, 140),
+                        ["status"] = status,
+                        ["result"] = Preview(resultJson, 220),
+                        ["ms"] = ms,
                     };
                     var req = new Dictionary<string, object>
                     {
@@ -65,6 +71,26 @@ namespace EasyBridge.Backend
                     Interlocked.Decrement(ref _inFlight);
                 }
             });
+        }
+
+        private static string Preview(string s, int n)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            int take = Math.Min(s.Length, n + 1);
+            if (take > 0 && take < s.Length && char.IsHighSurrogate(s[take - 1])) take--;
+            var sb = new StringBuilder(take + 1);
+            for (int i = 0; i < take; i++)
+            {
+                char c = s[i];
+                sb.Append(c == '\r' || c == '\n' ? ' ' : c);
+            }
+            if (s.Length > n)
+            {
+                if (sb.Length > n) sb.Length = n;
+                if (sb.Length > 0 && char.IsHighSurrogate(sb[sb.Length - 1])) sb.Length--;
+                sb.Append("…");
+            }
+            return sb.ToString();
         }
     }
 }

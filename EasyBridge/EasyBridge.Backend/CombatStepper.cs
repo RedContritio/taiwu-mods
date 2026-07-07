@@ -106,10 +106,10 @@ namespace EasyBridge.Backend
             lock (Sync) _watch = watch;
             ApplyStartControls(context, watch);
             watch.Snapshot = GameOps.Combat(context);
-            return Status(context);
+            return Status(context, Json.GetBool(body, "includeSnapshot", true));
         }
 
-        public static Dictionary<string, object> Status(DataContext context)
+        public static Dictionary<string, object> Status(DataContext context, bool includeSnapshot = true)
         {
             Watch watch;
             lock (Sync) watch = _watch;
@@ -120,7 +120,7 @@ namespace EasyBridge.Backend
             {
                 ["ok"] = true,
                 ["active"] = true,
-                ["watch"] = WatchInfo(watch),
+                ["watch"] = WatchInfo(watch, includeSnapshot),
                 ["combat"] = GameOps.Combat(context),
             };
         }
@@ -136,7 +136,7 @@ namespace EasyBridge.Backend
             if (!rearm)
             {
                 ApplyStartControls(context, watch);
-                return Status(context);
+                return Status(context, Json.GetBool(body, "includeSnapshot", true));
             }
 
             string resumeSignature = GetString(watch.Hit, "signature", null);
@@ -152,7 +152,7 @@ namespace EasyBridge.Backend
             watch.SuppressionCleared = true;
             watch.BypassBeforeCommitSignature = watch.Mode == ModeBeforeCommit ? resumeSignature : null;
             ApplyStartControls(context, watch);
-            return Status(context);
+            return Status(context, Json.GetBool(body, "includeSnapshot", true));
         }
 
         public static bool TryBreakBeforeCommit(DataContext context, CombatCharacter ch,
@@ -209,7 +209,7 @@ namespace EasyBridge.Backend
                 ["active"] = false,
                 ["canceled"] = true,
                 ["restored"] = restore,
-                ["watch"] = WatchInfo(watch),
+                ["watch"] = WatchInfo(watch, Json.GetBool(body, "includeSnapshot", true)),
                 ["combat"] = GameOps.Combat(context),
             };
         }
@@ -411,9 +411,9 @@ namespace EasyBridge.Backend
                 DomainManager.Combat.SetTimeScale(context, watch.SavedTimeScale.Value);
         }
 
-        private static Dictionary<string, object> WatchInfo(Watch watch)
+        private static Dictionary<string, object> WatchInfo(Watch watch, bool includeSnapshot)
         {
-            return new Dictionary<string, object>
+            var info = new Dictionary<string, object>
             {
                 ["id"] = watch.Id,
                 ["mode"] = watch.Mode,
@@ -433,7 +433,6 @@ namespace EasyBridge.Backend
                 ["breakCount"] = watch.BreakCount,
                 ["hit"] = watch.Hit,
                 ["bypassBeforeCommit"] = watch.BypassBeforeCommitSignature,
-                ["snapshot"] = watch.Snapshot,
                 ["saved"] = new Dictionary<string, object>
                 {
                     ["timeScale"] = watch.SavedTimeScale,
@@ -441,6 +440,11 @@ namespace EasyBridge.Backend
                     ["autoMove"] = watch.SavedAutoMove,
                 },
             };
+            if (includeSnapshot)
+                info["snapshot"] = watch.Snapshot;
+            else
+                info["snapshotOmitted"] = true;
+            return info;
         }
 
         private static bool TimedOut(Watch watch)

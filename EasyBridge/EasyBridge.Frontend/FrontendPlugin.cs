@@ -4,11 +4,10 @@ using UnityEngine;
 
 namespace EasyBridge.Frontend
 {
-    [PluginConfig("EasyBridge", "RedContritio", "0.1.0")]
+    [PluginConfig("EasyBridge", "RedContritio", "0.2.0.0")]
     public class FrontendPlugin : TaiwuRemakePlugin
     {
         private PipeServer _server;
-        private UnityEngine.GameObject _overlay;
 
         public override void Initialize()
         {
@@ -16,8 +15,6 @@ namespace EasyBridge.Frontend
             {
                 MainThreadDispatcher.Create();
                 StartServer();
-                try { _overlay = MonitorOverlay.Create(); }
-                catch (Exception ex) { Debug.LogError("[EasyBridge] monitor overlay failed: " + ex.Message); }
             }
             catch (Exception ex)
             {
@@ -27,16 +24,14 @@ namespace EasyBridge.Frontend
 
         public override void Dispose()
         {
-            try { if (_overlay != null) UnityEngine.Object.Destroy(_overlay); } catch { }
-            _overlay = null;
+            try { MonitorOverlay.DestroyInstance(); } catch { }
             StopServer();
             MainThreadDispatcher.Destroy();
         }
 
         public override void OnModSettingUpdate()
         {
-            StopServer();
-            StartServer();
+            Router.ReloadRuntimeOptions();
         }
 
         // No user settings — this is an agent-driven debug bridge. Router behavior uses code defaults
@@ -44,6 +39,8 @@ namespace EasyBridge.Frontend
         // via query params or at runtime via POST /config.
         private void StartServer()
         {
+            if (_server != null) return;
+            Router.ReloadRuntimeOptions();
             _server = new PipeServer();
             try
             {

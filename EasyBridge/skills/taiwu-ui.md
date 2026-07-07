@@ -11,12 +11,12 @@ description: Inspect and interact with the running Taiwu game UI via the EasyBri
 
 1. **每个 PowerShell 调用都必须以函数定义开头** — shell 状态不跨调用保留
 2. **动作后必须重新取快照** — id 在 UI 变化后失效
-3. **先 `/ui` 看全貌，再 `/ui/{name}` 下钻** — 不要猜窗口名
+3. **先 `/ui` 看全貌，再 `/ui/{name}` 摘要下钻** — 不要猜窗口名；默认只读标题/分区计数，需要控件时显式 `detail=full&fields=controls`
 4. **用 `-match` 搜索标签** — 标签已去除富文本标签，可直接用中文匹配
 5. **不能发 ESC/键盘** — 只有 click/toggle/set/select。事件/交互窗口要靠**窗口内的“继续/确认/关闭”按钮**关闭；
    像 NPC 交互这种**模态窗**没关掉会挡住后续的地图角色点击（点新 NPC 无效，误触旧窗）。换目标前先 `/ui` 确认它已关。
-6. **每次调用都带 `-Note "<一句中文说明>"`** — 说明这步在做什么。它会显示在游戏内「EasyBridge」浮层（F9 展开/收起、F8 暂停），
-   方便用户实时看到 agent 的每个动作；不带说明的调用会在浮层上显红色「(无说明)」并被计数。回看完整历史用 `GET /log?since=&max=`。
+6. **每次调用都带 `-Note "<一句中文说明>"`** — 说明这步在做什么。启用 monitor 后它会显示在游戏内「EasyBridge」浮层（F9 展开/收起、F8 暂停），
+   方便用户实时看到 agent 的每个动作。需要浮层时先 `POST /config {"enableMonitor":true}`；回看完整历史用 `GET /log?since=&max=`。
 
 ## 游戏品级约定（重要：读 grade 数据前必看）
 
@@ -56,37 +56,60 @@ function Invoke-UiBridge {
 |------|------|------|
 | `/ping` | GET | 健康检查 |
 | `/ui` | GET | 全局快照：当前活动窗口列表 |
-| `/ui/{name}` | GET | 单窗口语义树（控件 + 文本，按区域分组） |
+| `/ui/{name}` | GET | 单窗口渐进读取；默认摘要，`detail=title` 只读标题，`detail=full` 才返回控件/文本 |
 | `/find?q=关键词` | GET | 跨窗口文本搜索 |
-| `/elements` | GET | 已知窗口目录 |
+| `/elements` | GET | showing/exist 窗口目录；默认只回当前相关窗口，全目录用 `all=true` |
 | `/inspect?element=Name&id=Path` | GET | 通用 UI 对象检查：组件、RectTransform、屏幕坐标、UI camera |
 | `/pointer?x=900&y=995&origin=top-left` | GET | 只读指针诊断：当前鼠标坐标和 UI raycast 命中栈；可验证 Computer Use 坐标 |
 | `/reflect?element=Name&component=Type&member=path` | GET | 通用只读反射：读取组件字段，支持私有字段和点号路径 |
 | `/action` | POST | 动作注入（click/toggle/set/select） |
 | `/wait/actions?timeout=30` | POST | 等待指定窗口出现后，在同一主线程调度中执行一组动作 |
-| `/reflect/invoke` | POST | 反射调用实例方法（**默认开启**；`POST /config {"enableInvoke":false}` 可关）|
+| `/config` | POST | 临时开关：`enableInvoke`、`enableMonitor`、`mainThreadTimeoutMs` |
+| `/reflect/invoke` | POST | 反射调用实例方法（**默认关闭**；`POST /config {"enableInvoke":true}` 开启）|
 | `/wait?element=Name&timeout=60` | GET | 阻塞等待指定窗口出现 |
-| `/quit` | POST | 退出游戏（不保存） |
+| `/quit` | POST | 退出游戏（不保存，需先开启 `enableInvoke`） |
 
 ## EasyBridge浮层 + 每次操作带说明（note）
 
-前端插件在游戏内弹出一个**原生 IMGUI 浮层「EasyBridge」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），实时显示 bridge 处理的**每一次请求**——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[ui]`/`[state]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
+前端 monitor 默认关闭。需要实时说明时先 `POST /config {"enableMonitor":true}`，插件会创建一个**原生 IMGUI 浮层「EasyBridge」**（`MonitorOverlay.cs`，`DontDestroyOnLoad`，**随游戏关闭自动消失**），显示 bridge 处理的请求摘要——前后端两条管道（`easybridge-ui` / `easybridge-state`，后端经 `/monitor/push` 转发汇聚）合并到一处，标 `[ui]`/`[state]`。**可拖动 + 可缩放窗口**：拖标题移动、拖右下角 ↘ 抓手改大小、内容滚动；**F9 显示/隐藏、F8 暂停**。字号**自动跟随游戏「正文字号」设置**。每条两层：
 
 - 顶行（端点）：`[ui] GET /ui  ✓ 200  · 306ms`
 - 内层（说明）：`▸ 查看当前打开的界面窗口`；失败再加内层 `↳ 错误`
 
 > 用 IMGUI 画（非 runtime uGUI Canvas——后者在本游戏内不合成）。点击**可能穿透**到窗口下面的游戏：刻意**不禁用游戏 EventSystem**（禁用会让游戏自己的每帧热键检查 NRE）。这些游戏侧坑见 `taiwu-game` skill。
 
-**约定：每次调用都带一句中文说明 `-Note`**，让用户在浮层上看懂 agent 正在做什么。说明写**操作的实际目的**（如「点击确认关闭月报」「生成 4 品 NPC 测试关系分支」），**别写调试/流程性内容**（如「心跳」「重启验证」「对照实验」）。`/ping`、`/` 等连通性检查是基础设施、**不计入面板**。`bridge.ps1` 的 `UI`/`SB`/`Invoke-Pipe`（及 `taiwu-statebridge` 的 helper）都支持 `-Note`；不带时浮层显红色「(无说明)」督促。例：
+**约定：每次调用都带一句中文说明 `-Note`**，让用户在浮层开启时看懂 agent 正在做什么。说明写**操作的实际目的**（如「点击确认关闭月报」「生成 4 品 NPC 测试关系分支」），**别写调试/流程性内容**（如「心跳」「重启验证」「对照实验」）。`/ping`、`/` 等连通性检查是基础设施、**不计入面板**。`bridge.ps1` 的 `UI`/`SB`/`Invoke-Pipe`（及 `taiwu-statebridge` 的 helper）都支持 `-Note`。例：
 
 ```powershell
 UI -Path "/action" -Body $clickJson -Note "点击「确认」关闭月报弹窗"
 SB -Path "/spawn"  -Body @{grade=4}  -Note "生成一个 4 品 NPC 用于测试关系分支"
 ```
 
-回看历史用 `GET /log?since=<seq>&max=<n>`（浮层滚动显最近若干条、最新在上；服务端缓冲 500 条。`/ping`、`/`、`mon=1` 等基础设施请求**不入日志**）。表头不显累计计数，仅在有「无说明」时红字提醒。
+回看历史用 `GET /log?since=<seq>&max=<n>`（默认/推荐 `max<=20`；普通请求硬限 20，确要更大需 `allowLarge=true`。浮层滚动显最近若干条、最新在上；服务端缓冲 500 条。`/ping`、`/`、`mon=1` 等基础设施请求**不入日志**）。表头不显累计计数，仅在有「无说明」时红字提醒。
 
-### `/ui/{name}` 返回结构
+### `/ui/{name}` 渐进读取
+
+默认是摘要，不返回控件路径，适合先判断窗口标题和大致区域：
+
+```json
+{
+  "name": "Mod",
+  "showing": true,
+  "detail": "summary",
+  "title": "模组管理",
+  "counts": {"controls": 98, "texts": 1},
+  "sections": [{"section": "SubPages", "controls": 80, "texts": 0}],
+  "truncated": false
+}
+```
+
+只关注菜单标题时：
+
+```powershell
+Invoke-UiBridge -Path "/ui/Mod" -Query @{ detail = "title" }
+```
+
+要点击按钮时再取控件项；默认上限偏小，巨大菜单按 `section=` 或更精确的 `fields=` 分步读：
 
 ```json
 {
@@ -102,7 +125,13 @@ SB -Path "/spawn"  -Body @{grade=4}  -Note "生成一个 4 品 NPC 用于测试�
 }
 ```
 
-query 参数：`detail=full` 全量模式，`max=200` 条目上限。
+query 参数：
+
+- `detail=summary|title|full`：默认 `summary`，只有 `full` 返回控件/文本项。
+- `fields=controls|texts|controls,texts`：`full` 模式下选择返回字段；找按钮优先 `controls`。
+- `section=SectionName`：只返回某个分区的项。
+- `max` / `scan`：条目上限和扫描预算；普通请求会被小上限夹住。
+- `allowLarge=true`：显式允许更大 `max/scan`，只在确实需要完整大树时使用。
 
 ### `/inspect` 与 `/reflect`
 
@@ -122,7 +151,7 @@ Invoke-UiBridge -Path "/reflect" -Query @{
 `component` 可传组件短名或全名；`member` 是字段点号路径。返回快照深度和成员数受 EasyBridge 设置
 `MaxReflectDepth` / `MaxReflectMembers` 硬限制。
 
-`/reflect/invoke`（及 `/reflect/set`/`/static`/`/pin`）**默认开启**；不需要时 `POST /config {"enableInvoke":false}` 可关。常规验证优先使用只读
+`/reflect/invoke`（及 `/reflect/set`/`/static`/`/pin`）**默认关闭**；需要时 `POST /config {"enableInvoke":true}` 开启。常规验证优先使用只读
 `/inspect`/`/reflect` 加 `/action` 或真实鼠标输入。
 
 ### `/action` 请求体
@@ -161,7 +190,7 @@ Invoke-UiBridge -Path "/reflect" -Query @{
 # 主菜单 → 模组管理（Mod 窗口）
 Invoke-UiBridge -Path "/action" -Body '{"element":"MainMenu","id":"<模组管理按钮id>","action":"click"}'
 # Mod 窗口里有搜索框，输入 mod 名过滤；找到该行的开关 toggle（id 形如 .../<行>@N/CellContainerSwitch@3/Content@0/SwitchToggleBig@0）
-$m = Invoke-UiBridge -Path "/ui/Mod" -Query @{ detail="full"; max="300" }
+$m = Invoke-UiBridge -Path "/ui/Mod" -Query @{ detail="full"; fields="controls"; max="120"; allowLarge="true" }
 # set 搜索框 → click 该行的 SwitchToggleBig 打开 → click「保存配置」(BtnSave) → Dialog 点「确认」
 # 关闭 Mod 窗口(Background/ButtonCloseView) 时弹「确认更改并重启游戏」→ 点「确认」→ 游戏自动重启
 ```
@@ -183,7 +212,7 @@ $m = Invoke-UiBridge -Path "/ui/Mod" -Query @{ detail="full"; max="300" }
 
 ```powershell
 # 取窗口控件，找匹配标签的按钮，点击
-$ui = Invoke-UiBridge -Path "/ui/WindowName" -Query @{ detail = "full"; max = "200" }
+$ui = Invoke-UiBridge -Path "/ui/WindowName" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 $btn = $ui.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.label -match "目标文字" } | Select-Object -First 1
 if ($btn) {
     Invoke-UiBridge -Path "/action" -Body "{`"element`":`"WindowName`",`"id`":`"$($btn.id)`",`"action`":`"click`"}"
@@ -193,7 +222,7 @@ if ($btn) {
 ### 模式 2：切换标签页（ToggleGroup）
 
 ```powershell
-$ui = Invoke-UiBridge -Path "/ui/WindowName" -Query @{ detail = "full"; max = "200" }
+$ui = Invoke-UiBridge -Path "/ui/WindowName" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 $tab = $ui.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "toggle" -and $_.label -eq "标签名" } | Select-Object -First 1
 if ($tab -and -not $tab.value) {
     Invoke-UiBridge -Path "/action" -Body "{`"element`":`"WindowName`",`"id`":`"$($tab.id)`",`"action`":`"click`"}"
@@ -216,7 +245,7 @@ Invoke-UiBridge -Path "/wait" -Query @{ element = "CombatResult"; timeout = "60"
 for ($i = 0; $i -lt 20; $i++) {
     $snap = Invoke-UiBridge -Path "/ui"
     if (-not ($snap.elements | Where-Object { $_.name -eq "EventWindow" })) { break }
-    $ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; max = "200" }
+    $ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; fields = "controls,texts"; max = "80"; allowLarge = "true" }
     $opts = @($ew.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.label -match "^\[" -and $_.interactable -ne $false })
     if ($opts.Count -eq 0) { break }
     # 输出所有选项和事件文本，供你阅读理解后自行选择
@@ -251,7 +280,7 @@ for ($i = 0; $i -lt 12; $i++) {
 预期窗口：`MainMenu`。找 label 包含 "自由模式" 的按钮。
 
 ```powershell
-$mm = Invoke-UiBridge -Path "/ui/MainMenu" -Query @{ detail = "full"; max = "100" }
+$mm = Invoke-UiBridge -Path "/ui/MainMenu" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 $btn = $mm.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.label -match "自由模式" } | Select-Object -First 1
 Invoke-UiBridge -Path "/action" -Body "{`"element`":`"MainMenu`",`"id`":`"$($btn.id)`",`"action`":`"click`"}"
 ```
@@ -262,7 +291,7 @@ Invoke-UiBridge -Path "/action" -Body "{`"element`":`"MainMenu`",`"id`":`"$($btn
 
 ```powershell
 Start-Sleep 2
-$rs = Invoke-UiBridge -Path "/ui/RecordSelect" -Query @{ detail = "full"; max = "100" }
+$rs = Invoke-UiBridge -Path "/ui/RecordSelect" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 $btn = $rs.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.label -match "展开绘卷" } | Select-Object -First 1
 Invoke-UiBridge -Path "/action" -Body "{`"element`":`"RecordSelect`",`"id`":`"$($btn.id)`",`"action`":`"click`"}"
 ```
@@ -279,14 +308,14 @@ for ($round = 0; $round -lt 30; $round++) {
     $names = @($snap.elements | ForEach-Object { $_.name })
     if ($names -contains "MonthNotify") {
         # 关闭月报 — 点 Close 按钮
-        $mn = Invoke-UiBridge -Path "/ui/MonthNotify" -Query @{ detail = "full"; max = "50" }
+        $mn = Invoke-UiBridge -Path "/ui/MonthNotify" -Query @{ detail = "full"; fields = "controls"; max = "40" }
         $close = $mn.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.id -match "Close" } | Select-Object -First 1
         if ($close) { Invoke-UiBridge -Path "/action" -Body "{`"element`":`"MonthNotify`",`"id`":`"$($close.id)`",`"action`":`"click`"}" | Out-Null }
         Start-Sleep 1; continue
     }
     if ($names -contains "EventWindow") {
         # 事件窗口 — 点第一个可用选项（加载时的事件通常只有一个选项）
-        $ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; max = "200" }
+        $ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; fields = "controls,texts"; max = "80"; allowLarge = "true" }
         $opts = @($ew.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.label -match "^\[" -and $_.interactable -ne $false })
         if ($opts.Count -gt 0) { Invoke-UiBridge -Path "/action" -Body "{`"element`":`"EventWindow`",`"id`":`"$($opts[0].id)`",`"action`":`"click`"}" | Out-Null }
         Start-Sleep 1; continue
@@ -299,7 +328,7 @@ for ($round = 0; $round -lt 30; $round++) {
         Start-Sleep 1; continue
     }
     # 没有弹窗了，检查是否在地图上
-    $all = Invoke-UiBridge -Path "/elements" -Query @{ onlyActive = "false" }
+    $all = Invoke-UiBridge -Path "/elements"
     $mapShowing = $all.elements | Where-Object { $_.name -eq "MapBlockCharList" -and $_.showing }
     if ($mapShowing) { Write-Output "On map."; break }
     Start-Sleep 1
@@ -311,7 +340,7 @@ for ($round = 0; $round -lt 30; $round++) {
 预期元素：`MapBlockCharList`（showing=true，但不在 UI 栈中）。
 
 ```powershell
-$cl = Invoke-UiBridge -Path "/ui/MapBlockCharList" -Query @{ detail = "full"; max = "50" }
+$cl = Invoke-UiBridge -Path "/ui/MapBlockCharList" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 # NPC 在 Viewport section 中，类型为 button
 $npc = $cl.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.id -match "Viewport.*Content" } | Select-Object -First 1
 Write-Output "Target: $($npc.label)"
@@ -324,7 +353,7 @@ Invoke-UiBridge -Path "/action" -Body "{`"element`":`"MapBlockCharList`",`"id`":
 
 ```powershell
 Start-Sleep 2
-$ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; max = "200" }
+$ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 # 切到敌对标签
 $hostile = $ew.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "toggle" -and $_.label -eq "敌对" } | Select-Object -First 1
 if ($hostile -and -not $hostile.value) {
@@ -332,7 +361,7 @@ if ($hostile -and -not $hostile.value) {
     Start-Sleep 1
 }
 # 重新取选项（切标签后选项列表会变）
-$ew2 = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; max = "300" }
+$ew2 = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; fields = "controls"; max = "80"; allowLarge = "true" }
 $attack = $ew2.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.type -eq "button" -and $_.label -match "袭击" } | Select-Object -First 1
 Write-Output "Attack option: $($attack.label)"
 Invoke-UiBridge -Path "/action" -Body "{`"element`":`"EventWindow`",`"id`":`"$($attack.id)`",`"action`":`"click`"}"
@@ -358,7 +387,7 @@ if ($snap.elements | Where-Object { $_.name -eq "Dialog" }) {
 
 ```powershell
 Start-Sleep 2
-$cb = Invoke-UiBridge -Path "/ui/CombatBegin" -Query @{ detail = "full"; max = "50" }
+$cb = Invoke-UiBridge -Path "/ui/CombatBegin" -Query @{ detail = "full"; fields = "controls"; max = "40" }
 $start = $cb.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.id -match "StartCombatBtn" } | Select-Object -First 1
 Invoke-UiBridge -Path "/action" -Body "{`"element`":`"CombatBegin`",`"id`":`"$($start.id)`",`"action`":`"click`"}"
 ```
@@ -375,7 +404,7 @@ Write-Output "Combat done: $($r.ok)"
 ### 步骤 10：查看战斗结果并确认
 
 ```powershell
-$cr = Invoke-UiBridge -Path "/ui/CombatResult" -Query @{ detail = "full"; max = "100" }
+$cr = Invoke-UiBridge -Path "/ui/CombatResult" -Query @{ detail = "full"; fields = "controls,texts"; max = "80"; allowLarge = "true" }
 $cr.sections | ForEach-Object { $_.texts } | ForEach-Object { $_ } | Where-Object { $_.text } | ForEach-Object { Write-Output $_.text }
 $confirm = $cr.sections | ForEach-Object { $_.controls } | ForEach-Object { $_ } | Where-Object { $_.id -match "ConfirmButton" } | Select-Object -First 1
 Invoke-UiBridge -Path "/action" -Body "{`"element`":`"CombatResult`",`"id`":`"$($confirm.id)`",`"action`":`"click`"}"
@@ -391,7 +420,7 @@ Start-Sleep 2
 for ($i = 0; $i -lt 10; $i++) {
     $snap = Invoke-UiBridge -Path "/ui"
     if (-not ($snap.elements | Where-Object { $_.name -eq "EventWindow" })) { break }
-    $ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; max = "200" }
+    $ew = Invoke-UiBridge -Path "/ui/EventWindow" -Query @{ detail = "full"; fields = "controls,texts"; max = "80"; allowLarge = "true" }
     # 输出事件文本（帮助理解上下文）
     foreach ($sec in $ew.sections) {
         if ($sec.texts) { foreach ($t in $sec.texts) { if ($t.text) { Write-Output "  TEXT: $($t.text)" } } }

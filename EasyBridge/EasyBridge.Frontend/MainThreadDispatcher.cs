@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using UnityEngine;
 
@@ -20,6 +21,7 @@ namespace EasyBridge.Frontend
             public object Result;
             public Exception Error;
             public readonly ManualResetEventSlim Done = new ManualResetEventSlim(false);
+            public int Cancelled;
         }
 
         public static bool Ready => _instance != null;
@@ -57,7 +59,10 @@ namespace EasyBridge.Frontend
             var job = new Job { Fn = fn };
             _queue.Enqueue(job);
             if (!job.Done.Wait(timeoutMs))
+            {
+                Interlocked.Exchange(ref job.Cancelled, 1);
                 throw new TimeoutException("main-thread job timed out");
+            }
             if (job.Error != null)
                 throw job.Error;
             return job.Result;
@@ -68,12 +73,20 @@ namespace EasyBridge.Frontend
             TimeController.Tick();
             PinController.Tick();
 
-            int guard = 64; // 每帧最多处理这么多，避免长卡顿
+            int guard = 16;
+            var sw = Stopwatch.StartNew();
             while (guard-- > 0 && _queue.TryDequeue(out var job))
             {
+                if (Volatile.Read(ref job.Cancelled) != 0)
+                {
+                    job.Error = new TimeoutException("main-thread job cancelled before execution");
+                    job.Done.Set();
+                    continue;
+                }
                 try { job.Result = job.Fn(); }
                 catch (Exception ex) { job.Error = ex; }
                 finally { job.Done.Set(); }
+                if (sw.ElapsedMilliseconds >= 4) break;
             }
         }
     }

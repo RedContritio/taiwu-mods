@@ -14,28 +14,22 @@ namespace EasyBridge.Backend
     /// 让自动化测试 agent 读取/构造游戏内角色与关系状态，用于验证 ForceEncounter 等 mod 的各分支。
     /// 作为调试桥分享给他人，方便其用 agent 调试自己的 mod。
     /// </summary>
-    [PluginConfig("EasyBridge", "RedContritio", "0.1.0")]
+    [PluginConfig("EasyBridge", "RedContritio", "0.2.0.0")]
     public class BackendPlugin : TaiwuRemakePlugin
     {
         public const string ModId = "EasyBridge";
-        public const string Version = "0.0.1";
+        public const string Version = "0.2.0.0";
 
         internal static string RuntimeModId;
         private PipeServer _server;
         private Harmony _harmony;
 
         private static bool _resolverHooked;
+        private static bool _roslynLoaded;
 
         public override void Initialize()
         {
             RuntimeModId = ModIdStr;
-
-            // 后端加载器只预加载插件的【直接】引用程序集（一层），且其 ResolvePluginDependency 是死代码
-            // （从未订阅 AssemblyResolve）。所以 Roslyn 的【传递】依赖（如 Microsoft.CodeAnalysis.CSharp.dll）
-            // 不会被解析。这里自己挂一个 AssemblyResolve，从本 mod 的 Plugins 目录按名加载缺失程序集；
-            // 然后趁此刻预热 Roslyn，把全部 Roslyn 程序集加载进来，/eval 冷启动不再卡 pump 超时。
-            HookAssemblyResolver();
-            Eval.Warmup();
 
             try
             {
@@ -51,7 +45,7 @@ namespace EasyBridge.Backend
             StartFromSettings();
         }
 
-        private static void HookAssemblyResolver()
+        internal static void EnsureAssemblyResolver()
         {
             if (_resolverHooked) return;
             _resolverHooked = true;
@@ -63,6 +57,31 @@ namespace EasyBridge.Backend
             AssemblyLoadContext.Default.Resolving += ResolveFromPluginDir;
         }
 
+        internal static void EnsureRoslynAssembliesLoaded()
+        {
+            if (_roslynLoaded) return;
+            EnsureAssemblyResolver();
+            string dir = PluginDir();
+            string[] names =
+            {
+                "Microsoft.CodeAnalysis.dll",
+                "Microsoft.CodeAnalysis.Scripting.dll",
+                "Microsoft.CodeAnalysis.CSharp.dll",
+                "Microsoft.CodeAnalysis.CSharp.Scripting.dll",
+            };
+            foreach (var name in names)
+            {
+                try
+                {
+                    string path = Path.Combine(dir, name);
+                    if (File.Exists(path))
+                        AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
+                }
+                catch { }
+            }
+            _roslynLoaded = true;
+        }
+
         private static Assembly ResolveFromPluginDir(AssemblyLoadContext context, AssemblyName name)
         {
             // 脚本程序集会按名引用本 mod 程序集（EasyBridge.Backend，字节加载、Location 空）。返回【已加载的那一份】，
@@ -71,7 +90,7 @@ namespace EasyBridge.Backend
                 return typeof(BackendPlugin).Assembly;
             try
             {
-                string dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Mod", "EasyBridge", "Plugins"));
+                string dir = PluginDir();
                 string path = Path.Combine(dir, name.Name + ".dll");
                 if (File.Exists(path)) return context.LoadFromAssemblyPath(path);
             }
@@ -79,10 +98,12 @@ namespace EasyBridge.Backend
             return null;
         }
 
+        private static string PluginDir()
+            => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Mod", "EasyBridge", "Plugins"));
+
         public override void OnModSettingUpdate()
         {
-            StopServer();
-            StartFromSettings();
+            Router.ReloadRuntimeOptions();
         }
 
         public override void Dispose()
@@ -95,6 +116,8 @@ namespace EasyBridge.Backend
 
         private void StartFromSettings()
         {
+            if (_server != null) return;
+            Router.ReloadRuntimeOptions();
             _server = new PipeServer();
             _server.Start();
             AdaptableLog.Info("[EasyBridge] listening on \\\\.\\pipe\\" + PipeServer.PipeName);

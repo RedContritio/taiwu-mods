@@ -67,4 +67,4 @@ description: 太吾绘卷（The Scroll of Taiwu）游戏本身的内部性质与
 
 ## 9. 不想手写反射？用 EasyBridge
 
-游戏内任意类/对象的检视与改写，经 EasyBridge 通用反射端点（写/调类**默认开启**，`POST /config {"enableInvoke":false}` 可关）：`GET /reflect`、`GET /inspect`、`POST /static`（静态方法/读静态字段，`$ref` 可解析静态成员）、`POST /reflect/invoke`、`POST /reflect/set`。前端见 **taiwu-ui**，后端见 **taiwu-statebridge**。例：读 `EventWindow.s_savedContentFontSize`、调 `GameObject.Find(...)` 都能 `/static` 搞定。
+游戏内任意类/对象的检视与改写，经 EasyBridge 通用反射端点（写/调类**默认关闭**，需要时先 `POST /config {"enableInvoke":true}`）：`GET /reflect`、`GET /inspect`、`POST /static`（静态方法/读静态字段，`$ref` 可解析静态成员）、`POST /reflect/invoke`、`POST /reflect/set`。前端见 **taiwu-ui**，后端见 **taiwu-statebridge**。例：读 `EventWindow.s_savedContentFontSize`、调 `GameObject.Find(...)` 都能 `/static` 搞定。
