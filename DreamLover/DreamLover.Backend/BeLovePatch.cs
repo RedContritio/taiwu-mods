@@ -226,20 +226,11 @@ namespace DreamLover.Backend
                 return false;
             if (DomainManager.Character.HasRelation(charId, taiwuId, Spouse))
                 return false;
-            // 保留硬性婚姻规则（一夫一妻/血亲等），这不是好感门槛。
+            // 一夫一妻/血亲等硬性规则由原生 AllowAddingHusbandOrWifeRelation 统一把关（已婚NPC、太吾重婚都在此被拒）。
+            // 曾有 MarriedKiller/Polygynous 两开关想绕过它，但保留了硬规则→永不生效（死开关），已移除。见 BACKLOG F1。
             if (!RelationTypeHelper.AllowAddingHusbandOrWifeRelation(charId, taiwuId))
             {
                 Log(charId + " marriage blocked: formal marriage rules reject it");
-                return false;
-            }
-            if (!Settings.MarriedKiller && CharacterUtils.IsMarried(charId))
-            {
-                Log(charId + " marriage blocked: NPC already married");
-                return false;
-            }
-            if (!Settings.Polygynous && CharacterUtils.IsMarried(taiwuId))
-            {
-                Log(charId + " marriage blocked: Taiwu already married");
                 return false;
             }
             if (!Settings.IgnoreGang && !npc.OrgAndMonkTypeAllowMarriage())

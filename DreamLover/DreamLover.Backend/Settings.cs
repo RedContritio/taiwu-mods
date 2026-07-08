@@ -40,8 +40,6 @@ namespace DreamLover.Backend
         public static bool RankAutoMin;
 
         public static bool IgnoreGang;
-        public static bool MarriedKiller;
-        public static bool Polygynous;
         public static bool MonkKiller;
         public static bool CharmingBonze;
 
@@ -106,8 +104,6 @@ namespace DreamLover.Backend
             RankAutoMin = GetToggle(modId, "RankAutoMin");
 
             IgnoreGang = GetToggle(modId, "IgnoreGang");
-            MarriedKiller = GetToggle(modId, "MarriedKiller");
-            Polygynous = GetToggle(modId, "Polygynous");
             MonkKiller = GetToggle(modId, "MonkKiller");
             CharmingBonze = GetToggle(modId, "CharmingBonze");
 
