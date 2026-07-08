@@ -17,8 +17,12 @@ namespace DreamLover.Backend
         public static bool AcceptMaleLooksFemale;   // 男生女相(生理男·外貌女)
         public static bool AcceptFemaleLooksMale;   // 女生男相(生理女·外貌男)
 
-        // 追求范围（递进）：0=同道(仅太吾同伴) / 1=同格(太吾所在格,含同道) / 2=不受距离限制。
+        // 追求范围（递进）：0=同道(仅太吾同伴) / 1=同格 / 2=同区域 / 3=不受距离限制。
         public static int Range;
+
+        // 允许对与太吾无任何关系记录的「陌生人」也促成爱慕（先建立原生"相识"关系再爱慕）。
+        // 关闭（默认）时跳过这类陌生人——否则原生「心生爱慕」事件条件会对无记录者做不安全的 GetRelation 而抛异常卡死过月。
+        public static bool AllowStranger;
 
         public static int MinAge;
         public static int MaxAge;
@@ -89,6 +93,7 @@ namespace DreamLover.Backend
             AcceptMaleLooksFemale = GetToggle(modId, "AcceptMaleLooksFemale");
             AcceptFemaleLooksMale = GetToggle(modId, "AcceptFemaleLooksMale");
             Range = GetInt(modId, "Range");
+            AllowStranger = GetToggle(modId, "AllowStranger");
 
             MinAge = GetInt(modId, "MinAge");
             MaxAge = GetInt(modId, "MaxAge");

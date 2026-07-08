@@ -287,6 +287,15 @@ namespace DreamLover.Backend
             int taiwuId = DomainManager.Taiwu.GetTaiwuCharId();
             if (DomainManager.Character.HasRelation(charId, taiwuId, Adored))
                 return false;
+            // 陌生人（与太吾无任何关系记录）：原生「心生爱慕」事件条件会用不安全的 GetRelation(npc,太吾) 直接取，
+            // 无记录会抛 KeyNotFoundException → 卡死过月。默认跳过；开「允许陌生人爱慕」则在同一条修改里先记
+            // NewlyMetCharacters，让 complement 用原生 TryCreateGeneralRelation 建立"相识"关系后再爱慕。
+            bool hasRelation = DomainManager.Character.TryGetRelation(charId, taiwuId, out _);
+            if (!hasRelation && !Settings.AllowStranger)
+            {
+                Log(charId + " enamor skipped: 与太吾无关系记录且未开启「允许陌生人爱慕」");
+                return false;
+            }
             // 保留 740/741 特殊恋爱标记等硬约束（非好感门槛）。
             if (!RelationTypeHelper.AllowAddingAdoredRelation(charId, taiwuId))
             {
@@ -294,8 +303,8 @@ namespace DreamLover.Backend
                 return false;
             }
 
-            Log(charId + " enamor: recording 爱慕(心生爱慕) monthly update");
-            RecordNewRegularRelation(context, npc, taiwu, Adored, false);
+            Log(charId + " enamor: recording 爱慕(心生爱慕) monthly update" + (hasRelation ? "" : " (+先建立相识)"));
+            RecordNewRegularRelation(context, npc, taiwu, Adored, false, meetFirst: !hasRelation);
             Force(charId, AdoreGuid);
             return true;
         }
@@ -322,7 +331,7 @@ namespace DreamLover.Backend
                 .AddSeverLove(charId, npc.GetLocation(), taiwuId);
         }
 
-        private static void RecordNewRegularRelation(DataContext context, Character npc, Character taiwu, ushort relationType, bool succeed)
+        private static void RecordNewRegularRelation(DataContext context, Character npc, Character taiwu, ushort relationType, bool succeed, bool meetFirst = false)
         {
             var mod = new PeriAdvanceMonthRelationsUpdateModification(npc)
             {
@@ -331,6 +340,10 @@ namespace DreamLover.Backend
                     (taiwu, relationType, succeed)
                 }
             };
+            // 陌生人先"相识"：complement 会先对 NewlyMetCharacters 调原生 TryCreateGeneralRelation（串行、幂等、双向），
+            // 再处理爱慕并排队「心生爱慕」事件——过月校验事件条件时关系记录已存在，不再空引用崩溃。
+            if (meetFirst)
+                mod.NewlyMetCharacters = new List<Character> { taiwu };
             RecordRelationsUpdate(context, mod);
         }
 

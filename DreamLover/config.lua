@@ -1,7 +1,7 @@
 return {
     Title = "梦中情人",
     Description = "让太吾成为万千少女的梦中情人，在梦中就会爱上太吾乃至疯狂表白求婚。\n通过配置，可以筛选让满足特定条件的 NPC 主动对太吾产生爱慕、表白与求婚。",
-    Version = "1.0.2.0",
+    Version = "1.0.3.0",
     Author = "RedContritio",
     Source = 0,
     Cover = "cover.jpg",
@@ -26,6 +26,7 @@ return {
         { SettingType = "Toggle", Key = "AcceptFemaleLooksMale", GroupName = "性别", DisplayName = "接受女生男相", Description = "允许生理女性、外貌男相的NPC追求太吾", DefaultValue = false },
         -- 地理（追求范围，单选·递进：同道 ⊂ 同格 ⊂ 不受距离限制）
         { SettingType = "Dropdown", Key = "Range", GroupName = "地理", DisplayName = "追求范围", Description = "递进：同道=仅太吾的同道(队友)；同格=太吾所在格(含同道)；同区域=太吾所在区域(含同格)；不受距离限制=任意NPC", Options = { "同道", "同格", "同区域", "不受距离限制" }, DefaultValue = 1 },
+        { SettingType = "Toggle", Key = "AllowStranger", GroupName = "地理", DisplayName = "允许陌生人爱慕", Description = "允许对与太吾素未谋面（无任何关系记录）的NPC也促成爱慕：会先按游戏原生方式与太吾建立“相识”关系，再爱慕。关闭时这类陌生人会被跳过（默认关；开启多用于同区域/不受距离限制的大范围撮合）。", DefaultValue = false },
         -- 年龄
         { SettingType = "Slider", Key = "MinAge", GroupName = "年龄", DisplayName = "年龄下限", MinValue = 16, MaxValue = 100, StepSize = 1, DefaultValue = 16 },
         { SettingType = "Slider", Key = "MaxAge", GroupName = "年龄", DisplayName = "年龄上限", MinValue = 16, MaxValue = 100, StepSize = 1, DefaultValue = 60 },
