@@ -8,6 +8,7 @@ using GameData.Domains;
 using GameData.Domains.Character;
 using GameData.Domains.Character.ParallelModifications;
 using GameData.Domains.Character.Relation;
+using GameData.Domains.Organization;
 using GameData.Utilities;
 
 namespace DreamLover.Backend
@@ -233,9 +234,17 @@ namespace DreamLover.Backend
                 Log(charId + " marriage blocked: formal marriage rules reject it");
                 return false;
             }
-            if (!Settings.IgnoreGang && !npc.OrgAndMonkTypeAllowMarriage())
+            // 门派/出家属"决策层软规则"：落地层 ApplyBecomeHusbandOrWife 只复查【已婚+血亲】这条硬规则，不看门派/出家，
+            // 所以下面三个开关都能真正放行原本被门派/出家禁止的婚事。原生 OrgAndMonkTypeAllowMarriage
+            // =「非出家 且 门派允许成家(ChildGrade>=0)」是复合判断，会让 MonkKiller 被 IgnoreGang 盖住；
+            // 这里拆成正交三条，每个开关只管自己那条、互不影响：
+            //   IgnoreGang    → 只解除【门派禁婚】(ChildGrade<0)，出家与否不管
+            //   MonkKiller    → 只解除【出家NPC】，门派规章不管
+            //   CharmingBonze → 只解除【太吾自身出家】
+            if (!Settings.IgnoreGang &&
+                OrganizationDomain.GetOrgMemberConfig(npc.GetOrganizationInfo()).ChildGrade < 0)
             {
-                Log(charId + " marriage blocked: NPC org/monk restriction");
+                Log(charId + " marriage blocked: NPC 门派禁婚(ChildGrade<0)");
                 return false;
             }
             if (!Settings.MonkKiller && npc.GetMonkType() != 0)
