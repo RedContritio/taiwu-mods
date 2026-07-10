@@ -5,7 +5,7 @@ return {
     Author = "RedContritio",
     Source = 0,
     Cover = "",
-    GameVersion = "1.0.52",
+    GameVersion = "1.0.56.0",
     BackendPlugins = {
         "AntiNTR.Backend.dll",
     },

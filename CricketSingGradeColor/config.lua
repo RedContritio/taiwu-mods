@@ -9,7 +9,7 @@ return {
     DetailImageList = {
         "details_1.png",
     },
-    GameVersion = "1.0.52",
+    GameVersion = "1.0.56.0",
     FrontendPlugins = {
         "CricketSingGradeColor.Frontend.dll",
     },

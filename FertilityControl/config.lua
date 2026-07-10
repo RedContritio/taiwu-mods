@@ -6,7 +6,7 @@ return {
     Source = 0,
     Cover = "cover.jpg",
     WorkshopCover = "cover.jpg",
-    GameVersion = "1.0.52",
+    GameVersion = "1.0.56.0",
     BackendPlugins = {
         "FertilityControl.Backend.dll",
     },
