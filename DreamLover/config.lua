@@ -28,9 +28,11 @@ return {
         { SettingType = "Dropdown", Key = "Range", GroupName = "地理", DisplayName = "追求范围", Description = "同道=仅太吾的同道；同格=太吾所在格；同区域=太吾所在区域；不受距离限制=任意", Options = { "同道", "同格", "同区域", "不受距离限制" }, DefaultValue = 1 },
         { SettingType = "Toggle", Key = "AllowStranger", GroupName = "地理", DisplayName = "允许陌生人爱慕", Description = "即使素未谋面，也会在梦中爱上太吾。关闭后只有认识的人才会爱慕太吾。", DefaultValue = false },
         -- 年龄
+        { SettingType = "Toggle", Key = "EnableAgeFilter", GroupName = "年龄", DisplayName = "启用年龄筛选", Description = "关闭后跳过年龄筛选，任何年龄的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Slider", Key = "MinAge", GroupName = "年龄", DisplayName = "年龄下限", MinValue = 16, MaxValue = 100, StepSize = 1, DefaultValue = 16 },
         { SettingType = "Slider", Key = "MaxAge", GroupName = "年龄", DisplayName = "年龄上限", MinValue = 16, MaxValue = 100, StepSize = 1, DefaultValue = 60 },
         -- 好感（NPC 对太吾的好感档位）
+        { SettingType = "Toggle", Key = "EnableFavorFilter", GroupName = "好感", DisplayName = "启用好感筛选", Description = "关闭后跳过好感筛选，任何好感档的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Toggle", Key = "Favor_12", GroupName = "好感", DisplayName = "<color=#E9D382>不渝</color>", DefaultValue = true },
         { SettingType = "Toggle", Key = "Favor_11", GroupName = "好感", DisplayName = "<color=#B975FF>亲密</color>", DefaultValue = true },
         { SettingType = "Toggle", Key = "Favor_10", GroupName = "好感", DisplayName = "<color=#1ABAC8>喜爱</color>", DefaultValue = true },
@@ -45,12 +47,14 @@ return {
         { SettingType = "Toggle", Key = "Favor_1", GroupName = "好感", DisplayName = "<color=#C6272E>痛恨</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Favor_0", GroupName = "好感", DisplayName = "<color=#8E8E8E>血仇</color>", DefaultValue = false },
         -- 立场
+        { SettingType = "Toggle", Key = "EnableStanceFilter", GroupName = "立场", DisplayName = "启用立场筛选", Description = "关闭后跳过立场筛选，任何立场的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Toggle", Key = "Good_0", GroupName = "立场", DisplayName = "<color=#FFE78F>刚正</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Good_1", GroupName = "立场", DisplayName = "<color=#9FE0DC>仁善</color>", DefaultValue = true },
         { SettingType = "Toggle", Key = "Good_2", GroupName = "立场", DisplayName = "<color=#FFFFFF>中庸</color>", DefaultValue = true },
         { SettingType = "Toggle", Key = "Good_3", GroupName = "立场", DisplayName = "<color=#B975FF>叛逆</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Good_4", GroupName = "立场", DisplayName = "<color=#C6272E>唯我</color>", DefaultValue = false },
         -- 魅力
+        { SettingType = "Toggle", Key = "EnableCharmFilter", GroupName = "魅力", DisplayName = "启用魅力筛选", Description = "关闭后跳过魅力筛选，任何魅力档的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Toggle", Key = "Charm_8", GroupName = "魅力", DisplayName = "<color=#F3802A>天人</color>", DefaultValue = true },
         { SettingType = "Toggle", Key = "Charm_7", GroupName = "魅力", DisplayName = "<color=#E9D382>出尘/绝世</color>", DefaultValue = true },
         { SettingType = "Toggle", Key = "Charm_6", GroupName = "魅力", DisplayName = "<color=#B975FF>凤仪/龙姿</color>", DefaultValue = true },
@@ -60,6 +64,7 @@ return {
         { SettingType = "Toggle", Key = "Charm_2", GroupName = "魅力", DisplayName = "<color=#8E8E8E>不扬</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Charm_1", GroupName = "魅力", DisplayName = "<color=#8E8E8E>可憎</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Charm_0", GroupName = "魅力", DisplayName = "<color=#8E8E8E>非人</color>", DefaultValue = false },
+        { SettingType = "Toggle", Key = "EnableRankFilter", GroupName = "品级", DisplayName = "启用品级筛选", Description = "关闭后跳过品级筛选（含剑冢进度自适应），任何品级的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Toggle", Key = "RankAutoMin", GroupName = "品级", DisplayName = "剑冢进度自适应", Description = "开启后忽略品级筛选，仅接受自己无法邀请同道的级别及以上的。", DefaultValue = false },
         -- 品级（九品最低 .. 一品最高；下方逐档勾选在「自适应下限」关闭时才生效）
         { SettingType = "Toggle", Key = "Rank_8", GroupName = "品级", DisplayName = "<color=#D43F38>一品</color>", DefaultValue = true },
@@ -72,10 +77,12 @@ return {
         { SettingType = "Toggle", Key = "Rank_1", GroupName = "品级", DisplayName = "<color=#DCDEE0>八品</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Rank_0", GroupName = "品级", DisplayName = "<color=#80817F>九品</color>", DefaultValue = false },
         -- 入魔
+        { SettingType = "Toggle", Key = "EnableInfectFilter", GroupName = "入魔", DisplayName = "启用入魔筛选", Description = "关闭后跳过入魔筛选，任何入魔状态的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Toggle", Key = "Infect_0", GroupName = "入魔", DisplayName = "未入邪", DefaultValue = true },
         { SettingType = "Toggle", Key = "Infect_1", GroupName = "入魔", DisplayName = "<color=#FF0000>相枢入邪</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Infect_2", GroupName = "入魔", DisplayName = "<color=#FF0000>相枢化魔</color>", DefaultValue = false },
         -- 关系过滤（勾选=允许与太吾有该关系的NPC追求太吾；按太吾视角命名）
+        { SettingType = "Toggle", Key = "EnableRelationFilter", GroupName = "关系过滤", DisplayName = "启用关系筛选", Description = "关闭后跳过关系过滤，与太吾有任何关系的NPC都可通过本维度", DefaultValue = true },
         { SettingType = "Toggle", Key = "Rel_BloodParent", GroupName = "关系过滤", DisplayName = "<color=#9D4140>亲生父母</color>", Description = "允许太吾的亲生父母追求太吾", DefaultValue = false },
         { SettingType = "Toggle", Key = "Rel_BloodChild", GroupName = "关系过滤", DisplayName = "<color=#9D4140>亲生子女</color>", Description = "允许太吾的亲生子女追求太吾", DefaultValue = false },
         { SettingType = "Toggle", Key = "Rel_BloodSibling", GroupName = "关系过滤", DisplayName = "<color=#9D4140>亲生兄妹</color>", Description = "允许太吾的亲生兄妹追求太吾", DefaultValue = false },

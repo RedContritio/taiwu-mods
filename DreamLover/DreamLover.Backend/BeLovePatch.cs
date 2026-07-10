@@ -168,6 +168,7 @@ namespace DreamLover.Backend
                     npc.IsInTaiwuGroup(),
                     CharacterUtils.IsAtSameLocation(npc, taiwu),
                     CharacterUtils.IsAtSameArea(npc, taiwu),
+                    Settings.EnableAgeFilter,
                     npc.GetCurrAge(),
                     Settings.MinAge,
                     Settings.MaxAge))
@@ -178,16 +179,21 @@ namespace DreamLover.Backend
 
             // 较重门：好感/立场/魅力/阶层/入魔 档位（含一次好感关系查询）。
             if (!DreamLoverRules.PassTiers(
+                    Settings.EnableFavorFilter,
                     CharacterUtils.GetFavorabilityType(charId, taiwuId),
                     Settings.FavorTiers,
+                    Settings.EnableStanceFilter,
                     CharacterUtils.GetGoodnessLevel(npc),
                     Settings.GoodTiers,
+                    Settings.EnableCharmFilter,
                     CharacterUtils.GetCharmLevel(npc),
                     Settings.CharmTiers,
+                    Settings.EnableRankFilter,
                     CharacterUtils.GetRankLevel(npc),
                     Settings.RankTiers,
                     Settings.RankAutoMin,
                     DomainManager.World.GetXiangshuLevel(),
+                    Settings.EnableInfectFilter,
                     CharacterUtils.GetInfectionState(npc),
                     Settings.InfectTiers))
             {
@@ -195,7 +201,7 @@ namespace DreamLover.Backend
                 return false;
             }
 
-            if (!PassRelationFilter(charId, taiwuId))
+            if (Settings.EnableRelationFilter && !PassRelationFilter(charId, taiwuId))
             {
                 if (Settings.DebugMode) Log(charId + " filtered: relation filter");
                 return false;

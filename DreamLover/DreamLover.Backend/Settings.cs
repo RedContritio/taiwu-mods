@@ -27,6 +27,16 @@ namespace DreamLover.Backend
         public static int MinAge;
         public static int MaxAge;
 
+        // 各维度筛选「总开关」（默认开=维持原筛选；关=该维度全放行，任何NPC都通过本维度）。
+        // 性别/地理不设总开关：性别用「接受同性+接受异性」即可全放行，地理用「追求范围=不受距离限制」即可。
+        public static bool EnableAgeFilter;
+        public static bool EnableFavorFilter;
+        public static bool EnableStanceFilter;
+        public static bool EnableCharmFilter;
+        public static bool EnableRankFilter;
+        public static bool EnableInfectFilter;
+        public static bool EnableRelationFilter;
+
         // 逐档筛选：每维度一个 bool[]（索引=档位，勾选=接受该档；某维度一个都不勾=该维度无人通过）。
         // 索引与游戏取值一致：好感=好感档+6(0..12)、立场=BehaviorType(0..4)、魅力=GetAttractionType(0..8)、
         // 品级=GetInteractionGrade(0=九品..8=一品)、入魔=GetInfectionState(0..2)。
@@ -95,6 +105,14 @@ namespace DreamLover.Backend
 
             MinAge = GetInt(modId, "MinAge");
             MaxAge = GetInt(modId, "MaxAge");
+
+            EnableAgeFilter = GetToggle(modId, "EnableAgeFilter");
+            EnableFavorFilter = GetToggle(modId, "EnableFavorFilter");
+            EnableStanceFilter = GetToggle(modId, "EnableStanceFilter");
+            EnableCharmFilter = GetToggle(modId, "EnableCharmFilter");
+            EnableRankFilter = GetToggle(modId, "EnableRankFilter");
+            EnableInfectFilter = GetToggle(modId, "EnableInfectFilter");
+            EnableRelationFilter = GetToggle(modId, "EnableRelationFilter");
 
             for (int i = 0; i < FavorTiers.Length; i++) FavorTiers[i] = GetToggle(modId, "Favor_" + i);
             for (int i = 0; i < GoodTiers.Length; i++) GoodTiers[i] = GetToggle(modId, "Good_" + i);

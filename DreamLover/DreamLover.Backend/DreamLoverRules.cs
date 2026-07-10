@@ -22,6 +22,7 @@ namespace DreamLover.Backend
             bool npcInTaiwuGroup,
             bool sameLocation,
             bool sameArea,
+            bool enableAge,
             int ageYears,
             int minAge,
             int maxAge)
@@ -46,7 +47,7 @@ namespace DreamLover.Backend
             if (!geoOk)
                 return false;
 
-            if (ageYears < minAge || ageYears > maxAge)
+            if (enableAge && (ageYears < minAge || ageYears > maxAge))
                 return false;
 
             return true;
@@ -57,36 +58,44 @@ namespace DreamLover.Backend
         //  品级 GetInteractionGrade(0=九品..8=一品)、入魔 GetInfectionState(0..2)。
         // NPC 的档位索引必须被勾选才通过；某维度一个都不勾=该维度无人通过。
         public static bool PassTiers(
+            bool enableFavor,
             sbyte favorType,
             IReadOnlyList<bool> favorTiers,
+            bool enableStance,
             int goodnessLevel,
             IReadOnlyList<bool> goodTiers,
+            bool enableCharm,
             sbyte charmLevel,
             IReadOnlyList<bool> charmTiers,
+            bool enableRank,
             sbyte rankLevel,
             IReadOnlyList<bool> rankTiers,
             bool rankAutoMin,
             int autoMinRankIndex,
+            bool enableInfect,
             int infectState,
             IReadOnlyList<bool> infectTiers)
         {
-            if (!TierAllowed(favorType + 6, favorTiers))
+            if (enableFavor && !TierAllowed(favorType + 6, favorTiers))
                 return false;
-            if (!TierAllowed(goodnessLevel, goodTiers))
+            if (enableStance && !TierAllowed(goodnessLevel, goodTiers))
                 return false;
-            if (!TierAllowed(charmLevel, charmTiers))
+            if (enableCharm && !TierAllowed(charmLevel, charmTiers))
                 return false;
-            // 品级：自适应下限开启时忽略手动勾选，仅收 品级 >= 相枢等级；否则按逐档勾选。
-            if (rankAutoMin)
+            // 品级：总开关关闭时整维跳过；开启时——自适应下限开则仅收 品级 >= 相枢等级，否则按逐档勾选。
+            if (enableRank)
             {
-                if (rankLevel < autoMinRankIndex)
+                if (rankAutoMin)
+                {
+                    if (rankLevel < autoMinRankIndex)
+                        return false;
+                }
+                else if (!TierAllowed(rankLevel, rankTiers))
+                {
                     return false;
+                }
             }
-            else if (!TierAllowed(rankLevel, rankTiers))
-            {
-                return false;
-            }
-            if (!TierAllowed(infectState, infectTiers))
+            if (enableInfect && !TierAllowed(infectState, infectTiers))
                 return false;
 
             return true;
