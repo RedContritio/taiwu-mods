@@ -64,7 +64,7 @@ return {
         { SettingType = "Toggle", Key = "Charm_2", GroupName = "魅力", DisplayName = "<color=#8E8E8E>不扬</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Charm_1", GroupName = "魅力", DisplayName = "<color=#8E8E8E>可憎</color>", DefaultValue = false },
         { SettingType = "Toggle", Key = "Charm_0", GroupName = "魅力", DisplayName = "<color=#8E8E8E>非人</color>", DefaultValue = false },
-        { SettingType = "Toggle", Key = "EnableRankFilter", GroupName = "品级", DisplayName = "启用品级筛选", Description = "关闭后跳过品级筛选（含剑冢进度自适应），任何品级的NPC都可通过本维度", DefaultValue = true },
+        { SettingType = "Toggle", Key = "EnableRankFilter", GroupName = "品级", DisplayName = "启用品级筛选", Description = "关闭后跳过品级筛选（含剑冢进度自适应），任何品级的NPC都可通过本维度", DefaultValue = false },
         { SettingType = "Toggle", Key = "RankAutoMin", GroupName = "品级", DisplayName = "剑冢进度自适应", Description = "开启后忽略品级筛选，仅接受自己无法邀请同道的级别及以上的。", DefaultValue = false },
         -- 品级（九品最低 .. 一品最高；下方逐档勾选在「自适应下限」关闭时才生效）
         { SettingType = "Toggle", Key = "Rank_8", GroupName = "品级", DisplayName = "<color=#D43F38>一品</color>", DefaultValue = true },
@@ -109,5 +109,6 @@ return {
         { Timestamp = 1782743190 },
         { Timestamp = 1782838374 },
         { Timestamp = 1783451082 },
+        { Timestamp = 1783703516 },
     },
 }
