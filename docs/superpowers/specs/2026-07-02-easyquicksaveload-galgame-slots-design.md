@@ -126,3 +126,19 @@
 - `ViewSystemOption` 克隆源字段名、按钮父容器路径、分隔元素来源。
 - 档位面板克隆的原生行/格 prefab 来源（候选：RevertArchive 列表行、RecordSelect 卡片、或通用 CButton 拼格）。
 - 面板超出一屏时：滚动（默认）还是翻页——默认滚动，按需再议。
+
+---
+
+## 落地实现说明（2026-07-08 补记，实现与本 spec 的差异）
+
+实现期发现若干问题，最终落地的设计相对本 spec 有三处**主动偏差**，已确认以落地实现为准（本节即为差异记录，代码为设计的最终事实来源）：
+
+- **A. ESC 入口改为独立右缘面板，而非注入原生菜单列表。** 本 spec §2 原意是把 4 个克隆 `CButton` `SetSiblingIndex` 插进 `ViewSystemOption` 的按钮容器。实际把 4 按钮放进一个**克隆原生 MAINWINDOW 框、贴屏幕右缘的独立「快速 SL」面板**（`SystemOptionButtonInjector`），跟随 ESC 菜单焦点生命周期出现/销毁，**不改动原生菜单**——因为注入原生列表会打乱其布局。
+
+- **B. 选栏面板的确认改为面板内自建覆盖层，而非原生 Dialog。** 本 spec §4 原意是所有确认统一走原生 `DialogCmd`/`UIElement.Dialog`。实际：**快速存/读档仍走原生 Dialog**（`NativeDialog.Confirm`，含延迟一帧 + 僵尸 Dialog 兜底两处 NRE 防护）；但**选栏面板内的覆盖/读取/删除确认改为面板内自建的确认覆盖层**（`SlotPickerPanel.ShowConfirm`）——因为原生 Dialog 在不同 UI 层、会被模态面板盖住。
+
+- **C. 选栏面板增加了 spec 未列的增强。** 除「摘要 + 删除按钮」外，实际每格还带**备注（改名）**（后端 `NotesStore` + `SetSlotNote` mod 方法，存 `local.sav.qsl.notes`；覆盖/删除时清该栏备注）、**【最新】标记**（最近保存的栏位）、以及**可滚动网格**（`SlotCount` 较大时滚动）。原生风格的改名/删除图标经 `IconStyler` 用游戏 atlas sprite 呈现，取不到时退化为文字。
+
+- 另：为读档路径加了 `TooltipCrashGuardPatch`（Harmony Finalizer 兜住游戏 `TooltipManager.GetHitObject` 在世界重载时的潜在 NRE）。
+
+原 plan 的 Task 7（删旧 `EasyQuickSaveLoadOverlay` 死代码、README 改写、版本号）与 Task 8（端到端验收）在本次收尾中补做。

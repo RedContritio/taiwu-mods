@@ -25,7 +25,7 @@ namespace EasyQuickSaveLoad.Backend
         private const string SlotInfosKey = "SlotInfos";
         private const string SlotCountKey = "SlotCount";
         private const string SlotNotesKey = "SlotNotes";
-        private const string SlotCountSetting = "SlotCount";
+        private const string PageCountSetting = "PageCount";
         private const sbyte ArchiveStatusGood = 1;
 
         public override void Initialize()
@@ -47,13 +47,14 @@ namespace EasyQuickSaveLoad.Backend
             catch { /* 开发热重载时可能已注册 */ }
         }
 
+        // 当前可操作栏位数 = 可用页数(1..10) × 每页 5。超出的旧存档暂时隐藏(不删)。
         private int GetSlotCount()
         {
-            int n = SlotStore.DefaultSlotCount;
-            DomainManager.Mod.GetSetting(ModIdStr, SlotCountSetting, ref n);
-            if (n < 1) n = SlotStore.DefaultSlotCount;
-            if (n > 99) n = 99; // matches the frontend clamp; also bounds the per-slot reads in ListSlots
-            return n;
+            int pages = SlotStore.DefaultPageCount;
+            DomainManager.Mod.GetSetting(ModIdStr, PageCountSetting, ref pages);
+            if (pages < 1) pages = 1;
+            if (pages > SlotStore.MaxPageCount) pages = SlotStore.MaxPageCount;
+            return pages * SlotStore.SlotsPerPage;
         }
 
         // --- Save ---
@@ -79,7 +80,9 @@ namespace EasyQuickSaveLoad.Backend
         {
             sbyte archiveId = Common.GetCurrArchiveId();
             int slotCount = GetSlotCount();
-            NotesStore.Prune(archiveId, slotCount); // drop notes orphaned by a shrunk SlotCount
+            // 只清永不可达(≥MaxSlotCount=50)的孤儿备注；调小页数被临时隐藏的靠后页备注绝不删——
+            // 数据保留在磁盘，调大页数即恢复。
+            NotesStore.Prune(archiveId, SlotStore.MaxSlotCount);
 
             // BackupWorldsInfo MUST be non-null: ArchiveInfo.GetSerializedSize/Serialize dereference
             // BackupWorldsInfo.Count with no null guard, so a null list NREs (and crashes the backend)

@@ -26,18 +26,48 @@ namespace EasyQuickSaveLoad.Frontend
             }
         }
 
-        /// <summary>Number of manual slots. Clamped to [1, 99] so a bad config can't produce a zero/negative
-        /// or absurd grid.</summary>
-        public static int SlotCount
+        /// <summary>覆盖已有存档前是否弹确认框(存档选择器，默认开)。</summary>
+        public static bool OverwriteConfirm
         {
             get
             {
-                int v = 20;
-                try { ModManager.GetSetting(EqslCore.ModId, "SlotCount", ref v); } catch { }
-                if (v < 1) v = 1;
-                if (v > 99) v = 99;
+                bool v = true;
+                try { ModManager.GetSetting(EqslCore.ModId, "OverwriteConfirm", ref v); } catch { }
                 return v;
             }
         }
+
+        /// <summary>删除存档前是否弹确认框(存档选择器，默认开)。</summary>
+        public static bool DeleteConfirm
+        {
+            get
+            {
+                bool v = true;
+                try { ModManager.GetSetting(EqslCore.ModId, "DeleteConfirm", ref v); } catch { }
+                return v;
+            }
+        }
+
+        // 存档栏位按「页」配置：每页固定 5 个栏位，可用页数 1..10。
+        public const int SlotsPerPage = 5;
+        public const int MinPageCount = 1;
+        public const int MaxPageCount = 10;
+        public const int DefaultPageCount = 4;
+
+        /// <summary>可用存档页数(配置项)，夹在 [1, 10]。调小只临时隐藏靠后的页、不删除数据。</summary>
+        public static int PageCount
+        {
+            get
+            {
+                int v = DefaultPageCount;
+                try { ModManager.GetSetting(EqslCore.ModId, "PageCount", ref v); } catch { }
+                if (v < MinPageCount) v = MinPageCount;
+                if (v > MaxPageCount) v = MaxPageCount;
+                return v;
+            }
+        }
+
+        /// <summary>当前可操作的栏位数 = 页数 × 每页栏位。超出的旧存档暂时隐藏(不删除)。</summary>
+        public static int SlotCount => PageCount * SlotsPerPage;
     }
 }

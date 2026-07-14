@@ -61,7 +61,9 @@ namespace EasyQuickSaveLoad.Backend
             SetNote(archiveId, slot, null);
         }
 
-        /// <summary>Drop notes whose slot is outside [0, slotCount) — orphans left behind when SlotCount shrinks.</summary>
+        /// <summary>Drop notes whose slot is outside [0, slotCount). Callers pass the ABSOLUTE max slot count
+        /// (never the current page-limited count), so notes for temporarily-hidden pages are preserved, only
+        /// truly-unreachable orphans are removed.</summary>
         public static void Prune(sbyte archiveId, int slotCount)
         {
             try

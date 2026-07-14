@@ -12,7 +12,12 @@ namespace EasyQuickSaveLoad.Backend
         public const int QuickSlot = -1;
         private const string QuickFileName = "local.sav.qsl.quick";
         private const string SlotFilePrefix = "local.sav.qsl.slot.";
-        public const int DefaultSlotCount = 20;
+        // 存档栏位按「页」配置：每页 5 个，可用页数 1..10。
+        public const int SlotsPerPage = 5;
+        public const int DefaultPageCount = 4;
+        public const int MaxPageCount = 10;
+        // 备注裁剪只清理"永不可达"(≥此值)的孤儿；调小页数被临时隐藏的页(仍在此范围内)绝不删。
+        public const int MaxSlotCount = MaxPageCount * SlotsPerPage; // 50
 
         public static string GetSlotPath(sbyte archiveId, int slot)
         {

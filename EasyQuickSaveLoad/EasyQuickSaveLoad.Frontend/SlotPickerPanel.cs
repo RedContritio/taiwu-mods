@@ -44,8 +44,8 @@ namespace EasyQuickSaveLoad.Frontend
         private static bool _templateFailLogged;     // 只记一次失败日志，避免每次开都刷屏
         private static GameObject _itemTemplate;     // 回溯列表行(RevertArchiveItem)的 srcPrefab，克隆每格（成功即缓存）
 
-        // 分页：每页 5 个存档位。
-        private const int SlotsPerPage = 5;
+        // 分页：每页固定 5 个存档位(与 EqslSettings 同一常量，避免两处分叉)。
+        private const int SlotsPerPage = EqslSettings.SlotsPerPage;
         // 当前页(0 基)——静态，跨"开/关选择器"与存/读两模式记忆页码(同一游戏进程内)；换页超范围时 RenderPage 会夹取。
         private static int _page;
         private SerializableModData _lastRes;    // 最近一次拉取的槽数据；翻页时免重拉直接重渲染
@@ -975,10 +975,10 @@ namespace EasyQuickSaveLoad.Frontend
                     EqslCore.CallSave(slot);
                     PollRefresh(slot, wantFilled: true, preSaveTicks: preTicks, attemptsLeft: 8, gen: _generation);
                 };
-                if (wi != null)
+                if (wi != null && EqslSettings.OverwriteConfirm)
                     NativeDialog.Confirm("覆盖存档", "将覆盖此栏位已有的存档", doSave);
                 else
-                    doSave();
+                    doSave(); // 空栏或关闭「覆盖确认」→ 直接存
             }
             else
             {
@@ -996,13 +996,17 @@ namespace EasyQuickSaveLoad.Frontend
         private void OnDeleteClicked(int slot, WorldInfo wi, string note)
         {
             if (_busy) return;
-            NativeDialog.Confirm("删除存档", "将删除此栏位存档", () =>
+            Action doDelete = () =>
             {
                 if (_busy) return; // 同上，勿 re-check CanOperate
                 _busy = true;
                 EqslCore.CallDelete(slot);
                 PollRefresh(slot, wantFilled: false, preSaveTicks: 0L, attemptsLeft: 8, gen: _generation);
-            });
+            };
+            if (EqslSettings.DeleteConfirm)
+                NativeDialog.Confirm("删除存档", "将删除此栏位存档", doDelete);
+            else
+                doDelete(); // 关闭「删除确认」→ 直接删
         }
 
         // ---- In-picker confirm (a child of _root, so it always renders above the grid regardless of
