@@ -26,12 +26,16 @@ namespace EasyQuickSaveLoad.Frontend
             }
         }
 
+        /// <summary>Number of manual slots. Clamped to [1, 99] so a bad config can't produce a zero/negative
+        /// or absurd grid.</summary>
         public static int SlotCount
         {
             get
             {
                 int v = 20;
                 try { ModManager.GetSetting(EqslCore.ModId, "SlotCount", ref v); } catch { }
+                if (v < 1) v = 1;
+                if (v > 99) v = 99;
                 return v;
             }
         }

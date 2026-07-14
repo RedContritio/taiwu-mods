@@ -37,6 +37,14 @@ namespace EasyQuickSaveLoad.Frontend
         // The ViewSystemOption instance we last built the panel for — used to detect teardown/rebuild.
         private object _boundUiBase;
 
+        // Clone templates captured from the live native menu each rebuild, handed to the slot picker.
+        private GameObject _frameTemplate;   // native MAINWINDOW frame to clone
+        private CButton _srcButton;          // native CButton to clone
+        private Transform _canvasRootTf;     // the SystemOption canvas root
+
+        // The self-built manual-slot picker (存档/读档). Created lazily, closed on menu teardown.
+        private SlotPickerPanel _slotPicker;
+
         // ---- Factory -------------------------------------------------------
 
         public static SystemOptionButtonInjector Create()
@@ -57,12 +65,30 @@ namespace EasyQuickSaveLoad.Frontend
 
         // ---- Unity lifecycle -----------------------------------------------
 
+        // Synchronous in-flight guard for the quick buttons (parity with the picker's _busy). Reset on a
+        // realtime timer so it never sticks if the game is paused (timeScale=0) during the ESC menu.
+        private bool _quickBusy;
+        private float _quickBusyUntil;
+
+        private void MarkQuickBusy()
+        {
+            _quickBusy = true;
+            _quickBusyUntil = Time.realtimeSinceStartup + 1.5f;
+        }
+
         private void Update()
         {
+            if (_quickBusy && Time.realtimeSinceStartup >= _quickBusyUntil) _quickBusy = false;
+
             object uiBase = GetSystemOptionUiBaseIfFocused();
 
             if (uiBase == null)
             {
+                // A native dialog (Rename / Dialog) shown OVER our slot picker steals focus from
+                // SystemOption. Do NOT tear the picker down for that: keep everything alive as long as
+                // SystemOption still exists and the picker is open. Only clean up once the ESC menu is gone.
+                if (UIElement.SystemOption.Exist && _slotPicker != null && _slotPicker.IsOpen) return;
+
                 // Menu not open or not focused — destroy any leftover panel.
                 if (_boundUiBase != null) Cleanup();
                 return;
@@ -91,7 +117,7 @@ namespace EasyQuickSaveLoad.Frontend
 
         /// <summary>
         /// Returns the live ViewSystemOption UiBase when the ESC panel is open and focused,
-        /// null in every other case. Pattern mirrors EasyQuickSaveLoadOverlay.GetEscPanelParent.
+        /// null in every other case.
         /// </summary>
         private static object GetSystemOptionUiBaseIfFocused()
         {
@@ -121,9 +147,11 @@ namespace EasyQuickSaveLoad.Frontend
 
         // Layout tuning constants for the far-right panel.
         private const float RightMargin       = 0f;    // flush to the right edge (水平贴右)
-        private const float ButtonHeight      = 30f;   // approx native CButton height
-        private const float VerticalPadding   = 180f;  // frame chrome incl. the title, above/below the 4 buttons
-        private const float SlicedWidth       = 240f;  // narrowed width when the frame sprite is Sliced
+        private const float ButtonHeight      = 62f;   // actual native CButton height (measured in-game)
+        private const float VerticalPadding   = 132f;  // title band + content top-pad + bottom margin (4*62+132 = 380 tall, fits all 4)
+        private const float PanelWidth        = 320f;  // frame width — wide enough to visibly contain the buttons + margin
+        private const float ButtonWidth       = 170f;  // explicit button width (narrower than native, generous side margin in the frame)
+        private const float GroupGap          = 22f;   // vertical gap separating the quick-SL group from the manual-SL group
         private const string PanelTitle       = "快速 SL";
 
         private void BuildPanel(object viewSystemOption)
@@ -156,6 +184,11 @@ namespace EasyQuickSaveLoad.Frontend
                     "[EasyQuickSaveLoad] Native window/canvas hierarchy not found — building nothing.");
                 return;
             }
+
+            // Capture live clone templates for the on-demand slot picker (存档/读档).
+            _frameTemplate = mainWindow.gameObject;
+            _srcButton = srcButton;
+            _canvasRootTf = canvasRoot;
 
             // Clone the whole native-styled frame (frame + a CONTENT child with native buttons).
             _panel = UnityEngine.Object.Instantiate(mainWindow.gameObject, canvasRoot);
@@ -195,11 +228,32 @@ namespace EasyQuickSaveLoad.Frontend
                 UnityEngine.Object.Destroy(child.gameObject);
             }
 
-            // Clone the native button (from the LIVE source, which is intact) 4× into the empty CONTENT.
-            _save      = BuildButton(srcButton, clonedContent, "存档",     OnSaveClick);
-            _load      = BuildButton(srcButton, clonedContent, "读档",     OnLoadClick);
+            // Two groups, quick group on TOP: [快速存档, 快速读档] — gap — [存档, 读档].
+            // Clone the native button (from the LIVE source, which is intact) into the empty CONTENT.
             _quickSave = BuildButton(srcButton, clonedContent, "快速存档", OnQuickSaveClick);
             _quickLoad = BuildButton(srcButton, clonedContent, "快速读档", OnQuickLoadClick);
+            AddSpacer(clonedContent, GroupGap);
+            _save      = BuildButton(srcButton, clonedContent, "存档",     OnSaveClick);
+            _load      = BuildButton(srcButton, clonedContent, "读档",     OnLoadClick);
+
+            // Fixed narrower width, vertically centered with SYMMETRIC top/bottom padding: drop the cloned
+            // native CONTENT's asymmetric 50px top pad so the space above the first button matches the space
+            // below the last one. Stop the layout group from controlling/expanding child width.
+            var vlg = clonedContent.GetComponent<VerticalLayoutGroup>();
+            if (vlg != null)
+            {
+                vlg.childForceExpandWidth = false;
+                vlg.childControlWidth = false;
+                vlg.childAlignment = TextAnchor.MiddleCenter;
+                vlg.padding = new RectOffset(0, 0, 0, 0);
+            }
+            foreach (var btn in new[] { _quickSave, _quickLoad, _save, _load })
+            {
+                if (btn?.transform is RectTransform brt)
+                {
+                    brt.sizeDelta = new Vector2(ButtonWidth, brt.sizeDelta.y);
+                }
+            }
 
             // Position far-right + size for 4 buttons.
             var rt = _panel.transform as RectTransform;
@@ -212,14 +266,34 @@ namespace EasyQuickSaveLoad.Frontend
 
                 var size = rt.sizeDelta;
                 size.y = 4f * ButtonHeight + VerticalPadding;
-
-                // Only narrow width if the frame sprite is Sliced (safe); otherwise keep native width
-                // to avoid distorting the frame sprite.
-                var frameImg = _panel.GetComponent<Image>();
-                if (frameImg != null && frameImg.type == Image.Type.Sliced)
-                    size.x = SlicedWidth;
-
+                // Frame width wide enough to contain the buttons + margin. The native frame CImage is
+                // 9-sliced, so resizing keeps the border crisp.
+                size.x = PanelWidth;
                 rt.sizeDelta = size;
+
+                // 竖直居中对齐 ESC 主菜单：面板锚在画布竖直中心，但主菜单并不居于画布中心，按世界坐标把
+                // 面板中心对到主菜单(MainWindow)中心。
+                try
+                {
+                    Canvas.ForceUpdateCanvases();
+                    var mwRt = mainWindow.transform as RectTransform;
+                    if (mwRt != null)
+                    {
+                        var mw = new Vector3[4];
+                        var pn = new Vector3[4];
+                        mwRt.GetWorldCorners(mw);
+                        rt.GetWorldCorners(pn);
+                        float mwCenterY = (mw[0].y + mw[1].y) * 0.5f;
+                        float pnCenterY = (pn[0].y + pn[1].y) * 0.5f;
+                        float scaleY = rt.lossyScale.y;
+                        if (Mathf.Abs(scaleY) > 0.0001f)
+                            rt.anchoredPosition += new Vector2(0f, (mwCenterY - pnCenterY) / scaleY);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning("[EasyQuickSaveLoad] 面板竖直居中对齐失败: " + ex.Message);
+                }
             }
         }
 
@@ -231,6 +305,27 @@ namespace EasyQuickSaveLoad.Frontend
         {
             var vlg = panelRoot.GetComponentInChildren<VerticalLayoutGroup>(true);
             return vlg != null ? vlg.transform : null;
+        }
+
+        /// <summary>
+        /// Adds an invisible fixed-height spacer as the next child of a VerticalLayoutGroup, to separate
+        /// button groups. Uses a LayoutElement so the layout reserves the gap regardless of childControlHeight.
+        /// </summary>
+        private static void AddSpacer(Transform parent, float height)
+        {
+            var go = new GameObject("EQSL_GroupGap", typeof(RectTransform));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(parent, false);
+            // The VLG has ChildControlHeight=false, so it lays children out by their ACTUAL rect height,
+            // NOT LayoutElement.preferredHeight — force the rect height to the desired gap (point anchors so
+            // sizeDelta == rect size). LayoutElement added too as a belt-and-suspenders for the group's own calc.
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(ButtonWidth, height);
+            var le = go.AddComponent<LayoutElement>();
+            le.minHeight = height;
+            le.preferredHeight = height;
+            le.flexibleHeight = 0f;
         }
 
         /// <summary>
@@ -257,7 +352,7 @@ namespace EasyQuickSaveLoad.Frontend
         /// <c>string</c> property named <c>text</c>, then sets it. Handles Text and TMP without
         /// a compile-time TMP dependency.
         /// </summary>
-        private static void SetLabelViaReflection(GameObject root, string label)
+        internal static void SetLabelViaReflection(GameObject root, string label)
         {
             var components = root.GetComponentsInChildren<Component>(true);
             foreach (var component in components)
@@ -298,6 +393,7 @@ namespace EasyQuickSaveLoad.Frontend
 
         private void Cleanup()
         {
+            _slotPicker?.Close();
             if (_panel != null) UnityEngine.Object.Destroy(_panel);
             _panel = null;
             _save = _load = _quickSave = _quickLoad = null;
@@ -313,24 +409,43 @@ namespace EasyQuickSaveLoad.Frontend
 
         public void OnSaveClick()
         {
-            Debug.Log("[EasyQuickSaveLoad] Save clicked");
+            if (!EqslCore.CanOperate(out _)) return;
+            EnsurePicker()?.Open(SlotPickerPanel.PickMode.Save);
         }
 
         public void OnLoadClick()
         {
-            Debug.Log("[EasyQuickSaveLoad] Load clicked");
+            if (!EqslCore.CanOperate(out _)) return;
+            EnsurePicker()?.Open(SlotPickerPanel.PickMode.Load);
+        }
+
+        /// <summary>Creates (or refreshes the templates of) the slot picker from the current live clones.</summary>
+        private SlotPickerPanel EnsurePicker()
+        {
+            if (_frameTemplate == null || _srcButton == null || _canvasRootTf == null) return null;
+            if (_slotPicker == null)
+            {
+                _slotPicker = new SlotPickerPanel();
+            }
+            _slotPicker.SetTemplates(_frameTemplate, _srcButton, _canvasRootTf);
+            return _slotPicker;
         }
 
         public void OnQuickSaveClick()
         {
-            if (!EqslCore.CanOperate(out _)) return;
+            if (_quickBusy || !EqslCore.CanOperate(out _)) return;
+            MarkQuickBusy();
 
+            // No CanOperate re-check inside doSave: it runs from the native Dialog's Yes callback, where the
+            // open Dialog makes CanOperate false (界面中). The ESC menu + confirm are modal, so no month/combat/
+            // event can start between the entry check and 确认 — the entry gate is sufficient.
             Action doSave = () => EqslCore.CallSave(QuickSlot);
 
             if (EqslSettings.QuickSaveConfirm)
             {
                 EqslCore.RequestSlots(res =>
                 {
+                    if (GetSystemOptionUiBaseIfFocused() == null) return; // ESC closed while listing — no stray dialog
                     string summary = QuickSummary(res);
                     NativeDialog.Confirm("确认快速存档", "将覆盖快捷存档\n" + summary, doSave);
                 });
@@ -343,15 +458,19 @@ namespace EasyQuickSaveLoad.Frontend
 
         public void OnQuickLoadClick()
         {
-            if (!EqslCore.CanOperate(out _)) return;
+            if (_quickBusy || !EqslCore.CanOperate(out _)) return;
+            MarkQuickBusy();
 
             EqslCore.RequestSlots(res =>
             {
+                if (GetSystemOptionUiBaseIfFocused() == null) return; // ESC closed while listing — no stray dialog
                 var wi = QuickWorldInfo(res);
                 if (wi == null) return; // quick slot empty — no-op
 
                 Action doLoad = () =>
                 {
+                    // No CanOperate re-check here: doLoad runs from the native Dialog's Yes callback where the
+                    // open Dialog makes CanOperate false. The modal already prevents any state change.
                     HideSystemOption();
                     EqslCore.LoadSlotWorld(QuickSlot);
                 };

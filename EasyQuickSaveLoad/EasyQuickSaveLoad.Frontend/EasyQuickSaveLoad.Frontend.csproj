@@ -9,6 +9,10 @@
       <HintPath>$(TaiwuManagedDir)\TaiwuModdingLib.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(TaiwuManagedDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(TaiwuManagedDir)\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>

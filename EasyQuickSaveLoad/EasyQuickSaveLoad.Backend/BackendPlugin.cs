@@ -9,19 +9,22 @@ using TaiwuModdingLib.Core.Plugin;
 
 namespace EasyQuickSaveLoad.Backend
 {
-    [PluginConfig("EasyQuickSaveLoad", "RedContritio", "1.0.0.0")]
+    [PluginConfig("EasyQuickSaveLoad", "RedContritio", "1.0.1.0")]
     public sealed class BackendPlugin : TaiwuRemakePlugin
     {
         private const string SaveToSlotMethod = "SaveToSlot";
         private const string LoadFromSlotMethod = "LoadFromSlot";
         private const string DeleteSlotMethod = "DeleteSlot";
         private const string ListSlotsMethod = "ListSlots";
+        private const string SetSlotNoteMethod = "SetSlotNote";
 
         private const string SlotKey = "Slot";
+        private const string NoteKey = "Note";
         private const string OkKey = "Ok";
         private const string QuickInfoKey = "QuickInfo";
         private const string SlotInfosKey = "SlotInfos";
         private const string SlotCountKey = "SlotCount";
+        private const string SlotNotesKey = "SlotNotes";
         private const string SlotCountSetting = "SlotCount";
         private const sbyte ArchiveStatusGood = 1;
 
@@ -31,6 +34,7 @@ namespace EasyQuickSaveLoad.Backend
             TryRegister(() => DomainManager.Mod.AddModMethod(ModIdStr, LoadFromSlotMethod, LoadFromSlot));
             TryRegister(() => DomainManager.Mod.AddModMethod(ModIdStr, DeleteSlotMethod, DeleteSlot));
             TryRegister(() => DomainManager.Mod.AddModMethod(ModIdStr, ListSlotsMethod, ListSlots));
+            TryRegister(() => DomainManager.Mod.AddModMethod(ModIdStr, SetSlotNoteMethod, SetSlotNote));
         }
 
         public override void Dispose()
@@ -47,7 +51,9 @@ namespace EasyQuickSaveLoad.Backend
         {
             int n = SlotStore.DefaultSlotCount;
             DomainManager.Mod.GetSetting(ModIdStr, SlotCountSetting, ref n);
-            return n > 0 ? n : SlotStore.DefaultSlotCount;
+            if (n < 1) n = SlotStore.DefaultSlotCount;
+            if (n > 99) n = 99; // matches the frontend clamp; also bounds the per-slot reads in ListSlots
+            return n;
         }
 
         // --- Save ---
@@ -58,6 +64,9 @@ namespace EasyQuickSaveLoad.Backend
             sbyte archiveId = Common.GetCurrArchiveId();
             SlotStore.EnsureDir(archiveId);
             string path = SlotStore.GetSlotPath(archiveId, slot);
+            // Notes are per-save: a fresh save (incl. an overwrite) starts note-less, so the previous
+            // occupant's 备注 never mislabels the new save. The player can rename it afterwards.
+            NotesStore.DeleteNote(archiveId, slot);
             // completeNextFrame:true → 存独立文件、不占用原生 .bak
             InvokeGlobalPrivate("SaveWorldAt",
                 new[] { typeof(DataContext), typeof(string), typeof(bool) },
@@ -70,6 +79,7 @@ namespace EasyQuickSaveLoad.Backend
         {
             sbyte archiveId = Common.GetCurrArchiveId();
             int slotCount = GetSlotCount();
+            NotesStore.Prune(archiveId, slotCount); // drop notes orphaned by a shrunk SlotCount
 
             // BackupWorldsInfo MUST be non-null: ArchiveInfo.GetSerializedSize/Serialize dereference
             // BackupWorldsInfo.Count with no null guard, so a null list NREs (and crashes the backend)
@@ -97,7 +107,17 @@ namespace EasyQuickSaveLoad.Backend
             result.Set(SlotCountKey, slotCount);
             result.Set(QuickInfoKey, quick);
             result.Set(SlotInfosKey, slots);
+            result.Set(SlotNotesKey, NotesStore.SerializeAll(archiveId));
             return result;
+        }
+
+        // --- Note ---
+
+        private void SetSlotNote(DataContext context, SerializableModData parameter)
+        {
+            int slot = ReadSlot(parameter);
+            string note = parameter != null && parameter.Get(NoteKey, out string n) ? n : null;
+            NotesStore.SetNote(Common.GetCurrArchiveId(), slot, note);
         }
 
         // --- Delete ---
@@ -105,7 +125,10 @@ namespace EasyQuickSaveLoad.Backend
         private void DeleteSlot(DataContext context, SerializableModData parameter)
         {
             int slot = ReadSlot(parameter);
-            SlotStore.DeleteSlotFile(Common.GetCurrArchiveId(), slot);
+            sbyte archiveId = Common.GetCurrArchiveId();
+            SlotStore.DeleteSlotFile(archiveId, slot);
+            // Clear the 备注 too, so an emptied slot doesn't resurrect a stale note on the next save.
+            NotesStore.DeleteNote(archiveId, slot);
         }
 
         // --- Load ---
