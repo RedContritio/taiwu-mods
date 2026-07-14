@@ -65,8 +65,18 @@ return {
 	ChangeConfig = false,
 	NeedRestartWhenSettingChanged = false,
 	Visibility = 0,
-	FileId = 2,
-	UpdateLogList = { },
+	FileId = 3764696598,
+	UpdateLogList = {
+		[1] = {
+			Timestamp = 1784039908,
+		},
+		[2] = {
+			Timestamp = 1784040148,
+		},
+		[3] = {
+			Timestamp = 1784040165,
+		},
+	},
 	SettingGroups = {
 		[1] = "Default",
 	},
